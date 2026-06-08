@@ -166,10 +166,10 @@ export async function signInWithGoogleAction(
 
 export async function signOut(): Promise<void> {
   if (!isSupabaseConfigured()) {
-    redirect("/login");
+    redirect("/");
   }
 
   const supabase = createServerSupabaseClient();
   await supabase.auth.signOut();
-  redirect("/login");
+  redirect("/");
 }

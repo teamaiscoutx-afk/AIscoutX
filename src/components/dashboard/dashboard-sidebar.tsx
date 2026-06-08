@@ -13,6 +13,8 @@ import {
   Sparkles,
 } from "lucide-react";
 
+import { UserAvatarMenu } from "@/components/layout/user-avatar-menu";
+import { useUserMenu } from "@/components/layout/user-menu-provider";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -25,6 +27,7 @@ const navItems = [
 ];
 
 export function DashboardSidebar() {
+  const menu = useUserMenu();
   const pathname = usePathname();
 
   return (
@@ -64,7 +67,10 @@ export function DashboardSidebar() {
         })}
       </nav>
 
-      <div className="border-t border-white/[0.06] p-4">
+      <div className="border-t border-white/[0.06] p-4 space-y-3">
+        <div className="hidden lg:flex lg:justify-center">
+          <UserAvatarMenu menu={menu} />
+        </div>
         <div className="rounded-xl border border-[#deff9a]/20 bg-[#deff9a]/[0.06] p-3">
           <div className="flex items-center gap-2 text-xs font-medium text-[#deff9a]">
             <Rocket className="h-3.5 w-3.5" />

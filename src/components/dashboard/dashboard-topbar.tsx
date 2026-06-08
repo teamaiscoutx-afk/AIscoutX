@@ -3,6 +3,8 @@
 import { Bell, Search } from "lucide-react";
 
 import { WorkspaceModeToggle } from "@/components/dashboard/workspace-mode-toggle";
+import { UserAvatarMenu } from "@/components/layout/user-avatar-menu";
+import { useUserMenu } from "@/components/layout/user-menu-provider";
 import type { WorkspaceIdentity } from "@/lib/dashboard/onboarding";
 import { Input } from "@/components/ui/input";
 
@@ -19,6 +21,8 @@ export function DashboardTopbar({
   searchQuery,
   onSearchQueryChange,
 }: DashboardTopbarProps) {
+  const menu = useUserMenu();
+
   return (
     <header className="sticky top-0 z-30 flex h-12 shrink-0 items-center gap-2 border-b border-white/[0.06] bg-[#030308]/80 px-3 backdrop-blur-xl sm:h-14 sm:gap-3 sm:px-6">
       <div className="relative min-w-0 flex-1 max-w-[140px] xs:max-w-xs sm:max-w-sm md:max-w-md">
@@ -52,12 +56,7 @@ export function DashboardTopbar({
           <Bell className="h-4 w-4" strokeWidth={1.5} />
           <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#deff9a]" />
         </button>
-        <div
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-gradient-to-br from-zinc-700 to-zinc-900 text-xs font-semibold text-zinc-300"
-          title="User"
-        >
-          K
-        </div>
+        <UserAvatarMenu menu={menu} compact />
       </div>
     </header>
   );
