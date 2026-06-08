@@ -2,10 +2,12 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Loader2, X } from "lucide-react";
+import { Check, Loader2, Rocket, X } from "lucide-react";
 
 import { saveOpportunity } from "@/app/actions/opportunities";
+import { createWorkspaceFromOpportunity } from "@/app/actions/workspaces";
 import { OpportunityDrawerDetail } from "@/components/dashboard/opportunity-drawer-detail";
 import {
   getTrendStageColor,
@@ -45,10 +47,13 @@ export function OpportunityDrawer({
   activeWorkspace,
   onClose,
 }: OpportunityDrawerProps) {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [buildError, setBuildError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isBuilding, startBuildTransition] = useTransition();
 
   useEffect(() => {
     setMounted(true);
@@ -57,7 +62,21 @@ export function OpportunityDrawer({
   useEffect(() => {
     setSaved(false);
     setSaveError(null);
+    setBuildError(null);
   }, [selectedOpportunity?.id]);
+
+  function handleBuildStartup() {
+    if (!selectedOpportunity) return;
+    startBuildTransition(async () => {
+      const result = await createWorkspaceFromOpportunity(selectedOpportunity);
+      if (result.ok && result.workspaceId) {
+        router.push(`/dashboard/workspace/${result.workspaceId}`);
+        onClose();
+        return;
+      }
+      setBuildError(result.error ?? "Could not create startup workspace.");
+    });
+  }
 
   function handleSave() {
     if (!selectedOpportunity) return;
@@ -195,9 +214,29 @@ export function OpportunityDrawer({
             </div>
 
             <div className="shrink-0 space-y-2 border-t border-white/[0.06] p-4 sm:p-5">
+              {buildError && (
+                <p className="text-center text-[11px] text-red-400">{buildError}</p>
+              )}
               {saveError && (
                 <p className="text-center text-[11px] text-red-400">{saveError}</p>
               )}
+              <Button
+                onClick={handleBuildStartup}
+                disabled={isBuilding}
+                className="btn-glow-lime w-full bg-[#deff9a] font-semibold text-black hover:bg-[#d8f992]"
+              >
+                {isBuilding ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating workspace…
+                  </>
+                ) : (
+                  <>
+                    <Rocket className="mr-2 h-4 w-4" />
+                    🚀 Build This Startup
+                  </>
+                )}
+              </Button>
               <Button
                 onClick={handleSave}
                 disabled={isPending || saved}

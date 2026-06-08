@@ -294,17 +294,17 @@ export function LandingPageContent({ ctaHref }: LandingPageContentProps) {
                 className="mb-8 border-white/10 bg-white/[0.03] px-4 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-400 backdrop-blur-sm"
               >
                 <Sparkles className="mr-1.5 inline h-3 w-3 text-[#deff9a]" />
-                Built for creators & founders
+                AI Founder Operating System
               </Badge>
             </FadeIn>
 
             <FadeIn delay={0.08}>
               <h1 className="text-balance text-4xl font-bold leading-[1.05] tracking-[-0.02em] sm:text-5xl md:text-6xl lg:text-[4.25rem] lg:leading-[1.02]">
                 <span className="text-gradient-hero block">
-                  Discover Profitable Opportunities
+                  Build Your Startup With AI.
                 </span>
-                <span className="text-gradient-hero mt-1 block opacity-90">
-                  Before Your Competitors Do.
+                <span className="text-gradient-hero mt-1 block text-2xl opacity-90 sm:text-3xl md:text-4xl">
+                  From idea to first customer.
                 </span>
               </h1>
             </FadeIn>
@@ -312,8 +312,8 @@ export function LandingPageContent({ ctaHref }: LandingPageContentProps) {
             <FadeIn delay={0.16}>
               <p className="mt-7 max-w-2xl text-base leading-relaxed text-zinc-400 sm:text-lg md:mt-8 md:text-xl">
                 <span className="text-glow-lime font-semibold">AIscoutX</span>{" "}
-                filters internet noise into profitable signals—so you act first,
-                not last.
+                acts as your AI founder team—guiding you from validation to MVP,
+                launch, and first revenue.
               </p>
             </FadeIn>
 
@@ -323,7 +323,7 @@ export function LandingPageContent({ ctaHref }: LandingPageContentProps) {
                 size="lg"
                 className="btn-glow-lime h-12 rounded-xl bg-[#deff9a] px-8 text-base font-semibold text-black hover:bg-[#d8f992]"
               >
-                <Link href={ctaHref}>Find Opportunities 🚀</Link>
+                <Link href={ctaHref}>Start Building →</Link>
               </Button>
             </FadeIn>
           </div>

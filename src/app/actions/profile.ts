@@ -1,6 +1,11 @@
 "use server";
 
-import type { NicheId, WorkspaceIdentity } from "@/lib/dashboard/onboarding";
+import type {
+  CoreGoal,
+  NicheFocus,
+  NicheId,
+  WorkspaceIdentity,
+} from "@/lib/dashboard/onboarding";
 import type { ProfileRow } from "@/lib/database.types";
 import {
   createServerSupabaseClient,
@@ -30,6 +35,48 @@ export async function getCurrentProfile(): Promise<ProfileRow | null> {
     return data;
   } catch {
     return null;
+  }
+}
+
+export async function completeOnboardingProfile(input: {
+  persona: WorkspaceIdentity;
+  goal: CoreGoal;
+  nicheFocus: NicheFocus;
+  currentNiche: NicheId;
+}): Promise<{ ok: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) {
+    return { ok: true };
+  }
+
+  try {
+    const supabase = createServerSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { ok: false, error: "Not authenticated" };
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        workspace_mode: input.persona,
+        persona: input.persona,
+        goal: input.goal,
+        niche_focus: input.nicheFocus,
+        current_niche: input.currentNiche,
+        onboarding_completed: true,
+      })
+      .eq("id", user.id);
+
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Onboarding profile update failed" };
   }
 }
 

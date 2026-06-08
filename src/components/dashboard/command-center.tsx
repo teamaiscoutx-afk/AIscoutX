@@ -14,7 +14,7 @@ import { OpportunityDrawer } from "@/components/dashboard/opportunity-drawer";
 import { OpportunityOfDay } from "@/components/dashboard/opportunity-of-day";
 import { TrendingSection } from "@/components/dashboard/trending-section";
 import type { OpportunitiesDataSource } from "@/app/actions/opportunities";
-import { updateProfileWorkspace } from "@/app/actions/profile";
+import { completeOnboardingProfile, updateProfileWorkspace } from "@/app/actions/profile";
 import { buildFeedViewModel } from "@/lib/dashboard/feed-utils";
 import {
   filterOpportunitiesByKeyword,
@@ -29,7 +29,9 @@ import {
   loadOnboardingProfile,
   saveNicheByWorkspace,
   saveOnboardingProfile,
+  type CoreGoal,
   type NicheByWorkspace,
+  type NicheFocus,
   type NicheId,
   type UserOnboardingProfile,
   type WorkspaceIdentity,
@@ -73,6 +75,10 @@ export function CommandCenter({
   const [allOpportunities] = useState<Opportunity[]>(initialOpportunities);
 
   const [draftIdentity, setDraftIdentity] = useState<WorkspaceIdentity | null>(
+    null
+  );
+  const [draftGoal, setDraftGoal] = useState<CoreGoal | null>(null);
+  const [draftNicheFocus, setDraftNicheFocus] = useState<NicheFocus | null>(
     null
   );
   const [draftNiche, setDraftNiche] = useState<NicheId | null>(null);
@@ -130,9 +136,9 @@ export function CommandCenter({
     const hotCount = list.filter((o) => o.hot).length;
 
     return [
-      { value: String(count), label: "Signals in feed" },
-      { value: String(avgScore), label: "Avg Opportunity Score" },
-      { value: String(hotCount), label: "Hot signals" },
+      { value: String(count), label: "Ideas to evaluate" },
+      { value: String(avgScore), label: "Validation potential" },
+      { value: String(hotCount), label: "Ready to build" },
     ];
   }, [contextFeed.opportunities]);
 
@@ -178,16 +184,21 @@ export function CommandCenter({
     const nichePrefs = loadNicheByWorkspace();
 
     if (saved) {
-      const workspace = saved.identity;
-      const nicheId = saved.niche;
-      const label = saved.nicheLabel || getNicheLabel(workspace, nicheId);
+      const normalized: UserOnboardingProfile = {
+        ...saved,
+        goal: saved.goal ?? "build-startup",
+        nicheFocus: saved.nicheFocus ?? "ai",
+      };
+      const workspace = normalized.identity;
+      const nicheId = normalized.niche;
+      const label = normalized.nicheLabel || getNicheLabel(workspace, nicheId);
       const mergedPrefs: NicheByWorkspace = {
         ...nichePrefs,
         [workspace]: { id: nicheId, label },
       };
       setNicheByWorkspace(mergedPrefs);
       setActiveWorkspace(workspace);
-      setProfile(saved);
+      setProfile(normalized);
       setPhase("ready");
     } else {
       setPhase("onboarding");
@@ -204,6 +215,18 @@ export function CommandCenter({
 
   const handleIdentityChange = useCallback((identity: WorkspaceIdentity) => {
     setDraftIdentity(identity);
+    setDraftGoal(null);
+    setDraftNicheFocus(null);
+    setDraftNiche(null);
+    setDraftNicheLabel("");
+  }, []);
+
+  const handleGoalChange = useCallback((goal: CoreGoal) => {
+    setDraftGoal(goal);
+  }, []);
+
+  const handleNicheFocusChange = useCallback((focus: NicheFocus) => {
+    setDraftNicheFocus(focus);
     setDraftNiche(null);
     setDraftNicheLabel("");
   }, []);
@@ -214,15 +237,27 @@ export function CommandCenter({
   }, []);
 
   const handleInitialize = useCallback(() => {
-    if (!draftIdentity || !draftNiche || !draftNicheLabel) return;
+    if (!draftIdentity || !draftGoal || !draftNicheFocus || !draftNiche || !draftNicheLabel) {
+      return;
+    }
     setPhase("scanning");
-  }, [draftIdentity, draftNiche, draftNicheLabel]);
+  }, [draftIdentity, draftGoal, draftNicheFocus, draftNiche, draftNicheLabel]);
 
   const handleScanComplete = useCallback(() => {
-    if (!draftIdentity || !draftNiche || !draftNicheLabel) return;
+    if (
+      !draftIdentity ||
+      !draftGoal ||
+      !draftNicheFocus ||
+      !draftNiche ||
+      !draftNicheLabel
+    ) {
+      return;
+    }
 
     const newProfile: UserOnboardingProfile = {
       identity: draftIdentity,
+      goal: draftGoal,
+      nicheFocus: draftNicheFocus,
       niche: draftNiche,
       nicheLabel: draftNicheLabel,
       completedAt: new Date().toISOString(),
@@ -239,8 +274,22 @@ export function CommandCenter({
     setNicheByWorkspace(nextPrefs);
     setActiveWorkspace(draftIdentity);
     syncWorkspaceToProfile(draftIdentity, draftNiche);
+    void completeOnboardingProfile({
+      persona: draftIdentity,
+      goal: draftGoal,
+      nicheFocus: draftNicheFocus,
+      currentNiche: draftNiche,
+    });
     setPhase("ready");
-  }, [draftIdentity, draftNiche, draftNicheLabel, nicheByWorkspace, syncWorkspaceToProfile]);
+  }, [
+    draftIdentity,
+    draftGoal,
+    draftNicheFocus,
+    draftNiche,
+    draftNicheLabel,
+    nicheByWorkspace,
+    syncWorkspaceToProfile,
+  ]);
 
   const handleActiveWorkspaceChange = useCallback(
     (workspace: WorkspaceIdentity) => {
@@ -307,8 +356,12 @@ export function CommandCenter({
           <OnboardingModal
             key="onboarding"
             identity={draftIdentity}
+            goal={draftGoal}
+            nicheFocus={draftNicheFocus}
             niche={draftNiche}
             onIdentityChange={handleIdentityChange}
+            onGoalChange={handleGoalChange}
+            onNicheFocusChange={handleNicheFocusChange}
             onNicheChange={handleNicheChange}
             onInitialize={handleInitialize}
           />
@@ -408,7 +461,7 @@ export function CommandCenter({
                         Ranked by demand momentum
                       </p>
                       <h2 className="mt-1 text-xl font-semibold text-white sm:text-2xl">
-                        Exploding Opportunities
+                        Discover Opportunities
                       </h2>
                     </div>
                     <p className="flex items-center gap-1.5 text-xs text-zinc-600">

@@ -27,12 +27,46 @@ export type NicheId =
   | AgencyNiche
   | SolopreneurNiche;
 
+export type CoreGoal =
+  | "build-startup"
+  | "grow-agency"
+  | "create-saas"
+  | "build-audience"
+  | "earn-side-income";
+
+export type NicheFocus =
+  | "ai"
+  | "saas"
+  | "healthcare"
+  | "finance"
+  | "creator-economy"
+  | "education";
+
 export type UserOnboardingProfile = {
   identity: WorkspaceIdentity;
+  goal: CoreGoal;
+  nicheFocus: NicheFocus;
   niche: NicheId;
   nicheLabel: string;
   completedAt: string;
 };
+
+export const GOAL_OPTIONS: { id: CoreGoal; label: string; description: string }[] = [
+  { id: "build-startup", label: "Build Startup", description: "Launch a venture from zero" },
+  { id: "grow-agency", label: "Grow Agency", description: "Scale client services & retainers" },
+  { id: "create-saas", label: "Create SaaS", description: "Ship a recurring-revenue product" },
+  { id: "build-audience", label: "Build Audience", description: "Grow distribution & community" },
+  { id: "earn-side-income", label: "Earn Side Income", description: "Monetize a focused offer" },
+];
+
+export const NICHE_FOCUS_OPTIONS: { id: NicheFocus; label: string }[] = [
+  { id: "ai", label: "AI" },
+  { id: "saas", label: "SaaS" },
+  { id: "healthcare", label: "Healthcare" },
+  { id: "finance", label: "Finance" },
+  { id: "creator-economy", label: "Creator Economy" },
+  { id: "education", label: "Education" },
+];
 
 export const ONBOARDING_STORAGE_KEY = "aiscoutx-onboarding-profile";
 

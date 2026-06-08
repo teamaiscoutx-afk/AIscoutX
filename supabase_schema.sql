@@ -13,6 +13,18 @@ create table if not exists public.profiles (
   workspace_mode text not null default 'founder'
     check (workspace_mode in ('founder', 'creator', 'agency', 'solopreneur')),
   current_niche text,
+  onboarding_completed boolean not null default false,
+  persona text
+    check (persona is null or persona in ('founder', 'creator', 'agency', 'solopreneur')),
+  goal text
+    check (goal is null or goal in (
+      'build-startup', 'grow-agency', 'create-saas',
+      'build-audience', 'earn-side-income'
+    )),
+  niche_focus text
+    check (niche_focus is null or niche_focus in (
+      'ai', 'saas', 'healthcare', 'finance', 'creator-economy', 'education'
+    )),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

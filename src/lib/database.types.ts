@@ -1,6 +1,13 @@
 import type { ModeIntelligence } from "@/lib/dashboard/workspace";
 import type { WorkspaceIdentity } from "@/lib/dashboard/onboarding";
 import type { TrendStage } from "@/lib/dashboard/opportunities";
+import type {
+  CoreGoal,
+  FounderStage,
+  GpsVector,
+  NicheFocus,
+  WorkspaceSummary,
+} from "@/lib/founder/types";
 
 /** Drawer copy stored in opportunities.mode_data */
 export type OpportunityDrawerData = {
@@ -32,8 +39,36 @@ export type ProfileRow = {
   email: string | null;
   workspace_mode: WorkspaceIdentity;
   current_niche: string | null;
+  onboarding_completed: boolean;
+  persona: WorkspaceIdentity | null;
+  goal: CoreGoal | null;
+  niche_focus: NicheFocus | null;
   created_at: string;
   updated_at: string;
+};
+
+export type WorkspaceRow = {
+  id: string;
+  user_id: string;
+  opportunity_id: string | null;
+  opportunity_name: string;
+  summary_json: WorkspaceSummary;
+  current_stage: FounderStage;
+  validation_score: number;
+  mvp_score: number;
+  launch_score: number;
+  sales_score: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DailyTaskRow = {
+  id: string;
+  workspace_id: string;
+  task_text: string;
+  is_completed: boolean;
+  stage_type: GpsVector;
+  created_at: string;
 };
 
 export type OpportunityRow = {
@@ -85,6 +120,10 @@ export type Database = {
           email?: string | null;
           workspace_mode?: WorkspaceIdentity;
           current_niche?: string | null;
+          onboarding_completed?: boolean;
+          persona?: WorkspaceIdentity | null;
+          goal?: CoreGoal | null;
+          niche_focus?: NicheFocus | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -92,8 +131,57 @@ export type Database = {
           email?: string | null;
           workspace_mode?: WorkspaceIdentity;
           current_niche?: string | null;
+          onboarding_completed?: boolean;
+          persona?: WorkspaceIdentity | null;
+          goal?: CoreGoal | null;
+          niche_focus?: NicheFocus | null;
           updated_at?: string;
         };
+        Relationships: [];
+      };
+      workspaces: {
+        Row: WorkspaceRow;
+        Insert: {
+          id?: string;
+          user_id: string;
+          opportunity_id?: string | null;
+          opportunity_name: string;
+          summary_json?: WorkspaceSummary;
+          current_stage?: FounderStage;
+          validation_score?: number;
+          mvp_score?: number;
+          launch_score?: number;
+          sales_score?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<{
+          opportunity_id: string | null;
+          opportunity_name: string;
+          summary_json: WorkspaceSummary;
+          current_stage: FounderStage;
+          validation_score: number;
+          mvp_score: number;
+          launch_score: number;
+          sales_score: number;
+        }>;
+        Relationships: [];
+      };
+      daily_tasks: {
+        Row: DailyTaskRow;
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          task_text: string;
+          is_completed?: boolean;
+          stage_type: GpsVector;
+          created_at?: string;
+        };
+        Update: Partial<{
+          task_text: string;
+          is_completed: boolean;
+          stage_type: GpsVector;
+        }>;
         Relationships: [];
       };
       opportunities: {
