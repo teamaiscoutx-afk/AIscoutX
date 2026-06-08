@@ -100,6 +100,11 @@ export function CommandCenter({
 
   const handleSearchSubmit = useCallback((query: string) => {
     setSearchQuery(query);
+    requestAnimationFrame(() => {
+      document
+        .getElementById("opportunities")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }, []);
 
   const [selectedOpportunity, setSelectedOpportunity] =

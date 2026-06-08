@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 
 import { NotificationHub } from "@/components/dashboard/notification-hub";
 import { UpgradeProModal } from "@/components/dashboard/upgrade-pro-modal";
@@ -95,10 +95,21 @@ export function DashboardTopbar({
     [onSearchQueryChange]
   );
 
-  const handleSubmit = useCallback(() => {
-    applySearch(draftQuery);
+  const handleSubmit = useCallback(
+    (e?: React.FormEvent) => {
+      e?.preventDefault();
+      applySearch(draftQuery);
+      searchRef.current?.focus();
+    },
+    [applySearch, draftQuery]
+  );
+
+  const handleClear = useCallback(() => {
+    setDraftQuery("");
+    onSearchQueryChange("");
+    onSearchSubmit("");
     searchRef.current?.focus();
-  }, [applySearch, draftQuery]);
+  }, [onSearchQueryChange, onSearchSubmit]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -111,10 +122,14 @@ export function DashboardTopbar({
   );
 
   const shortcutLabel = isMac ? "⌘K" : "Ctrl+K";
+  const hasQuery = draftQuery.trim().length > 0;
 
   return (
     <header className="sticky top-0 z-30 flex h-12 shrink-0 items-center gap-2 border-b border-white/[0.06] bg-[#030308]/80 px-3 backdrop-blur-xl sm:h-14 sm:gap-3 sm:px-6">
-      <div className="relative min-w-0 flex-1 max-w-[140px] xs:max-w-xs sm:max-w-sm md:max-w-md">
+      <form
+        onSubmit={handleSubmit}
+        className="relative min-w-0 flex-1 sm:max-w-md md:max-w-lg lg:max-w-xl"
+      >
         <Search
           className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-600"
           strokeWidth={1.5}
@@ -130,28 +145,41 @@ export function DashboardTopbar({
           aria-label="Search opportunities"
           aria-keyshortcuts={isMac ? "Meta+K" : "Control+K"}
           className={cn(
-            "h-9 border-white/[0.08] bg-white/[0.03] pl-9 pr-[3.25rem] text-sm text-zinc-300 placeholder:text-zinc-600 focus-visible:ring-[#deff9a]/20 sm:pr-[6.75rem]"
+            "h-9 w-full border-white/[0.08] bg-white/[0.03] pl-9 text-sm text-zinc-300 placeholder:text-zinc-600 focus-visible:ring-[#deff9a]/20",
+            hasQuery ? "pr-[7.5rem] sm:pr-[9.5rem]" : "pr-[5.5rem] sm:pr-[8.5rem]"
           )}
         />
         <div className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-1">
+          {hasQuery && (
+            <button
+              type="button"
+              onClick={handleClear}
+              aria-label="Clear search"
+              className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-white/[0.06] hover:text-white"
+            >
+              <X className="h-3.5 w-3.5" strokeWidth={2} />
+            </button>
+          )}
           <kbd
-            className="pointer-events-none hidden items-center rounded border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 font-mono text-[10px] font-medium text-zinc-500 sm:inline-flex"
+            className="pointer-events-none hidden items-center rounded border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 font-mono text-[10px] font-medium text-zinc-500 lg:inline-flex"
             aria-hidden
           >
             {shortcutLabel}
           </kbd>
           <button
-            type="button"
-            onClick={handleSubmit}
+            type="submit"
             aria-label="Search opportunities"
-            className="flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.1] bg-white/[0.05] text-zinc-400 backdrop-blur-md transition-all duration-200 hover:border-[#deff9a]/30 hover:bg-[#deff9a]/10 hover:text-[#deff9a] hover:shadow-[0_0_12px_rgba(222,255,154,0.15)]"
+            className="inline-flex h-7 items-center gap-1 rounded-md border border-[#deff9a]/25 bg-[#deff9a]/10 px-2 text-[#deff9a] backdrop-blur-md transition-all duration-200 hover:border-[#deff9a]/40 hover:bg-[#deff9a]/20 hover:shadow-[0_0_14px_rgba(222,255,154,0.2)] sm:px-2.5"
           >
             <Search className="h-3.5 w-3.5" strokeWidth={2} />
+            <span className="hidden text-[11px] font-semibold sm:inline">
+              Search
+            </span>
           </button>
         </div>
-      </div>
+      </form>
 
-      <div className="min-w-0 flex-1 sm:flex-none">
+      <div className="min-w-0 shrink-0 sm:flex-none">
         <WorkspaceModeToggle
           value={activeWorkspace}
           onChange={onActiveWorkspaceChange}

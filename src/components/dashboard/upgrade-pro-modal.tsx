@@ -55,7 +55,7 @@ export function UpgradeProModal({ compact }: UpgradeProModalProps) {
         </button>
       </DialogTrigger>
 
-      <DialogContent className="flex max-h-[90vh] w-[calc(100%-2rem)] max-w-4xl flex-col overflow-hidden border-white/[0.12] bg-[#06060f]/95 p-0 sm:w-full">
+      <DialogContent className="top-[5vh] flex max-h-[90vh] w-[calc(100vw-2rem)] max-w-4xl translate-y-0 flex-col overflow-hidden border-white/[0.12] bg-[#06060f]/95 p-0 sm:w-[min(56rem,calc(100vw-2rem))]">
         <div className="shrink-0 border-b border-white/[0.06] px-6 py-5 pr-12 sm:px-8">
           <DialogHeader>
             <DialogTitle className="text-xl sm:text-2xl">
