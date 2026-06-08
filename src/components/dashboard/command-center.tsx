@@ -384,6 +384,8 @@ export function CommandCenter({
           onActiveWorkspaceChange={handleActiveWorkspaceChange}
           searchQuery={searchQuery}
           onSearchQueryChange={setSearchQuery}
+          opportunityOfDayName={opportunityOfDay?.name}
+          opportunityOfDayGrowth={opportunityOfDay?.growth}
         />
       )}
 

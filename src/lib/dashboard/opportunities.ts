@@ -1,4 +1,5 @@
 import { deriveDrawerFromIntelligence } from "@/lib/dashboard/opportunity-mapper";
+import { searchOpportunities } from "@/lib/dashboard/search";
 import type { ModeIntelligence } from "@/lib/dashboard/workspace";
 
 export type { WorkspaceMode } from "@/lib/dashboard/workspace";
@@ -282,22 +283,12 @@ export function getOpportunityOfTheDay(): Opportunity {
   );
 }
 
-/** Client-side filter: match search query against name and category */
+/** Token-based fuzzy search across name, category, and keyword tags */
 export function filterOpportunitiesBySearch(
   opportunities: Opportunity[],
   searchQuery: string
 ): Opportunity[] {
-  const query = searchQuery.trim().toLowerCase();
-  if (!query) return opportunities;
-
-  return opportunities.filter((opportunity) => {
-    const nameMatch = opportunity.name.toLowerCase().includes(query);
-    const categoryMatch = opportunity.category.toLowerCase().includes(query);
-    const keywordMatch = opportunity.keywords.some((tag) =>
-      tag.toLowerCase().includes(query)
-    );
-    return nameMatch || categoryMatch || keywordMatch;
-  });
+  return searchOpportunities(opportunities, searchQuery);
 }
 
 /** Client-side filter: match keyword against tags, name, and category */

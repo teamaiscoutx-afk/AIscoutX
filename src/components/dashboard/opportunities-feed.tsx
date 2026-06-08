@@ -71,13 +71,22 @@ export function OpportunitiesFeed({
                   className="px-6 py-12 text-center text-sm text-zinc-500"
                 >
                   {hasSearch ? (
-                    <>
-                      No matching signals found for{" "}
-                      <span className="font-medium text-zinc-400">
-                        &ldquo;{searchQuery.trim()}&rdquo;
-                      </span>
-                      .
-                    </>
+                    <div className="mx-auto max-w-sm space-y-2">
+                      <p className="text-zinc-400">
+                        No matching signals found.
+                      </p>
+                      <p className="text-xs text-zinc-600">
+                        Try searching{" "}
+                        <span className="font-medium text-zinc-500">
+                          &lsquo;AI&rsquo;
+                        </span>{" "}
+                        or{" "}
+                        <span className="font-medium text-zinc-500">
+                          &lsquo;SaaS&rsquo;
+                        </span>
+                        .
+                      </p>
+                    </div>
                   ) : (
                     <>
                       No opportunities match this keyword. Try another chip or
