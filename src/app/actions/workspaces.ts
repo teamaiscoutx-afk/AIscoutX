@@ -17,6 +17,17 @@ import {
   isSupabaseConfigured,
 } from "@/lib/supabase";
 
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** Mock/seed opportunities may use numeric ids — only persist real UUID FKs. */
+function toNullableOpportunityId(id: string | null | undefined): string | null {
+  if (!id || !UUID_REGEX.test(id)) {
+    return null;
+  }
+  return id;
+}
+
 function mapWorkspace(row: WorkspaceRow): StartupWorkspace {
   return {
     id: row.id,
@@ -109,10 +120,11 @@ export async function createWorkspaceFromOpportunity(
     if (!user) return { ok: false, error: "Not authenticated" };
 
     const summary = buildWorkspaceSummaryFromOpportunity(opportunity);
+    const opportunityId = toNullableOpportunityId(opportunity.id);
     const nextAction = deriveNextAction({
       id: "",
       userId: user.id,
-      opportunityId: opportunity.id,
+      opportunityId,
       opportunityName: opportunity.name,
       summary,
       currentStage: "validate",
@@ -128,7 +140,7 @@ export async function createWorkspaceFromOpportunity(
       .from("workspaces")
       .insert({
         user_id: user.id,
-        opportunity_id: opportunity.id,
+        opportunity_id: opportunityId,
         opportunity_name: opportunity.name,
         summary_json: summary,
         current_stage: "validate",
