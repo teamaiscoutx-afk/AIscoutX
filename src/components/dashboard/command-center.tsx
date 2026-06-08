@@ -94,6 +94,14 @@ export function CommandCenter({
   });
   const [searchQuery, setSearchQuery] = useState("");
 
+  const handleSearchQueryChange = useCallback((query: string) => {
+    setSearchQuery(query);
+  }, []);
+
+  const handleSearchSubmit = useCallback((query: string) => {
+    setSearchQuery(query);
+  }, []);
+
   const [selectedOpportunity, setSelectedOpportunity] =
     useState<Opportunity | null>(null);
   const [keywordFilter, setKeywordFilter] = useState<string | null>(null);
@@ -383,7 +391,8 @@ export function CommandCenter({
           activeWorkspace={activeWorkspace}
           onActiveWorkspaceChange={handleActiveWorkspaceChange}
           searchQuery={searchQuery}
-          onSearchQueryChange={setSearchQuery}
+          onSearchQueryChange={handleSearchQueryChange}
+          onSearchSubmit={handleSearchSubmit}
           opportunityOfDayName={opportunityOfDay?.name}
           opportunityOfDayGrowth={opportunityOfDay?.growth}
         />
@@ -474,6 +483,7 @@ export function CommandCenter({
 
                   <div className="mt-5">
                     <OpportunitiesFeed
+                      key={`feed-${searchQuery}-${keywordFilter ?? "all"}`}
                       opportunities={filteredOpportunities}
                       activeId={selectedOpportunity?.id ?? null}
                       activeKeyword={keywordFilter}
