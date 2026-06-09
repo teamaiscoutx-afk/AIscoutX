@@ -1,7 +1,7 @@
-import { AnalyzeView } from "@/components/mvp/analyze-view";
-import { VenturePackHydrator } from "@/components/mvp/venture-pack-hydrator";
+import { AnalyzePageClient } from "@/components/mvp/analyze-page-client";
 import { getLatestVenturePack } from "@/app/actions/generation";
 import { getUsageSnapshot } from "@/app/actions/usage";
+import { sanitizeUsageSnapshot } from "@/lib/billing/usage-serialize";
 
 export const dynamic = "force-dynamic";
 
@@ -12,8 +12,9 @@ export default async function AnalyzePage() {
   ]);
 
   return (
-    <VenturePackHydrator serverPack={serverPack}>
-      {(pack) => <AnalyzeView pack={pack} usage={usage} />}
-    </VenturePackHydrator>
+    <AnalyzePageClient
+      serverPack={serverPack}
+      usage={sanitizeUsageSnapshot(usage)}
+    />
   );
 }

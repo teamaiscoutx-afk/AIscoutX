@@ -34,8 +34,7 @@ export function BuildInput() {
         incrementLocalBlueprintCount();
       }
 
-      router.push("/dashboard/analyze");
-      router.refresh();
+      router.push("/dashboard/blueprints");
     });
   }
 
