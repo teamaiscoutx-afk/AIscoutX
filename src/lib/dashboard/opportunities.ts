@@ -1,6 +1,9 @@
 import { deriveDrawerFromIntelligence } from "@/lib/dashboard/opportunity-mapper";
 import { searchOpportunities } from "@/lib/dashboard/search";
+import type { OpportunityDeepDive } from "@/lib/intelligence/types";
 import type { ModeIntelligence } from "@/lib/dashboard/workspace";
+
+export type { OpportunityDeepDive, MarketGap, MvpAnatomy, SolutionBlueprint } from "@/lib/intelligence/types";
 
 export type { WorkspaceMode } from "@/lib/dashboard/workspace";
 
@@ -9,6 +12,7 @@ export type ScoreBreakdown = {
   competition: number;
   virality: number;
   monetization: number;
+  disruption?: number;
 };
 
 export type TrendStage = "Emerging" | "Accelerating" | "Breakout" | "Peaking";
@@ -37,6 +41,7 @@ export type Opportunity = {
   keywords: string[];
   intelligence: ModeIntelligence;
   drawer: OpportunityDrawerContent;
+  deepDive?: OpportunityDeepDive;
   /** Set when loaded from Supabase for workspace/niche filtering */
   workspace?: import("@/lib/dashboard/onboarding").WorkspaceIdentity;
   niche?: import("@/lib/dashboard/onboarding").NicheId;

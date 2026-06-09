@@ -41,6 +41,8 @@ function mapWorkspace(row: WorkspaceRow): StartupWorkspace {
     mvpScore: row.mvp_score,
     launchScore: row.launch_score,
     salesScore: row.sales_score,
+    isActive: row.is_active ?? false,
+    nicheFocus: row.niche_focus ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -127,6 +129,13 @@ export async function createWorkspaceFromOpportunity(
 
     const summary = buildWorkspaceSummaryFromOpportunity(opportunity);
     const opportunityId = toNullableOpportunityId(opportunity.id);
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("niche_focus")
+      .eq("id", user.id)
+      .maybeSingle();
+
     const nextAction = deriveNextAction({
       id: "",
       userId: user.id,
@@ -138,9 +147,16 @@ export async function createWorkspaceFromOpportunity(
       mvpScore: 0,
       launchScore: 0,
       salesScore: 0,
+      isActive: true,
+      nicheFocus: profile?.niche_focus ?? opportunity.niche ?? opportunity.name,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
+
+    await supabase
+      .from("workspaces")
+      .update({ is_active: false })
+      .eq("user_id", user.id);
 
     const { data: workspace, error: workspaceError } = await supabase
       .from("workspaces")
@@ -150,6 +166,8 @@ export async function createWorkspaceFromOpportunity(
         opportunity_name: opportunity.name,
         summary_json: summary,
         current_stage: "validate",
+        is_active: true,
+        niche_focus: profile?.niche_focus ?? opportunity.niche ?? opportunity.name,
       })
       .select("*")
       .single();

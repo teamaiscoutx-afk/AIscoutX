@@ -40,12 +40,14 @@ export function mapOpportunityRowToClient(row: OpportunityRow): Opportunity {
       virality: modeData.virality ?? Math.round((row.demand + row.score) / 2),
       monetization:
         modeData.monetization ?? Math.round((row.score + row.demand) / 2),
+      disruption: modeData.disruption,
     },
     revenuePotential: modeData.revenuePotential ?? "$1k–$5k/mo",
     sources: modeData.sources ?? ["Reddit", "Product Hunt"],
     keywords: modeData.keywords ?? [],
     intelligence,
     drawer: modeData.drawer ?? resolveDrawerContent(modeData, intelligence),
+    deepDive: modeData.deepDive,
     workspace: row.workspace_mode ?? undefined,
     niche: (row.current_niche as NicheId | null) ?? undefined,
   };
@@ -111,6 +113,9 @@ export function mapOpportunityToInsertRow(
       intelligence: opportunity.intelligence,
       drawer: opportunity.drawer,
       actionPlanMarkdown,
+      deepDive: opportunity.deepDive,
+      disruption: opportunity.scores.disruption,
+      liveSynthesizedAt: opportunity.deepDive?.synthesizedAt,
     },
   };
 }

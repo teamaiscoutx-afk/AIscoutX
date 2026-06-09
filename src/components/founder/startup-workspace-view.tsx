@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, Layers } from "lucide-react";
 
+import { setWorkspaceActive } from "@/app/actions/notifications";
 import { FounderGps } from "@/components/founder/founder-gps";
 import { WorkspacePhasePanels } from "@/components/founder/workspace-phase-panels";
 import type { DailyTask, StartupWorkspace } from "@/lib/founder/types";
@@ -33,6 +34,16 @@ export function StartupWorkspaceView({
   const [workspace, setWorkspace] = useState(initialWorkspace);
   const [tasks, setTasks] = useState(initialTasks);
   const [activeTab, setActiveTab] = useState<TabId>("overview");
+  const [watching, setWatching] = useState(workspace.isActive);
+
+  async function toggleWorkspaceWatch() {
+    const next = !watching;
+    const result = await setWorkspaceActive(workspace.id, next);
+    if (result.ok) {
+      setWatching(next);
+      setWorkspace((prev) => ({ ...prev, isActive: next }));
+    }
+  }
 
   return (
     <div className="relative mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -48,6 +59,26 @@ export function StartupWorkspaceView({
         <ArrowLeft className="h-3.5 w-3.5" />
         Back to Discover
       </Link>
+
+      <div className="relative mt-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-zinc-500">
+          {watching
+            ? "Watching this niche for live pain-point alerts."
+            : "Enable watch to get bell notifications when your niche shifts."}
+        </p>
+        <button
+          type="button"
+          onClick={() => void toggleWorkspaceWatch()}
+          className={cn(
+            "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+            watching
+              ? "border-[#deff9a]/40 bg-[#deff9a]/10 text-[#deff9a]"
+              : "border-white/10 text-zinc-400 hover:border-white/20 hover:text-white"
+          )}
+        >
+          {watching ? "Active workspace" : "Mark as active"}
+        </button>
+      </div>
 
       <div className="relative mt-6">
         <FounderGps

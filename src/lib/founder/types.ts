@@ -55,6 +55,8 @@ export type StartupWorkspace = {
   mvpScore: number;
   launchScore: number;
   salesScore: number;
+  isActive: boolean;
+  nicheFocus: string | null;
   createdAt: string;
   updatedAt: string;
 };

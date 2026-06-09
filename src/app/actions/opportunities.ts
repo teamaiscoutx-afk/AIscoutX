@@ -2,23 +2,27 @@
 
 import { revalidatePath } from "next/cache";
 
+import {
+  loadCachedOpportunities,
+  refreshLiveOpportunityFeed,
+} from "@/app/actions/intelligence";
 import { checkSavedIdea } from "@/app/actions/usage";
 import { buildFeedViewModel } from "@/lib/dashboard/feed-utils";
 import { mapOpportunityRowToClient } from "@/lib/dashboard/opportunity-mapper";
-import { getSeedOpportunities } from "@/lib/seed/opportunity-seeds";
 import type { NicheId, WorkspaceIdentity } from "@/lib/dashboard/onboarding";
 import type { Opportunity } from "@/lib/dashboard/opportunities";
-import { mockOpportunities } from "@/lib/dashboard/opportunities";
+import { isIntelligenceEngineReady } from "@/lib/intelligence/config";
 import {
   createServerSupabaseClient,
   isSupabaseConfigured,
 } from "@/lib/supabase";
 
-export type OpportunitiesDataSource = "supabase" | "mock";
+export type OpportunitiesDataSource = "live" | "cache" | "unconfigured";
 
 export type FetchAllOpportunitiesResult = {
   opportunities: Opportunity[];
   source: OpportunitiesDataSource;
+  statusMessage?: string;
 };
 
 export type DashboardFeedPayload = {
@@ -27,56 +31,69 @@ export type DashboardFeedPayload = {
   trendingKeywords: string[];
   viralHooks: string[];
   source: OpportunitiesDataSource;
+  statusMessage?: string;
 };
 
-/** Fetch every row from `opportunities` (newest / highest score first). */
-export async function fetchAllOpportunities(): Promise<FetchAllOpportunitiesResult> {
-  if (!isSupabaseConfigured()) {
-    return { opportunities: mockOpportunities, source: "mock" };
-  }
-
-  try {
-    const supabase = createServerSupabaseClient();
-    const { data, error } = await supabase
-      .from("opportunities")
-      .select("*")
-      .order("score", { ascending: false });
-
-    if (error) {
-      console.error("[fetchAllOpportunities]", error.message);
-      return { opportunities: getSeedOpportunities(), source: "mock" };
+/** Live web intelligence feed — no mock fallback. */
+export async function fetchAllOpportunities(
+  workspace: WorkspaceIdentity = "founder",
+  niche: NicheId = "b2b-saas"
+): Promise<FetchAllOpportunitiesResult> {
+  if (!isIntelligenceEngineReady()) {
+    const cached = await loadCachedOpportunities();
+    if (cached.length) {
+      return {
+        opportunities: cached,
+        source: "cache",
+        statusMessage:
+          "Showing cached signals. Add API keys to refresh with live web data.",
+      };
     }
-
-    if (!data?.length) {
-      return { opportunities: getSeedOpportunities(), source: "mock" };
-    }
-
     return {
-      opportunities: data.map(mapOpportunityRowToClient),
-      source: "supabase",
+      opportunities: [],
+      source: "unconfigured",
+      statusMessage:
+        "Live intelligence requires TAVILY_API_KEY or SERPER_API_KEY plus OPENAI_API_KEY or ANTHROPIC_API_KEY.",
     };
-  } catch (err) {
-    console.error("[fetchAllOpportunities]", err);
-    return { opportunities: getSeedOpportunities(), source: "mock" };
   }
+
+  const live = await refreshLiveOpportunityFeed(workspace, niche);
+  if (live.ok && live.opportunities.length) {
+    return { opportunities: live.opportunities, source: "live" };
+  }
+
+  const cached = await loadCachedOpportunities();
+  if (cached.length) {
+    return {
+      opportunities: cached,
+      source: "cache",
+      statusMessage: live.error ?? "Live refresh unavailable — showing cache.",
+    };
+  }
+
+  return {
+    opportunities: [],
+    source: "unconfigured",
+    statusMessage: live.error ?? "No live signals returned.",
+  };
 }
 
-/** Load all rows, then slice for workspace + niche (used by legacy callers). */
 export async function fetchDashboardFeed(
   workspace: WorkspaceIdentity = "founder",
   niche: NicheId = "b2b-saas"
 ): Promise<DashboardFeedPayload> {
-  const { opportunities, source } = await fetchAllOpportunities();
+  const { opportunities, source, statusMessage } = await fetchAllOpportunities(
+    workspace,
+    niche
+  );
   const view = buildFeedViewModel(opportunities, workspace, niche);
-  return { ...view, source };
+  return { ...view, source, statusMessage };
 }
 
 export async function fetchOpportunityById(
   id: string
 ): Promise<Opportunity | null> {
-  if (!isSupabaseConfigured()) {
-    return mockOpportunities.find((o) => o.id === id) ?? null;
-  }
+  if (!isSupabaseConfigured()) return null;
 
   try {
     const supabase = createServerSupabaseClient();
@@ -86,13 +103,10 @@ export async function fetchOpportunityById(
       .eq("id", id)
       .maybeSingle();
 
-    if (error || !data) {
-      return mockOpportunities.find((o) => o.id === id) ?? null;
-    }
-
+    if (error || !data) return null;
     return mapOpportunityRowToClient(data);
   } catch {
-    return mockOpportunities.find((o) => o.id === id) ?? null;
+    return null;
   }
 }
 

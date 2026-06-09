@@ -1,6 +1,7 @@
 import type { ModeIntelligence } from "@/lib/dashboard/workspace";
 import type { WorkspaceIdentity } from "@/lib/dashboard/onboarding";
 import type { TrendStage } from "@/lib/dashboard/opportunities";
+import type { OpportunityDeepDive } from "@/lib/intelligence/types";
 import type { PlanTier } from "@/lib/billing/tier-limits";
 import type {
   AnalyzePack,
@@ -38,6 +39,9 @@ export type OpportunityModeData = {
   drawer?: OpportunityDrawerData;
   /** Markdown action plan for drawer / detail views */
   actionPlanMarkdown?: string;
+  deepDive?: OpportunityDeepDive;
+  disruption?: number;
+  liveSynthesizedAt?: string;
 };
 
 export type ProfileRow = {
@@ -86,8 +90,33 @@ export type WorkspaceRow = {
   mvp_score: number;
   launch_score: number;
   sales_score: number;
+  is_active: boolean;
+  niche_focus: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type WorkspaceSignalSnapshotRow = {
+  id: string;
+  workspace_id: string;
+  demand_score: number;
+  competition_score: number;
+  disruption_score: number;
+  raw_signals: Record<string, unknown>;
+  captured_at: string;
+};
+
+export type PlatformNotificationRow = {
+  id: string;
+  user_id: string;
+  workspace_id: string | null;
+  title: string;
+  body: string;
+  emoji: string;
+  signal_type: "pain_point" | "momentum" | "competition" | "system";
+  is_read: boolean;
+  metadata: Record<string, unknown>;
+  created_at: string;
 };
 
 export type DailyTaskRow = {
@@ -211,6 +240,8 @@ export type Database = {
           mvp_score?: number;
           launch_score?: number;
           sales_score?: number;
+          is_active?: boolean;
+          niche_focus?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -223,6 +254,43 @@ export type Database = {
           mvp_score: number;
           launch_score: number;
           sales_score: number;
+          is_active: boolean;
+          niche_focus: string | null;
+        }>;
+        Relationships: [];
+      };
+      workspace_signal_snapshots: {
+        Row: WorkspaceSignalSnapshotRow;
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          demand_score?: number;
+          competition_score?: number;
+          disruption_score?: number;
+          raw_signals?: Record<string, unknown>;
+          captured_at?: string;
+        };
+        Update: Partial<Omit<WorkspaceSignalSnapshotRow, "id" | "workspace_id">>;
+        Relationships: [];
+      };
+      platform_notifications: {
+        Row: PlatformNotificationRow;
+        Insert: {
+          id?: string;
+          user_id: string;
+          workspace_id?: string | null;
+          title: string;
+          body: string;
+          emoji?: string;
+          signal_type: PlatformNotificationRow["signal_type"];
+          is_read?: boolean;
+          metadata?: Record<string, unknown>;
+          created_at?: string;
+        };
+        Update: Partial<{
+          is_read: boolean;
+          title: string;
+          body: string;
         }>;
         Relationships: [];
       };

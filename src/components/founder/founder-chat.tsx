@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Bot, Send } from "lucide-react";
 
+import { sendFounderChatMessage } from "@/app/actions/chat";
 import {
   checkChatMessage,
   incrementChatMessage,
@@ -55,11 +56,20 @@ export function FounderChat({ usage }: FounderChatProps) {
         content: trimmed,
       };
 
+      const history = messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+      const chat = await sendFounderChatMessage(trimmed, history);
+      if (!chat.ok || !chat.reply) {
+        setError(chat.error ?? "Could not get a reply.");
+        return;
+      }
+
       const assistantMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: "assistant",
-        content:
-          "Focus on one measurable outcome today. If you're pre-revenue, run 5 customer interviews before adding features. If you're post-launch, follow up every warm lead within 24 hours.",
+        content: chat.reply,
       };
 
       await incrementChatMessage();

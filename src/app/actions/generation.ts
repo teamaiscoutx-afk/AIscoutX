@@ -26,8 +26,8 @@ function mapPack(row: VenturePackRow, userId: string): VenturePack {
   };
 }
 
-function buildPack(query: string, userId: string): VenturePack {
-  const { analyze, blueprint, launch } = runGenerationPipeline(query);
+async function buildPack(query: string, userId: string): Promise<VenturePack> {
+  const { analyze, blueprint, launch } = await runGenerationPipeline(query);
   return {
     id: `pack-${Date.now()}`,
     userId,
@@ -73,8 +73,13 @@ export async function generateVenturePack(
   }
 
   if (!isSupabaseConfigured()) {
-    const pack = buildPack(trimmed, "demo");
-    return { ok: true, pack, storageMode: "local" };
+    try {
+      const pack = await buildPack(trimmed, "demo");
+      return { ok: true, pack, storageMode: "local" };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Generation failed";
+      return { ok: false, error: message };
+    }
   }
 
   try {
@@ -84,7 +89,7 @@ export async function generateVenturePack(
     } = await supabase.auth.getUser();
 
     const userId = user?.id ?? "local";
-    const pack = buildPack(trimmed, userId);
+    const pack = await buildPack(trimmed, userId);
 
     if (!user) {
       return { ok: true, pack, storageMode: "local" };
@@ -127,11 +132,14 @@ export async function generateVenturePack(
   } catch (err) {
     const message = err instanceof Error ? err.message : "Generation failed";
     if (isMissingTableError(message)) {
-      return {
-        ok: true,
-        pack: buildPack(trimmed, "local"),
-        storageMode: "local",
-      };
+      try {
+        const pack = await buildPack(trimmed, "local");
+        return { ok: true, pack, storageMode: "local" };
+      } catch (buildErr) {
+        const buildMessage =
+          buildErr instanceof Error ? buildErr.message : "Generation failed";
+        return { ok: false, error: buildMessage };
+      }
     }
     return { ok: false, error: message };
   }

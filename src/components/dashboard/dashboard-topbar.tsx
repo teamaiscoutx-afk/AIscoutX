@@ -9,6 +9,7 @@ import { WorkspaceModeToggle } from "@/components/dashboard/workspace-mode-toggl
 import { UserAvatarMenu } from "@/components/layout/user-avatar-menu";
 import { useUserMenu } from "@/components/layout/user-menu-provider";
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
+import type { PlatformNotification } from "@/app/actions/notifications";
 import type { WorkspaceIdentity } from "@/lib/dashboard/onboarding";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -19,8 +20,7 @@ type DashboardTopbarProps = {
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
   onSearchSubmit: (query: string) => void;
-  opportunityOfDayName?: string;
-  opportunityOfDayGrowth?: string;
+  initialNotifications?: PlatformNotification[];
 };
 
 function useSearchShortcut(onFocus: () => void) {
@@ -53,8 +53,7 @@ export function DashboardTopbar({
   searchQuery,
   onSearchQueryChange,
   onSearchSubmit,
-  opportunityOfDayName,
-  opportunityOfDayGrowth,
+  initialNotifications,
 }: DashboardTopbarProps) {
   const menu = useUserMenu();
   const searchRef = useRef<HTMLInputElement>(null);
@@ -202,10 +201,7 @@ export function DashboardTopbar({
 
       <div className="flex shrink-0 items-center gap-2">
         <UpgradeToPro compact />
-        <NotificationHub
-          opportunityOfDayName={opportunityOfDayName}
-          opportunityOfDayGrowth={opportunityOfDayGrowth}
-        />
+        <NotificationHub initialNotifications={initialNotifications} />
         <UserAvatarMenu menu={menu} compact />
       </div>
     </header>

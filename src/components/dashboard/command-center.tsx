@@ -15,6 +15,7 @@ import { OpportunityDrawer } from "@/components/dashboard/opportunity-drawer";
 import { OpportunityOfDay } from "@/components/dashboard/opportunity-of-day";
 import { TrendingSection } from "@/components/dashboard/trending-section";
 import type { OpportunitiesDataSource } from "@/app/actions/opportunities";
+import type { PlatformNotification } from "@/app/actions/notifications";
 import { completeOnboardingProfile, updateProfileWorkspace } from "@/app/actions/profile";
 import { buildFeedViewModel } from "@/lib/dashboard/feed-utils";
 import {
@@ -45,6 +46,8 @@ type ExperiencePhase = "hydrating" | "onboarding" | "scanning" | "ready";
 type CommandCenterProps = {
   initialOpportunities: Opportunity[];
   dataSource: OpportunitiesDataSource;
+  statusMessage?: string;
+  initialNotifications?: PlatformNotification[];
   initialWorkspace: WorkspaceIdentity;
   initialNiche: NicheId;
 };
@@ -66,9 +69,17 @@ function resolveActiveNiche(
   return getDefaultNicheForIdentity(workspace);
 }
 
+const SOURCE_LABEL: Record<OpportunitiesDataSource, string> = {
+  live: "Live Web",
+  cache: "Cached Signals",
+  unconfigured: "API Keys Needed",
+};
+
 export function CommandCenter({
   initialOpportunities,
   dataSource,
+  statusMessage,
+  initialNotifications,
   initialWorkspace,
   initialNiche,
 }: CommandCenterProps) {
@@ -407,8 +418,7 @@ export function CommandCenter({
           searchQuery={searchQuery}
           onSearchQueryChange={handleSearchQueryChange}
           onSearchSubmit={handleSearchSubmit}
-          opportunityOfDayName={opportunityOfDay?.name}
-          opportunityOfDayGrowth={opportunityOfDay?.growth}
+          initialNotifications={initialNotifications}
         />
       )}
 
@@ -438,9 +448,13 @@ export function CommandCenter({
                     className="border-[#deff9a]/30 bg-[#deff9a]/10 text-[10px] uppercase tracking-wider text-[#deff9a]"
                   >
                     <span className="mr-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#deff9a]" />
-                    {dataSource === "supabase" ? "Live DB" : "Demo"}
+                    {SOURCE_LABEL[dataSource]}
                   </Badge>
                 </div>
+
+                {statusMessage && (
+                  <p className="mb-4 text-xs text-zinc-500">{statusMessage}</p>
+                )}
 
                 <motion.div
                   key={`${activeWorkspace}-${activeNiche}-${dataSource}`}

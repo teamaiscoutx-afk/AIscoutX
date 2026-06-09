@@ -227,6 +227,10 @@ export function normalizeModeData(raw: unknown): OpportunityModeData {
       "actionPlanMarkdown",
       "action_plan_markdown"
     ),
+    deepDive: root.deepDive as OpportunityModeData["deepDive"],
+    disruption:
+      typeof root.disruption === "number" ? root.disruption : undefined,
+    liveSynthesizedAt: pickString(root, "liveSynthesizedAt", "live_synthesized_at"),
   };
 
   modeData.drawer = resolveDrawerContent(modeData, intelligence);

@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, Loader2, Rocket, X } from "lucide-react";
 
+import { fetchOpportunityDeepDive } from "@/app/actions/intelligence";
 import { saveOpportunity } from "@/app/actions/opportunities";
+import { OpportunityDeepDivePanel } from "@/components/dashboard/opportunity-deep-dive";
 import {
   checkOpportunityView,
   incrementOpportunityView,
@@ -59,6 +61,9 @@ export function OpportunityDrawer({
   const [viewError, setViewError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isBuilding, startBuildTransition] = useTransition();
+  const [deepDiveLoading, setDeepDiveLoading] = useState(false);
+  const [enrichedOpportunity, setEnrichedOpportunity] =
+    useState<Opportunity | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -70,7 +75,12 @@ export function OpportunityDrawer({
     setBuildError(null);
     setViewError(null);
 
-    if (!selectedOpportunity) return;
+    if (!selectedOpportunity) {
+      setEnrichedOpportunity(null);
+      return;
+    }
+
+    setEnrichedOpportunity(selectedOpportunity);
 
     void (async () => {
       const gate = await checkOpportunityView();
@@ -79,6 +89,26 @@ export function OpportunityDrawer({
         return;
       }
       await incrementOpportunityView();
+    })();
+
+    if (selectedOpportunity.deepDive) return;
+
+    setDeepDiveLoading(true);
+    void (async () => {
+      const seed =
+        selectedOpportunity.keywords[0] ??
+        selectedOpportunity.name;
+      const result = await fetchOpportunityDeepDive(
+        selectedOpportunity.id,
+        seed
+      );
+      if (result.ok && result.deepDive) {
+        setEnrichedOpportunity({
+          ...selectedOpportunity,
+          deepDive: result.deepDive,
+        });
+      }
+      setDeepDiveLoading(false);
     })();
   }, [selectedOpportunity]);
 
@@ -203,15 +233,26 @@ export function OpportunityDrawer({
                   label="Monetization"
                   value={selectedOpportunity.scores.monetization}
                 />
+                {selectedOpportunity.scores.disruption != null && (
+                  <ScoreBar
+                    label="AI Disruption"
+                    value={selectedOpportunity.scores.disruption}
+                  />
+                )}
               </div>
 
               <div className="mt-8">
                 <OpportunityDrawerDetail
                   key={`${selectedOpportunity.id}-${activeWorkspace}`}
-                  opportunity={selectedOpportunity}
+                  opportunity={enrichedOpportunity ?? selectedOpportunity}
                   activeWorkspace={activeWorkspace}
                 />
               </div>
+
+              <OpportunityDeepDivePanel
+                opportunity={enrichedOpportunity ?? selectedOpportunity}
+                loading={deepDiveLoading}
+              />
 
               <div className="mt-6 rounded-xl border border-white/[0.08] bg-[#deff9a]/[0.04] p-4">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
