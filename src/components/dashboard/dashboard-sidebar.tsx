@@ -4,12 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Bot,
-  Hammer,
+  FileStack,
   LineChart,
+  Map,
   Megaphone,
-  Rocket,
+  Navigation,
   Search,
-  ShieldCheck,
   Sparkles,
 } from "lucide-react";
 
@@ -19,11 +19,11 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { label: "Discover", href: "/dashboard/discover", icon: Search },
-  { label: "Validate", href: "/dashboard/validate", icon: ShieldCheck },
-  { label: "Build", href: "/dashboard/build", icon: Hammer },
-  { label: "Launch", href: "/dashboard/launch", icon: Megaphone },
-  { label: "Grow", href: "/dashboard/grow", icon: LineChart },
-  { label: "AI Mentor Chat", href: "/dashboard/mentor", icon: Bot },
+  { label: "Analyze", href: "/dashboard/analyze", icon: LineChart },
+  { label: "Blueprints", href: "/dashboard/blueprints", icon: FileStack },
+  { label: "Launch Plan", href: "/dashboard/launch", icon: Megaphone },
+  { label: "Founder GPS", href: "/dashboard/gps", icon: Navigation },
+  { label: "AI Founder Chat", href: "/dashboard/chat", icon: Bot },
 ];
 
 export function DashboardSidebar() {
@@ -73,18 +73,19 @@ export function DashboardSidebar() {
         </div>
         <div className="rounded-xl border border-[#deff9a]/20 bg-[#deff9a]/[0.06] p-3">
           <div className="flex items-center gap-2 text-xs font-medium text-[#deff9a]">
-            <Rocket className="h-3.5 w-3.5" />
-            Founder GPS active
+            <Map className="h-3.5 w-3.5" />
+            Idea → Blueprint in 10 min
           </div>
           <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">
-            Build startups from idea to first revenue with guided execution.
+            Discover signals, analyze markets, ship blueprints, and launch with GPS
+            tracking.
           </p>
           <Link
-            href="/dashboard/discover"
+            href="/dashboard/gps"
             className="mt-2 inline-flex items-center gap-1 text-[11px] text-zinc-400 hover:text-[#deff9a]"
           >
             <Sparkles className="h-3 w-3" />
-            Open workspace
+            Open Founder GPS
           </Link>
         </div>
       </div>

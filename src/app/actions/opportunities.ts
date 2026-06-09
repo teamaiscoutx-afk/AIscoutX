@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { checkSavedIdea } from "@/app/actions/usage";
 import { buildFeedViewModel } from "@/lib/dashboard/feed-utils";
 import { mapOpportunityRowToClient } from "@/lib/dashboard/opportunity-mapper";
 import { getSeedOpportunities } from "@/lib/seed/opportunity-seeds";
@@ -103,6 +104,11 @@ export async function saveOpportunity(
   }
 
   try {
+    const gate = await checkSavedIdea();
+    if (!gate.allowed) {
+      return { ok: false, error: gate.reason };
+    }
+
     const supabase = createServerSupabaseClient();
     const {
       data: { user },

@@ -1,18 +1,5 @@
-import { PhaseWorkspacePage } from "@/components/founder/phase-workspace-page";
-import { loadPhaseData } from "@/lib/founder/load-phase-data";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-export default async function ValidatePage() {
-  const { workspaces, tasksByWorkspace } = await loadPhaseData();
-
-  return (
-    <PhaseWorkspacePage
-      stage="validate"
-      title="Validate"
-      description="Prove demand with real customer signals before you build more."
-      workspaces={workspaces}
-      tasksByWorkspace={tasksByWorkspace}
-    />
-  );
+export default function ValidateRedirect() {
+  redirect("/dashboard/analyze");
 }

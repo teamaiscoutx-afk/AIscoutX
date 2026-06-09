@@ -1,5 +1,5 @@
-import { MentorChat } from "@/components/founder/mentor-chat";
+import { redirect } from "next/navigation";
 
-export default function MentorPage() {
-  return <MentorChat />;
+export default function MentorRedirect() {
+  redirect("/dashboard/chat");
 }

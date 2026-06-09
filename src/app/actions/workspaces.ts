@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { checkBlueprintGeneration, incrementBlueprintUsage } from "@/app/actions/usage";
 import type { Opportunity } from "@/lib/dashboard/opportunities";
 import type { DailyTaskRow, WorkspaceRow } from "@/lib/database.types";
 import {
@@ -119,6 +120,11 @@ export async function createWorkspaceFromOpportunity(
     } = await supabase.auth.getUser();
     if (!user) return { ok: false, error: "Not authenticated" };
 
+    const gate = await checkBlueprintGeneration();
+    if (!gate.allowed) {
+      return { ok: false, error: gate.reason };
+    }
+
     const summary = buildWorkspaceSummaryFromOpportunity(opportunity);
     const opportunityId = toNullableOpportunityId(opportunity.id);
     const nextAction = deriveNextAction({
@@ -151,6 +157,8 @@ export async function createWorkspaceFromOpportunity(
     if (workspaceError || !workspace) {
       return { ok: false, error: workspaceError?.message ?? "Workspace create failed" };
     }
+
+    await incrementBlueprintUsage();
 
     await supabase.from("daily_tasks").insert({
       workspace_id: workspace.id,

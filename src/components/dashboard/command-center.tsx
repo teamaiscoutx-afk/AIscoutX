@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { Zap } from "lucide-react";
 
+import { BuildInput } from "@/components/mvp/build-input";
 import { DashboardTopbar } from "@/components/dashboard/dashboard-topbar";
 import { IntelligenceScanner } from "@/components/dashboard/intelligence-scanner";
 import { NicheSwitcher } from "@/components/dashboard/niche-switcher";
@@ -447,6 +448,10 @@ export function CommandCenter({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
                 >
+                  <div className="mb-8">
+                    <BuildInput />
+                  </div>
+
                   {opportunityOfDay && (
                     <OpportunityOfDay
                       opportunity={opportunityOfDay}

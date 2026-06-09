@@ -24,6 +24,7 @@ export async function ensureUserProfile(
       niche_focus: "ai",
       goal: "build-startup",
       onboarding_completed: false,
+      plan: "free",
     },
     { onConflict: "id" }
   );

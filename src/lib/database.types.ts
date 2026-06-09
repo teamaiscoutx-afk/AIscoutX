@@ -1,6 +1,12 @@
 import type { ModeIntelligence } from "@/lib/dashboard/workspace";
 import type { WorkspaceIdentity } from "@/lib/dashboard/onboarding";
 import type { TrendStage } from "@/lib/dashboard/opportunities";
+import type { PlanTier } from "@/lib/billing/tier-limits";
+import type {
+  AnalyzePack,
+  BlueprintPack,
+  LaunchPack,
+} from "@/lib/mvp/types";
 import type {
   CoreGoal,
   FounderStage,
@@ -43,8 +49,30 @@ export type ProfileRow = {
   persona: WorkspaceIdentity | null;
   goal: CoreGoal | null;
   niche_focus: NicheFocus | null;
+  plan: PlanTier;
   created_at: string;
   updated_at: string;
+};
+
+export type UsageWalletRow = {
+  user_id: string;
+  opportunity_views_today: number;
+  opportunity_views_date: string;
+  blueprints_this_month: number;
+  blueprints_month_key: string;
+  chat_messages_this_month: number;
+  chat_month_key: string;
+  updated_at: string;
+};
+
+export type VenturePackRow = {
+  id: string;
+  user_id: string;
+  query: string;
+  analyze_json: AnalyzePack;
+  blueprint_json: BlueprintPack;
+  launch_json: LaunchPack;
+  created_at: string;
 };
 
 export type WorkspaceRow = {
@@ -124,6 +152,7 @@ export type Database = {
           persona?: WorkspaceIdentity | null;
           goal?: CoreGoal | null;
           niche_focus?: NicheFocus | null;
+          plan?: PlanTier;
           created_at?: string;
           updated_at?: string;
         };
@@ -135,8 +164,38 @@ export type Database = {
           persona?: WorkspaceIdentity | null;
           goal?: CoreGoal | null;
           niche_focus?: NicheFocus | null;
+          plan?: PlanTier;
           updated_at?: string;
         };
+        Relationships: [];
+      };
+      usage_wallets: {
+        Row: UsageWalletRow;
+        Insert: {
+          user_id: string;
+          opportunity_views_today?: number;
+          opportunity_views_date?: string;
+          blueprints_this_month?: number;
+          blueprints_month_key?: string;
+          chat_messages_this_month?: number;
+          chat_month_key?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Omit<UsageWalletRow, "user_id">>;
+        Relationships: [];
+      };
+      venture_packs: {
+        Row: VenturePackRow;
+        Insert: {
+          id?: string;
+          user_id: string;
+          query: string;
+          analyze_json?: AnalyzePack;
+          blueprint_json?: BlueprintPack;
+          launch_json?: LaunchPack;
+          created_at?: string;
+        };
+        Update: Partial<Omit<VenturePackRow, "id" | "user_id">>;
         Relationships: [];
       };
       workspaces: {

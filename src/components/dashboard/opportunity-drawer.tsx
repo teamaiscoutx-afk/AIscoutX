@@ -7,6 +7,10 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Check, Loader2, Rocket, X } from "lucide-react";
 
 import { saveOpportunity } from "@/app/actions/opportunities";
+import {
+  checkOpportunityView,
+  incrementOpportunityView,
+} from "@/app/actions/usage";
 import { createWorkspaceFromOpportunity } from "@/app/actions/workspaces";
 import { OpportunityDrawerDetail } from "@/components/dashboard/opportunity-drawer-detail";
 import {
@@ -52,6 +56,7 @@ export function OpportunityDrawer({
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [buildError, setBuildError] = useState<string | null>(null);
+  const [viewError, setViewError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isBuilding, startBuildTransition] = useTransition();
 
@@ -63,7 +68,19 @@ export function OpportunityDrawer({
     setSaved(false);
     setSaveError(null);
     setBuildError(null);
-  }, [selectedOpportunity?.id]);
+    setViewError(null);
+
+    if (!selectedOpportunity) return;
+
+    void (async () => {
+      const gate = await checkOpportunityView();
+      if (!gate.allowed) {
+        setViewError(gate.reason ?? "Daily view limit reached");
+        return;
+      }
+      await incrementOpportunityView();
+    })();
+  }, [selectedOpportunity]);
 
   function handleBuildStartup() {
     if (!selectedOpportunity) return;
@@ -157,6 +174,15 @@ export function OpportunityDrawer({
             </div>
 
             <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6">
+              {viewError && (
+                <div
+                  className="mb-4 rounded-xl border border-orange-500/30 bg-orange-500/10 p-4 text-sm text-orange-300"
+                  role="alert"
+                >
+                  {viewError}
+                </div>
+              )}
+
               <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
                 Technical scores
               </p>
