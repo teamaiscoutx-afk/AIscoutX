@@ -14,10 +14,10 @@ import {
   isSupabaseConfigured,
 } from "@/lib/supabase";
 
-function mapPack(row: VenturePackRow): VenturePack {
+function mapPack(row: VenturePackRow, userId: string): VenturePack {
   return {
     id: row.id,
-    userId: row.user_id,
+    userId: row.user_id ?? userId,
     query: row.query,
     analyze: row.analyze_json,
     blueprint: row.blueprint_json,
@@ -26,14 +26,45 @@ function mapPack(row: VenturePackRow): VenturePack {
   };
 }
 
-export async function generateVenturePack(query: string): Promise<{
+function buildPack(query: string, userId: string): VenturePack {
+  const { analyze, blueprint, launch } = runGenerationPipeline(query);
+  return {
+    id: `pack-${Date.now()}`,
+    userId,
+    query,
+    analyze,
+    blueprint,
+    launch,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function isMissingTableError(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("venture_packs") ||
+    lower.includes("schema cache") ||
+    lower.includes("does not exist") ||
+    lower.includes("pgrst205")
+  );
+}
+
+export type GenerateVenturePackResult = {
   ok: boolean;
-  packId?: string;
+  pack?: VenturePack;
+  storageMode?: "database" | "local";
   error?: string;
-}> {
+};
+
+export async function generateVenturePack(
+  query: string
+): Promise<GenerateVenturePackResult> {
   const trimmed = query.trim();
   if (!trimmed) {
-    return { ok: false, error: "Enter what you're building to generate a blueprint." };
+    return {
+      ok: false,
+      error: "Enter what you're building to generate a blueprint.",
+    };
   }
 
   const gate = await checkBlueprintGeneration();
@@ -41,10 +72,9 @@ export async function generateVenturePack(query: string): Promise<{
     return { ok: false, error: gate.reason };
   }
 
-  const { analyze, blueprint, launch } = runGenerationPipeline(trimmed);
-
   if (!isSupabaseConfigured()) {
-    return { ok: true, packId: `demo-${Date.now()}` };
+    const pack = buildPack(trimmed, "demo");
+    return { ok: true, pack, storageMode: "local" };
   }
 
   try {
@@ -52,49 +82,64 @@ export async function generateVenturePack(query: string): Promise<{
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { ok: false, error: "Not authenticated" };
+
+    const userId = user?.id ?? "local";
+    const pack = buildPack(trimmed, userId);
+
+    if (!user) {
+      return { ok: true, pack, storageMode: "local" };
+    }
 
     const { data, error } = await supabase
       .from("venture_packs")
       .insert({
         user_id: user.id,
         query: trimmed,
-        analyze_json: analyze,
-        blueprint_json: blueprint,
-        launch_json: launch,
+        analyze_json: pack.analyze,
+        blueprint_json: pack.blueprint,
+        launch_json: pack.launch,
       })
       .select("*")
       .single();
 
-    if (error || !data) {
-      return { ok: false, error: error?.message ?? "Generation failed" };
+    if (error) {
+      if (isMissingTableError(error.message)) {
+        return { ok: true, pack, storageMode: "local" };
+      }
+      return { ok: false, error: error.message };
     }
 
-    await incrementBlueprintUsage();
+    if (!data) {
+      return { ok: true, pack, storageMode: "local" };
+    }
+
+    await incrementBlueprintUsage().catch(() => undefined);
 
     revalidatePath("/dashboard/analyze");
     revalidatePath("/dashboard/blueprints");
     revalidatePath("/dashboard/launch");
 
-    return { ok: true, packId: data.id };
+    return {
+      ok: true,
+      pack: mapPack(data, user.id),
+      storageMode: "database",
+    };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Generation failed";
+    if (isMissingTableError(message)) {
+      return {
+        ok: true,
+        pack: buildPack(trimmed, "local"),
+        storageMode: "local",
+      };
+    }
     return { ok: false, error: message };
   }
 }
 
 export async function getLatestVenturePack(): Promise<VenturePack | null> {
   if (!isSupabaseConfigured()) {
-    const demo = runGenerationPipeline("AI SaaS for creators");
-    return {
-      id: "demo",
-      userId: "demo",
-      query: "AI SaaS for creators",
-      analyze: demo.analyze,
-      blueprint: demo.blueprint,
-      launch: demo.launch,
-      createdAt: new Date().toISOString(),
-    };
+    return null;
   }
 
   try {
@@ -112,8 +157,12 @@ export async function getLatestVenturePack(): Promise<VenturePack | null> {
       .limit(1)
       .maybeSingle();
 
-    if (error || !data) return null;
-    return mapPack(data);
+    if (error) {
+      if (isMissingTableError(error.message)) return null;
+      return null;
+    }
+    if (!data) return null;
+    return mapPack(data, user.id);
   } catch {
     return null;
   }
@@ -122,8 +171,8 @@ export async function getLatestVenturePack(): Promise<VenturePack | null> {
 export async function getVenturePackById(
   packId: string
 ): Promise<VenturePack | null> {
-  if (!isSupabaseConfigured() || packId.startsWith("demo")) {
-    return getLatestVenturePack();
+  if (!isSupabaseConfigured() || packId.startsWith("local-")) {
+    return null;
   }
 
   try {
@@ -141,7 +190,7 @@ export async function getVenturePackById(
       .maybeSingle();
 
     if (error || !data) return null;
-    return mapPack(data);
+    return mapPack(data, user.id);
   } catch {
     return null;
   }

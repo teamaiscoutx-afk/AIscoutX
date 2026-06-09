@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import { Loader2, Rocket, Sparkles } from "lucide-react";
 
 import { generateVenturePack } from "@/app/actions/generation";
+import {
+  incrementLocalBlueprintCount,
+  saveVenturePackLocal,
+} from "@/lib/mvp/venture-pack-storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -20,10 +24,16 @@ export function BuildInput() {
 
     startTransition(async () => {
       const result = await generateVenturePack(query);
-      if (!result.ok) {
+      if (!result.ok || !result.pack) {
         setError(result.error ?? "Generation failed");
         return;
       }
+
+      saveVenturePackLocal(result.pack);
+      if (result.storageMode === "local") {
+        incrementLocalBlueprintCount();
+      }
+
       router.push("/dashboard/analyze");
       router.refresh();
     });
@@ -54,7 +64,7 @@ export function BuildInput() {
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder='e.g. "AI SaaS for creators"'
+            placeholder='e.g. "AI Voice Cloning for Creators"'
             disabled={isPending}
             className="h-11 flex-1 border-white/[0.1] bg-white/[0.04] text-zinc-200 placeholder:text-zinc-600"
           />

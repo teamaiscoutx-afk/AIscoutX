@@ -40,25 +40,40 @@ const DEMO_USAGE: UsageSnapshot = {
   savedIdeasLimit: FREE_TIER_LIMITS.savedIdeasMax,
 };
 
+function isMissingDbObject(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("schema cache") ||
+    lower.includes("does not exist") ||
+    lower.includes("pgrst205")
+  );
+}
+
 async function ensureWallet(userId: string): Promise<UsageWalletRow | null> {
   if (!isSupabaseConfigured()) return null;
 
-  const supabase = createServerSupabaseClient();
-  const { data: existing } = await supabase
-    .from("usage_wallets")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle();
+  try {
+    const supabase = createServerSupabaseClient();
+    const { data: existing, error: readError } = await supabase
+      .from("usage_wallets")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
 
-  if (existing) return existing;
+    if (readError && isMissingDbObject(readError.message)) return null;
+    if (existing) return existing;
 
-  const { data: created } = await supabase
-    .from("usage_wallets")
-    .insert({ user_id: userId })
-    .select("*")
-    .single();
+    const { data: created, error: insertError } = await supabase
+      .from("usage_wallets")
+      .insert({ user_id: userId })
+      .select("*")
+      .single();
 
-  return created ?? null;
+    if (insertError && isMissingDbObject(insertError.message)) return null;
+    return created ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function resetWalletCounters(wallet: UsageWalletRow): UsageWalletRow {
@@ -80,7 +95,7 @@ function resetWalletCounters(wallet: UsageWalletRow): UsageWalletRow {
 
 export async function getUsageSnapshot(): Promise<UsageSnapshot> {
   const profile = await getCurrentProfile();
-  const plan = (profile?.plan ?? "free") as PlanTier;
+  const plan = ((profile as { plan?: PlanTier } | null)?.plan ?? "free") as PlanTier;
   const paid = isPaidPlan(plan);
 
   if (!isSupabaseConfigured() || !profile) {
