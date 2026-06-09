@@ -8,6 +8,7 @@ import { UpgradeProModal } from "@/components/dashboard/upgrade-pro-modal";
 import { WorkspaceModeToggle } from "@/components/dashboard/workspace-mode-toggle";
 import { UserAvatarMenu } from "@/components/layout/user-avatar-menu";
 import { useUserMenu } from "@/components/layout/user-menu-provider";
+import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import type { WorkspaceIdentity } from "@/lib/dashboard/onboarding";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -78,21 +79,34 @@ export function DashboardTopbar({
 
   useSearchShortcut(focusSearch);
 
+  const applySearchFilter = useCallback(
+    (value: string) => {
+      onSearchQueryChange(value);
+    },
+    [onSearchQueryChange]
+  );
+
+  const debouncedApplySearchFilter = useDebouncedCallback(applySearchFilter, 120);
+
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      e.preventDefault();
+      const value = e.target.value;
+      setDraftQuery(value);
+      applySearchFilter(value);
+      debouncedApplySearchFilter(value);
+    },
+    [applySearchFilter, debouncedApplySearchFilter]
+  );
+
   const applySearch = useCallback(
     (value: string) => {
       const normalized = value.trim();
       setDraftQuery(value);
+      onSearchQueryChange(value);
       onSearchSubmit(normalized);
     },
-    [onSearchSubmit]
-  );
-
-  const handleInputChange = useCallback(
-    (value: string) => {
-      setDraftQuery(value);
-      onSearchQueryChange(value);
-    },
-    [onSearchQueryChange]
+    [onSearchQueryChange, onSearchSubmit]
   );
 
   const handleSubmit = useCallback(
@@ -140,7 +154,7 @@ export function DashboardTopbar({
           role="searchbox"
           placeholder="Search opportunities..."
           value={draftQuery}
-          onChange={(e) => handleInputChange(e.target.value)}
+          onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           aria-label="Search opportunities"
           aria-keyshortcuts={isMac ? "Meta+K" : "Control+K"}

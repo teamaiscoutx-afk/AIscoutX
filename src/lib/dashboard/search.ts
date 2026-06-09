@@ -107,6 +107,15 @@ function scoreOpportunity(
   return score;
 }
 
+/** Parse user input into searchable tokens (strips filler words). */
+export function extractSearchTokens(query: string): string[] {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+
+  const tokens = significantTokens(trimmed);
+  return tokens.length > 0 ? tokens : tokenize(trimmed);
+}
+
 /**
  * Natural-language fuzzy search — ignores filler words (for, the, etc.),
  * scores relevance, and returns best matches first.

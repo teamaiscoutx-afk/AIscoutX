@@ -21,6 +21,7 @@ import {
   filterOpportunitiesBySearch,
   type Opportunity,
 } from "@/lib/dashboard/opportunities";
+import { extractSearchTokens } from "@/lib/dashboard/search";
 import {
   getDefaultNicheForIdentity,
   getNicheLabel,
@@ -93,13 +94,16 @@ export function CommandCenter({
     },
   });
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchTokens, setSearchTokens] = useState<string[]>([]);
 
   const handleSearchQueryChange = useCallback((query: string) => {
     setSearchQuery(query);
+    setSearchTokens(extractSearchTokens(query));
   }, []);
 
   const handleSearchSubmit = useCallback((query: string) => {
     setSearchQuery(query);
+    setSearchTokens(extractSearchTokens(query));
     requestAnimationFrame(() => {
       document
         .getElementById("opportunities")
@@ -136,8 +140,11 @@ export function CommandCenter({
       contextFeed.opportunities,
       keywordFilter
     );
+    if (!searchQuery.trim() && searchTokens.length === 0) {
+      return byKeyword;
+    }
     return filterOpportunitiesBySearch(byKeyword, searchQuery);
-  }, [contextFeed.opportunities, keywordFilter, searchQuery]);
+  }, [contextFeed.opportunities, keywordFilter, searchQuery, searchTokens]);
 
   const stats = useMemo(() => {
     const list = contextFeed.opportunities;
@@ -309,6 +316,7 @@ export function CommandCenter({
       setActiveWorkspace(workspace);
       setKeywordFilter(null);
       setSearchQuery("");
+      setSearchTokens([]);
       setSelectedOpportunity(null);
       const niche = resolveActiveNiche(workspace, nicheByWorkspace);
       syncWorkspaceToProfile(workspace, niche.id);

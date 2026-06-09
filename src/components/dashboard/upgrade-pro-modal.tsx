@@ -55,8 +55,13 @@ export function UpgradeProModal({ compact }: UpgradeProModalProps) {
         </button>
       </DialogTrigger>
 
-      <DialogContent className="top-[5vh] flex max-h-[90vh] w-[calc(100vw-2rem)] max-w-4xl translate-y-0 flex-col overflow-hidden border-white/[0.12] bg-[#06060f]/95 p-0 sm:w-[min(56rem,calc(100vw-2rem))]">
-        <div className="shrink-0 border-b border-white/[0.06] px-6 py-5 pr-12 sm:px-8">
+      <DialogContent
+        className={cn(
+          "left-[50%] top-[5vh] z-[60] flex h-auto w-[calc(100vw-2rem)] max-w-lg translate-x-[-50%] translate-y-0 flex-col gap-0 overflow-hidden border-white/[0.12] bg-[#06060f]/95 p-0 sm:max-w-md",
+          "data-[state=open]:slide-in-from-top-[4%] data-[state=closed]:slide-out-to-top-[4%]"
+        )}
+      >
+        <div className="sticky top-0 z-20 shrink-0 border-b border-white/[0.06] bg-[#06060f]/98 px-6 py-5 pr-12 backdrop-blur-md sm:px-8">
           <DialogHeader>
             <DialogTitle className="text-xl sm:text-2xl">
               ✨ Upgrade to Pro
@@ -68,18 +73,18 @@ export function UpgradeProModal({ compact }: UpgradeProModalProps) {
           </DialogHeader>
         </div>
 
-        <div className="scrollbar-thin max-h-[calc(90vh-7rem)] flex-1 overflow-y-auto">
+        <div className="max-h-[90vh] overflow-y-auto overscroll-contain scrollbar-thin">
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
-            className="grid grid-cols-1 gap-4 p-6 md:grid-cols-3 md:gap-5 md:p-8"
+            className="grid grid-cols-1 gap-4 p-6 pb-10 sm:p-8"
           >
             {BILLING_PLANS.map((plan) => (
               <div
                 key={plan.id}
                 className={cn(
-                  "relative flex flex-col rounded-2xl border p-5 transition-all duration-300",
+                  "relative flex w-full min-w-0 flex-col rounded-2xl border p-5 transition-all duration-300",
                   plan.popular
                     ? "border-transparent bg-white/[0.04] shadow-[0_0_40px_rgba(222,255,154,0.12)]"
                     : "border-white/[0.08] bg-white/[0.02] hover:border-white/[0.12]"
@@ -138,7 +143,7 @@ export function UpgradeProModal({ compact }: UpgradeProModalProps) {
                     disabled={loadingPlan !== null}
                     onClick={() => onCheckout(plan.id)}
                     className={cn(
-                      "mt-6 w-full",
+                      "relative z-20 mt-6 w-full",
                       plan.popular
                         ? "bg-[#deff9a] text-[#030308] hover:bg-[#deff9a]/90"
                         : "border border-white/[0.12] bg-white/[0.04] text-white hover:bg-white/[0.08]"
