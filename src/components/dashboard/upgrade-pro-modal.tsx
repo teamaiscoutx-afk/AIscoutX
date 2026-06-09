@@ -57,10 +57,12 @@ export function UpgradeProModal({ compact }: UpgradeProModalProps) {
 
       <DialogContent
         className={cn(
-          "left-[50%] top-[50%] z-[60] flex w-[90vw] max-w-6xl translate-x-[-50%] translate-y-[-50%] flex-col gap-0 overflow-hidden border-white/[0.12] bg-[#06060f]/95 p-0 shadow-[0_0_80px_rgba(0,0,0,0.55)] backdrop-blur-xl",
-          "max-h-[85vh] data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95"
+          "fixed left-[50%] top-[50%] z-[60] flex h-auto w-[90vw] max-w-[95vw] translate-x-[-50%] translate-y-[-50%] flex-col gap-0 overflow-hidden border-white/[0.12] bg-[#06060f]/95 p-0 shadow-[0_0_80px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:rounded-2xl",
+          "max-h-[95vh] md:max-h-[90vh]",
+          "data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95"
         )}
       >
+        {/* Static header — never scrolls */}
         <div className="shrink-0 border-b border-white/[0.06] bg-[#06060f]/98 px-6 py-5 pr-12 backdrop-blur-md sm:px-8">
           <DialogHeader>
             <DialogTitle className="text-xl sm:text-2xl">
@@ -73,12 +75,18 @@ export function UpgradeProModal({ compact }: UpgradeProModalProps) {
           </DialogHeader>
         </div>
 
-        <div className="max-h-[85vh] min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-thin">
+        {/* Scrollable pricing grid — fills remaining viewport height */}
+        <div
+          className={cn(
+            "h-full min-h-0 flex-1 overflow-y-auto overscroll-contain",
+            "scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/20"
+          )}
+        >
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
-            className="grid grid-cols-1 gap-6 p-6 pb-8 md:grid-cols-3 md:p-8"
+            className="grid grid-cols-1 items-stretch gap-6 p-6 pb-12 md:grid-cols-3 md:p-8 md:pb-14"
           >
             {BILLING_PLANS.map((plan) => (
               <div
@@ -102,7 +110,7 @@ export function UpgradeProModal({ compact }: UpgradeProModalProps) {
                   </div>
                 )}
 
-                <div className="relative z-10 flex h-full flex-1 flex-col">
+                <div className="relative z-10 flex h-full min-h-full flex-1 flex-col">
                   {plan.popular && (
                     <span className="mb-2.5 inline-flex w-fit rounded-full border border-[#deff9a]/30 bg-[#deff9a]/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#deff9a]">
                       Most Popular
@@ -145,7 +153,7 @@ export function UpgradeProModal({ compact }: UpgradeProModalProps) {
                     disabled={loadingPlan !== null}
                     onClick={() => onCheckout(plan.id)}
                     className={cn(
-                      "mt-5 w-full sm:mt-6",
+                      "mt-auto w-full pt-5 sm:pt-6",
                       plan.popular
                         ? "bg-[#deff9a] text-[#030308] hover:bg-[#deff9a]/90"
                         : "border border-white/[0.12] bg-white/[0.04] text-white hover:bg-white/[0.08]"
