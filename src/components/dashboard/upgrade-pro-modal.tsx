@@ -57,11 +57,11 @@ export function UpgradeProModal({ compact }: UpgradeProModalProps) {
 
       <DialogContent
         className={cn(
-          "left-[50%] top-[5vh] z-[60] flex h-auto w-[calc(100vw-2rem)] max-w-lg translate-x-[-50%] translate-y-0 flex-col gap-0 overflow-hidden border-white/[0.12] bg-[#06060f]/95 p-0 sm:max-w-md",
-          "data-[state=open]:slide-in-from-top-[4%] data-[state=closed]:slide-out-to-top-[4%]"
+          "left-[50%] top-[50%] z-[60] flex w-[90vw] max-w-6xl translate-x-[-50%] translate-y-[-50%] flex-col gap-0 overflow-hidden border-white/[0.12] bg-[#06060f]/95 p-0 shadow-[0_0_80px_rgba(0,0,0,0.55)] backdrop-blur-xl",
+          "max-h-[85vh] data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95"
         )}
       >
-        <div className="sticky top-0 z-20 shrink-0 border-b border-white/[0.06] bg-[#06060f]/98 px-6 py-5 pr-12 backdrop-blur-md sm:px-8">
+        <div className="shrink-0 border-b border-white/[0.06] bg-[#06060f]/98 px-6 py-5 pr-12 backdrop-blur-md sm:px-8">
           <DialogHeader>
             <DialogTitle className="text-xl sm:text-2xl">
               ✨ Upgrade to Pro
@@ -73,21 +73,21 @@ export function UpgradeProModal({ compact }: UpgradeProModalProps) {
           </DialogHeader>
         </div>
 
-        <div className="max-h-[90vh] overflow-y-auto overscroll-contain scrollbar-thin">
+        <div className="max-h-[85vh] min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-thin">
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
-            className="grid grid-cols-1 gap-4 p-6 pb-10 sm:p-8"
+            className="grid grid-cols-1 gap-6 p-6 pb-8 md:grid-cols-3 md:p-8"
           >
             {BILLING_PLANS.map((plan) => (
               <div
                 key={plan.id}
                 className={cn(
-                  "relative flex w-full min-w-0 flex-col rounded-2xl border p-5 transition-all duration-300",
+                  "relative flex h-full min-w-0 flex-col rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 backdrop-blur-xl transition-all duration-300 sm:p-5",
                   plan.popular
-                    ? "border-transparent bg-white/[0.04] shadow-[0_0_40px_rgba(222,255,154,0.12)]"
-                    : "border-white/[0.08] bg-white/[0.02] hover:border-white/[0.12]"
+                    ? "shadow-[0_0_40px_rgba(222,255,154,0.12)]"
+                    : "hover:border-white/[0.14] hover:bg-white/[0.04]"
                 )}
               >
                 {plan.popular && (
@@ -95,42 +95,44 @@ export function UpgradeProModal({ compact }: UpgradeProModalProps) {
                     className="pointer-events-none absolute inset-0 rounded-2xl p-px"
                     style={{
                       background:
-                        "linear-gradient(135deg, rgba(222,255,154,0.6), rgba(222,255,154,0.1), rgba(222,255,154,0.4))",
+                        "linear-gradient(135deg, rgba(222,255,154,0.55), rgba(222,255,154,0.08), rgba(222,255,154,0.35))",
                     }}
                   >
-                    <div className="h-full w-full rounded-2xl bg-[#06060f]" />
+                    <div className="h-full w-full rounded-2xl bg-[#06060f]/90 backdrop-blur-xl" />
                   </div>
                 )}
 
-                <div className="relative z-10 flex flex-1 flex-col">
+                <div className="relative z-10 flex h-full flex-1 flex-col">
                   {plan.popular && (
-                    <span className="mb-3 inline-flex w-fit rounded-full border border-[#deff9a]/30 bg-[#deff9a]/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#deff9a]">
+                    <span className="mb-2.5 inline-flex w-fit rounded-full border border-[#deff9a]/30 bg-[#deff9a]/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#deff9a]">
                       Most Popular
                     </span>
                   )}
 
-                  <h3 className="text-lg font-semibold text-white">
+                  <h3 className="text-base font-semibold text-white sm:text-lg">
                     {plan.name}
                   </h3>
-                  <p className="mt-1 text-xs text-zinc-500">
+                  <p className="mt-1 text-[11px] leading-snug text-zinc-500">
                     {plan.description}
                   </p>
 
-                  <div className="mt-4 flex items-baseline gap-1">
-                    <span className="text-3xl font-bold tabular-nums text-white">
+                  <div className="mt-3 flex items-baseline gap-1 sm:mt-4">
+                    <span className="text-2xl font-bold tabular-nums text-white sm:text-3xl">
                       ${plan.price}
                     </span>
-                    <span className="text-sm text-zinc-500">{plan.period}</span>
+                    <span className="text-xs text-zinc-500 sm:text-sm">
+                      {plan.period}
+                    </span>
                   </div>
 
-                  <ul className="mt-5 flex-1 space-y-2.5">
+                  <ul className="mt-4 flex-1 space-y-2 sm:mt-5">
                     {plan.features.map((feature) => (
                       <li
                         key={feature}
-                        className="flex items-start gap-2 text-xs text-zinc-400"
+                        className="flex items-start gap-2 text-[11px] leading-snug text-zinc-400"
                       >
                         <Check
-                          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#deff9a]"
+                          className="mt-0.5 h-3 w-3 shrink-0 text-[#deff9a]"
                           strokeWidth={2}
                         />
                         <span>{feature}</span>
@@ -143,7 +145,7 @@ export function UpgradeProModal({ compact }: UpgradeProModalProps) {
                     disabled={loadingPlan !== null}
                     onClick={() => onCheckout(plan.id)}
                     className={cn(
-                      "relative z-20 mt-6 w-full",
+                      "mt-5 w-full sm:mt-6",
                       plan.popular
                         ? "bg-[#deff9a] text-[#030308] hover:bg-[#deff9a]/90"
                         : "border border-white/[0.12] bg-white/[0.04] text-white hover:bg-white/[0.08]"
