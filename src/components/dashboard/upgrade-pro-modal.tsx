@@ -57,12 +57,10 @@ export function UpgradeProModal({ compact }: UpgradeProModalProps) {
 
       <DialogContent
         className={cn(
-          "fixed left-[50%] top-[50%] z-[60] flex h-auto w-[90vw] max-w-[95vw] translate-x-[-50%] translate-y-[-50%] flex-col gap-0 overflow-hidden border-white/[0.12] bg-[#06060f]/95 p-0 shadow-[0_0_80px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:rounded-2xl",
-          "max-h-[95vh] md:max-h-[90vh]",
-          "data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95"
+          "left-1/2 top-1/2 z-[100] flex h-auto w-[min(92vw,72rem)] max-w-none -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden border-white/[0.12] bg-[#06060f]/95 p-0 shadow-[0_0_80px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:rounded-2xl",
+          "max-h-[90vh]"
         )}
       >
-        {/* Static header — never scrolls */}
         <div className="shrink-0 border-b border-white/[0.06] bg-[#06060f]/98 px-6 py-5 pr-12 backdrop-blur-md sm:px-8">
           <DialogHeader>
             <DialogTitle className="text-xl sm:text-2xl">
@@ -75,10 +73,9 @@ export function UpgradeProModal({ compact }: UpgradeProModalProps) {
           </DialogHeader>
         </div>
 
-        {/* Scrollable pricing grid — fills remaining viewport height */}
         <div
           className={cn(
-            "h-full min-h-0 flex-1 overflow-y-auto overscroll-contain",
+            "min-h-0 flex-1 overflow-y-auto overscroll-contain",
             "scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/20"
           )}
         >
@@ -86,7 +83,7 @@ export function UpgradeProModal({ compact }: UpgradeProModalProps) {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
-            className="grid grid-cols-1 items-stretch gap-6 p-6 pb-12 md:grid-cols-3 md:p-8 md:pb-14"
+            className="grid grid-cols-1 items-stretch gap-6 p-6 pb-12 sm:grid-cols-3 sm:p-8 sm:pb-14"
           >
             {BILLING_PLANS.map((plan) => (
               <div
