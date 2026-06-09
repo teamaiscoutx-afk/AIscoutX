@@ -3,7 +3,9 @@
 import { motion } from "framer-motion";
 
 import { ExpandableBlueprintCard } from "@/components/founder/expandable-blueprint-card";
+import { FeatureMatrixGrid } from "@/components/mvp/feature-matrix-grid";
 import type { WorkspaceSummary } from "@/lib/founder/types";
+import { listFeatureStrings } from "@/lib/mvp/normalize-features";
 
 type WorkspacePhasePanelsProps = {
   workspaceId: string;
@@ -152,7 +154,18 @@ export function WorkspacePhasePanels({
 
       {activeTab === "mvp" && (
         <>
-          {summary.mvp.mustHave.map((f, i) => (
+          <FeatureMatrixGrid
+            features={
+              (summary.mvp as { features?: unknown }).features ?? {
+                mustHave: summary.mvp.mustHave,
+                niceToHave: summary.mvp.mustNot,
+                futureFeatures: summary.mvp.roadmap.flatMap((p) => p.features),
+              }
+            }
+            className="mb-6"
+          />
+
+          {listFeatureStrings(summary.mvp.mustHave).map((f, i) => (
             <ExpandableBlueprintCard
               key={f}
               workspaceId={workspaceId}
@@ -164,7 +177,7 @@ export function WorkspacePhasePanels({
               accent="lime"
             />
           ))}
-          {summary.mvp.mustNot.map((f, i) => (
+          {listFeatureStrings(summary.mvp.mustNot).map((f, i) => (
             <ExpandableBlueprintCard
               key={f}
               workspaceId={workspaceId}
@@ -183,10 +196,12 @@ export function WorkspacePhasePanels({
               sectionKey="mvp-phase"
               title={phase.phase}
               subtitle="Roadmap sprint"
-              preview={phase.features.join(" · ")}
+              preview={listFeatureStrings(phase.features).join(" · ")}
               index={i}
               accent="cyan"
-              checklist={phase.features.map((feat) => `Ship: ${feat}`)}
+              checklist={listFeatureStrings(phase.features).map(
+                (feat) => `Ship: ${feat}`
+              )}
             />
           ))}
         </>
@@ -251,10 +266,12 @@ export function WorkspacePhasePanels({
               sectionKey="revenue-tier"
               title={`${tier.name} — ${tier.price}`}
               subtitle="Tier playbook"
-              preview={tier.features.join(" · ")}
+              preview={listFeatureStrings(tier.features).join(" · ")}
               index={i}
               accent={i === 1 ? "violet" : "cyan"}
-              checklist={tier.features.map((f) => `Include: ${f}`)}
+              checklist={listFeatureStrings(tier.features).map(
+                (f) => `Include: ${f}`
+              )}
             />
           ))}
         </>

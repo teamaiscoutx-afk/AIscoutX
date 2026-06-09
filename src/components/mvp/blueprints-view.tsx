@@ -1,7 +1,7 @@
 "use client";
 
-import { Check } from "lucide-react";
-
+import { FeatureMatrixGrid } from "@/components/mvp/feature-matrix-grid";
+import { listFeatureStrings } from "@/lib/mvp/normalize-features";
 import type { VenturePack } from "@/lib/mvp/types";
 
 type BlueprintsViewProps = {
@@ -47,26 +47,14 @@ export function BlueprintsView({ pack }: BlueprintsViewProps) {
         </div>
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        {(
-          [
-            ["Must-Have", blueprint.featureMatrix.mustHave],
-            ["Nice-To-Have", blueprint.featureMatrix.niceToHave],
-            ["Future", blueprint.featureMatrix.future],
-          ] as const
-        ).map(([label, items]) => (
-          <div key={label} className="glass-panel rounded-2xl p-5">
-            <h2 className="text-sm font-semibold text-white">{label}</h2>
-            <ul className="mt-4 space-y-2">
-              {items.map((item) => (
-                <li key={item} className="flex items-start gap-2 text-xs text-zinc-400">
-                  <Check className="mt-0.5 h-3 w-3 shrink-0 text-[#deff9a]" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+      <div className="mt-6 glass-panel rounded-2xl p-6">
+        <h2 className="text-sm font-semibold text-white">Feature requirements</h2>
+        <FeatureMatrixGrid
+          features={
+            (blueprint as { features?: unknown }).features ?? blueprint.featureMatrix
+          }
+          className="mt-4"
+        />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
@@ -93,7 +81,7 @@ export function BlueprintsView({ pack }: BlueprintsViewProps) {
                   <span className="text-sm text-[#deff9a]">{tier.price}</span>
                 </div>
                 <ul className="mt-2 space-y-1">
-                  {tier.features.map((f) => (
+                  {listFeatureStrings(tier.features).map((f) => (
                     <li key={f} className="text-xs text-zinc-500">
                       · {f}
                     </li>
