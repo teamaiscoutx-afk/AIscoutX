@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 
 import { NotificationHub } from "@/components/dashboard/notification-hub";
-import { UpgradeProModal } from "@/components/dashboard/upgrade-pro-modal";
+import { UpgradeToPro } from "@/components/dashboard/upgrade-to-pro";
 import { WorkspaceModeToggle } from "@/components/dashboard/workspace-mode-toggle";
 import { UserAvatarMenu } from "@/components/layout/user-avatar-menu";
 import { useUserMenu } from "@/components/layout/user-menu-provider";
@@ -201,7 +201,7 @@ export function DashboardTopbar({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        <UpgradeProModal compact />
+        <UpgradeToPro compact />
         <NotificationHub
           opportunityOfDayName={opportunityOfDayName}
           opportunityOfDayGrowth={opportunityOfDayGrowth}
