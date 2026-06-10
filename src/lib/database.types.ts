@@ -54,6 +54,8 @@ export type ProfileRow = {
   goal: CoreGoal | null;
   niche_focus: NicheFocus | null;
   plan: PlanTier;
+  subscription_status: "active" | "canceled";
+  stripe_customer_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -62,6 +64,8 @@ export type UsageWalletRow = {
   user_id: string;
   opportunity_views_today: number;
   opportunity_views_date: string;
+  opportunity_expansions_this_month: number;
+  expansions_month_key: string;
   blueprints_this_month: number;
   blueprints_month_key: string;
   chat_messages_this_month: number;
@@ -182,6 +186,8 @@ export type Database = {
           goal?: CoreGoal | null;
           niche_focus?: NicheFocus | null;
           plan?: PlanTier;
+          subscription_status?: "active" | "canceled";
+          stripe_customer_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -194,6 +200,8 @@ export type Database = {
           goal?: CoreGoal | null;
           niche_focus?: NicheFocus | null;
           plan?: PlanTier;
+          subscription_status?: "active" | "canceled";
+          stripe_customer_id?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -204,6 +212,8 @@ export type Database = {
           user_id: string;
           opportunity_views_today?: number;
           opportunity_views_date?: string;
+          opportunity_expansions_this_month?: number;
+          expansions_month_key?: string;
           blueprints_this_month?: number;
           blueprints_month_key?: string;
           chat_messages_this_month?: number;

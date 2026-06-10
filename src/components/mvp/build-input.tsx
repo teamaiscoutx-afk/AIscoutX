@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Rocket, Sparkles } from "lucide-react";
 
 import { generateVenturePack } from "@/app/actions/generation";
+import { useUpgradeModal } from "@/components/billing/upgrade-modal";
 import {
   incrementLocalBlueprintCount,
   saveVenturePackLocal,
@@ -14,6 +15,7 @@ import { Input } from "@/components/ui/input";
 
 export function BuildInput() {
   const router = useRouter();
+  const { openUpgradeModal } = useUpgradeModal();
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -25,6 +27,10 @@ export function BuildInput() {
     startTransition(async () => {
       const result = await generateVenturePack(query);
       if (!result.ok || !result.pack) {
+        if (result.code === "UPGRADE_REQUIRED") {
+          openUpgradeModal(result.error);
+          return;
+        }
         setError(result.error ?? "Generation failed");
         return;
       }

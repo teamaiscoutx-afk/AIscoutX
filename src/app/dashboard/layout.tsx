@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { UpgradeModalProvider } from "@/components/billing/upgrade-modal";
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
 import { UserMenuProvider } from "@/components/layout/user-menu-provider";
 import { UserAvatarMenu } from "@/components/layout/user-avatar-menu";
@@ -19,6 +20,7 @@ export default async function DashboardLayout({
 
   return (
     <UserMenuProvider value={menu}>
+      <UpgradeModalProvider>
       <div className="flex min-h-screen bg-[#030308] text-foreground">
         <div
           aria-hidden
@@ -39,6 +41,7 @@ export default async function DashboardLayout({
           </div>
         </div>
       </div>
+      </UpgradeModalProvider>
     </UserMenuProvider>
   );
 }

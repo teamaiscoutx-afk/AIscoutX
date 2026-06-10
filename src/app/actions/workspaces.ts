@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 
-import { checkBlueprintGeneration, incrementBlueprintUsage } from "@/app/actions/usage";
+import { incrementBlueprintUsage } from "@/app/actions/usage";
+import { requirePro } from "@/lib/billing/paywall";
+import { toClientError } from "@/lib/server/safe-action";
 import type { Opportunity } from "@/lib/dashboard/opportunities";
 import type { DailyTaskRow, WorkspaceRow } from "@/lib/database.types";
 import {
@@ -110,7 +112,7 @@ export async function getWorkspaceById(
 
 export async function createWorkspaceFromOpportunity(
   opportunity: Opportunity
-): Promise<{ ok: boolean; workspaceId?: string; error?: string }> {
+): Promise<{ ok: boolean; workspaceId?: string; error?: string; code?: string }> {
   if (!isSupabaseConfigured()) {
     return { ok: false, error: "Supabase is not configured" };
   }
@@ -122,9 +124,9 @@ export async function createWorkspaceFromOpportunity(
     } = await supabase.auth.getUser();
     if (!user) return { ok: false, error: "Not authenticated" };
 
-    const gate = await checkBlueprintGeneration();
+    const gate = await requirePro("gps");
     if (!gate.allowed) {
-      return { ok: false, error: gate.reason };
+      return { ok: false, error: gate.reason, code: gate.code };
     }
 
     const summary = buildWorkspaceSummaryFromOpportunity(opportunity);
@@ -189,8 +191,11 @@ export async function createWorkspaceFromOpportunity(
 
     return { ok: true, workspaceId: workspace.id };
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Workspace create failed";
-    return { ok: false, error: message };
+    return toClientError(
+      "workspaces.create",
+      err,
+      "Could not create your startup workspace. Try again."
+    );
   }
 }
 

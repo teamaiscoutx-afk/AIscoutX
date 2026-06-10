@@ -1,4 +1,4 @@
-export type BillingPlanId = "starter" | "pro" | "agency";
+export type BillingPlanId = "free" | "pro";
 
 export type BillingPlan = {
   id: BillingPlanId;
@@ -7,21 +7,23 @@ export type BillingPlan = {
   period: string;
   description: string;
   popular?: boolean;
+  cta: string;
   features: string[];
 };
 
 export const BILLING_PLANS: BillingPlan[] = [
   {
-    id: "starter",
-    name: "Starter",
-    price: 19,
-    period: "/month",
-    description: "Essentials for getting started with opportunity intelligence.",
+    id: "free",
+    name: "Freemium",
+    price: 0,
+    period: "/forever",
+    description: "Scout the market. See what the engine finds.",
+    cta: "You're on this plan",
     features: [
-      "Daily intelligence briefing",
-      "5 tracked keywords",
-      "Email alerts",
-      "Basic workspace access",
+      "Dashboard search",
+      "5 opportunity views per day",
+      "Trending keywords feed",
+      "Save up to 5 signals",
     ],
   },
   {
@@ -29,42 +31,26 @@ export const BILLING_PLANS: BillingPlan[] = [
     name: "Pro",
     price: 49,
     period: "/month",
-    description: "Full AI Founder OS pipeline for serious builders.",
+    description: "Build with the full engine. No limits, no waiting.",
     popular: true,
+    cta: "Upgrade to Pro",
     features: [
-      "Unlock 100+ Daily Exploding Signals",
-      "Unlimited Deep Step-by-Step Execution Blueprints",
-      "Custom AI Mentor Chat Access",
-      "Advanced Validation & MVP Scoring Engine",
-      "Unlimited workspace generation",
-    ],
-  },
-  {
-    id: "agency",
-    name: "Agency",
-    price: 99,
-    period: "/month",
-    description: "For power-builders executing multiple parallel ventures.",
-    features: [
-      "Everything in Pro",
-      "Team workspace management",
-      "Custom monitoring lanes",
-      "White-label reports",
-      "Dedicated support channel",
+      "Unlimited Generate Blueprint runs",
+      "Deep Dive specs with cited market gaps",
+      "Founder GPS progress engine",
+      "Unlimited AI Founder Chat",
+      "Priority niche alerts to your inbox",
     ],
   },
 ];
 
-/**
- * Stripe checkout entry point — wire to `/api/checkout` or Stripe Payment Links.
- */
-export async function handleCheckout(planId: BillingPlanId): Promise<void> {
-  const plan = BILLING_PLANS.find((p) => p.id === planId);
-  if (!plan) return;
+export function getProPlan(): BillingPlan {
+  return BILLING_PLANS.find((p) => p.id === "pro")!;
+}
 
-  // Production: replace with Stripe Checkout Session creation
-  const checkoutUrl = `/api/checkout?plan=${planId}`;
+/** Send the user to Stripe checkout (payment link via /api/checkout). */
+export function startProCheckout(): void {
   if (typeof window !== "undefined") {
-    window.location.href = checkoutUrl;
+    window.location.href = "/api/checkout?plan=pro";
   }
 }

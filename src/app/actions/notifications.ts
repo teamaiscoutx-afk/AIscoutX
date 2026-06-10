@@ -2,9 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 
+import { sendNicheAlertEmail } from "@/lib/email";
 import { scanWorkspaceForSignals } from "@/lib/intelligence/workspace-sync";
 import type { PlatformNotificationPayload } from "@/lib/intelligence/types";
 import { isIntelligenceEngineReady } from "@/lib/intelligence/config";
+import { logServerError } from "@/lib/server/safe-action";
 import {
   createServerSupabaseClient,
   isSupabaseConfigured,
@@ -186,6 +188,16 @@ export async function syncActiveWorkspaceSignals(): Promise<{
       if (result.notification) {
         await insertNotification(user.id, result.notification);
         alerts += 1;
+
+        if (user.email && result.delta) {
+          // Priority inbox alert — fire-and-forget
+          sendNicheAlertEmail(user.email, {
+            nicheFocus: result.delta.nicheFocus,
+            painPoint: result.delta.painPoint,
+            solutionHint: result.delta.solutionHint,
+            workspaceId: ws.id,
+          }).catch((err) => logServerError("email.nicheAlert", err));
+        }
       }
     }
 

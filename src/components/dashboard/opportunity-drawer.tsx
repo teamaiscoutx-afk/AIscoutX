@@ -8,11 +8,8 @@ import { Check, Loader2, Rocket, X } from "lucide-react";
 
 import { fetchOpportunityDeepDive } from "@/app/actions/intelligence";
 import { saveOpportunity } from "@/app/actions/opportunities";
+import { useUpgradeModal } from "@/components/billing/upgrade-modal";
 import { OpportunityDeepDivePanel } from "@/components/dashboard/opportunity-deep-dive";
-import {
-  checkOpportunityView,
-  incrementOpportunityView,
-} from "@/app/actions/usage";
 import { createWorkspaceFromOpportunity } from "@/app/actions/workspaces";
 import { OpportunityDrawerDetail } from "@/components/dashboard/opportunity-drawer-detail";
 import {
@@ -54,14 +51,15 @@ export function OpportunityDrawer({
   onClose,
 }: OpportunityDrawerProps) {
   const router = useRouter();
+  const { openUpgradeModal } = useUpgradeModal();
   const [mounted, setMounted] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [buildError, setBuildError] = useState<string | null>(null);
-  const [viewError, setViewError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isBuilding, startBuildTransition] = useTransition();
   const [deepDiveLoading, setDeepDiveLoading] = useState(false);
+  const [deepDiveLocked, setDeepDiveLocked] = useState(false);
   const [enrichedOpportunity, setEnrichedOpportunity] =
     useState<Opportunity | null>(null);
 
@@ -73,24 +71,16 @@ export function OpportunityDrawer({
     setSaved(false);
     setSaveError(null);
     setBuildError(null);
-    setViewError(null);
 
     if (!selectedOpportunity) {
       setEnrichedOpportunity(null);
       return;
     }
 
+    // Expansion gating happens before the drawer opens (CommandCenter)
     setEnrichedOpportunity(selectedOpportunity);
 
-    void (async () => {
-      const gate = await checkOpportunityView();
-      if (!gate.allowed) {
-        setViewError(gate.reason ?? "Daily view limit reached");
-        return;
-      }
-      await incrementOpportunityView();
-    })();
-
+    setDeepDiveLocked(false);
     if (selectedOpportunity.deepDive) return;
 
     setDeepDiveLoading(true);
@@ -107,6 +97,8 @@ export function OpportunityDrawer({
           ...selectedOpportunity,
           deepDive: result.deepDive,
         });
+      } else if (result.code === "UPGRADE_REQUIRED") {
+        setDeepDiveLocked(true);
       }
       setDeepDiveLoading(false);
     })();
@@ -119,6 +111,10 @@ export function OpportunityDrawer({
       if (result.ok && result.workspaceId) {
         router.push(`/dashboard/workspace/${result.workspaceId}`);
         onClose();
+        return;
+      }
+      if (result.code === "UPGRADE_REQUIRED") {
+        openUpgradeModal(result.error);
         return;
       }
       setBuildError(result.error ?? "Could not create startup workspace.");
@@ -204,15 +200,6 @@ export function OpportunityDrawer({
             </div>
 
             <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6">
-              {viewError && (
-                <div
-                  className="mb-4 rounded-xl border border-orange-500/30 bg-orange-500/10 p-4 text-sm text-orange-300"
-                  role="alert"
-                >
-                  {viewError}
-                </div>
-              )}
-
               <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
                 Technical scores
               </p>
@@ -249,10 +236,30 @@ export function OpportunityDrawer({
                 />
               </div>
 
-              <OpportunityDeepDivePanel
-                opportunity={enrichedOpportunity ?? selectedOpportunity}
-                loading={deepDiveLoading}
-              />
+              {deepDiveLocked ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    openUpgradeModal(
+                      "Deep Dive specs are a Pro feature. Upgrade to see cited market gaps and MVP anatomy."
+                    )
+                  }
+                  className="mt-8 w-full rounded-xl border border-[#deff9a]/25 bg-[#deff9a]/[0.05] p-5 text-left transition-colors hover:bg-[#deff9a]/[0.08]"
+                >
+                  <p className="text-sm font-semibold text-[#deff9a]">
+                    🔒 Deep Dive locked
+                  </p>
+                  <p className="mt-1.5 text-xs leading-relaxed text-zinc-400">
+                    Real market gaps, a full solution blueprint, and the exact
+                    MVP anatomy live behind Pro. Tap to unlock.
+                  </p>
+                </button>
+              ) : (
+                <OpportunityDeepDivePanel
+                  opportunity={enrichedOpportunity ?? selectedOpportunity}
+                  loading={deepDiveLoading}
+                />
+              )}
 
               <div className="mt-6 rounded-xl border border-white/[0.08] bg-[#deff9a]/[0.04] p-4">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">

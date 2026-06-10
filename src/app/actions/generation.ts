@@ -2,10 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 
-import {
-  checkBlueprintGeneration,
-  incrementBlueprintUsage,
-} from "@/app/actions/usage";
+import { incrementBlueprintUsage } from "@/app/actions/usage";
+import { requirePro } from "@/lib/billing/paywall";
+import { toClientError } from "@/lib/server/safe-action";
 import { runGenerationPipeline } from "@/lib/mvp/generation-pipeline";
 import type { VenturePack } from "@/lib/mvp/types";
 import type { VenturePackRow } from "@/lib/database.types";
@@ -54,6 +53,7 @@ export type GenerateVenturePackResult = {
   pack?: VenturePack;
   storageMode?: "database" | "local";
   error?: string;
+  code?: string;
 };
 
 export async function generateVenturePack(
@@ -67,9 +67,9 @@ export async function generateVenturePack(
     };
   }
 
-  const gate = await checkBlueprintGeneration();
+  const gate = await requirePro("blueprint");
   if (!gate.allowed) {
-    return { ok: false, error: gate.reason };
+    return { ok: false, error: gate.reason, code: gate.code };
   }
 
   if (!isSupabaseConfigured()) {
@@ -77,8 +77,7 @@ export async function generateVenturePack(
       const pack = await buildPack(trimmed, "demo");
       return { ok: true, pack, storageMode: "local" };
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Generation failed";
-      return { ok: false, error: message };
+      return toClientError("generation.buildPack", err);
     }
   }
 
@@ -111,7 +110,11 @@ export async function generateVenturePack(
       if (isMissingTableError(error.message)) {
         return { ok: true, pack, storageMode: "local" };
       }
-      return { ok: false, error: error.message };
+      return toClientError(
+        "generation.insert",
+        new Error(error.message),
+        "Could not save your blueprint. Try again."
+      );
     }
 
     if (!data) {
@@ -136,12 +139,10 @@ export async function generateVenturePack(
         const pack = await buildPack(trimmed, "local");
         return { ok: true, pack, storageMode: "local" };
       } catch (buildErr) {
-        const buildMessage =
-          buildErr instanceof Error ? buildErr.message : "Generation failed";
-        return { ok: false, error: buildMessage };
+        return toClientError("generation.fallback", buildErr);
       }
     }
-    return { ok: false, error: message };
+    return toClientError("generation.run", err);
   }
 }
 
