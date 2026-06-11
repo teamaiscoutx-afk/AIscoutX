@@ -185,6 +185,8 @@ export async function loadCachedOpportunities(): Promise<Opportunity[]> {
   const { data } = await supabase
     .from("opportunities")
     .select("*")
+    .neq("category", "venture-pack")
+    .eq("is_deleted", false)
     .order("score", { ascending: false })
     .limit(20);
 

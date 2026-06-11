@@ -7,20 +7,28 @@ import { requirePro } from "@/lib/billing/paywall";
 import { toClientError } from "@/lib/server/safe-action";
 import { runGenerationPipeline } from "@/lib/mvp/generation-pipeline";
 import type { VenturePack } from "@/lib/mvp/types";
-import type { VenturePackRow } from "@/lib/database.types";
+import type { OpportunityRow } from "@/lib/database.types";
 import {
   createServerSupabaseClient,
   isSupabaseConfigured,
 } from "@/lib/supabase";
 
-function mapPack(row: VenturePackRow, userId: string): VenturePack {
+/** Venture packs live on the shared `opportunities` table under this category. */
+const VENTURE_PACK_CATEGORY = "venture-pack";
+
+/** PostgREST JSON path to the pack owner inside mode_data. */
+const PACK_OWNER_COLUMN = "mode_data->venturePack->>ownerId";
+
+function mapPack(row: OpportunityRow, userId: string): VenturePack | null {
+  const data = row.mode_data?.venturePack;
+  if (!data) return null;
   return {
     id: row.id,
-    userId: row.user_id ?? userId,
-    query: row.query,
-    analyze: row.analyze_json,
-    blueprint: row.blueprint_json,
-    launch: row.launch_json,
+    userId: data.ownerId ?? userId,
+    query: data.query ?? row.title,
+    analyze: data.analyze,
+    blueprint: data.blueprint,
+    launch: data.launch,
     createdAt: row.created_at,
   };
 }
@@ -41,10 +49,11 @@ async function buildPack(query: string, userId: string): Promise<VenturePack> {
 function isMissingTableError(message: string): boolean {
   const lower = message.toLowerCase();
   return (
-    lower.includes("venture_packs") ||
+    lower.includes("opportunities") ||
     lower.includes("schema cache") ||
     lower.includes("does not exist") ||
-    lower.includes("pgrst205")
+    lower.includes("pgrst205") ||
+    lower.includes("row-level security")
   );
 }
 
@@ -95,13 +104,19 @@ export async function generateVenturePack(
     }
 
     const { data, error } = await supabase
-      .from("venture_packs")
+      .from("opportunities")
       .insert({
-        user_id: user.id,
-        query: trimmed,
-        analyze_json: pack.analyze,
-        blueprint_json: pack.blueprint,
-        launch_json: pack.launch,
+        title: trimmed,
+        category: VENTURE_PACK_CATEGORY,
+        mode_data: {
+          venturePack: {
+            ownerId: user.id,
+            query: trimmed,
+            analyze: pack.analyze,
+            blueprint: pack.blueprint,
+            launch: pack.launch,
+          },
+        },
       })
       .select("*")
       .single();
@@ -129,7 +144,7 @@ export async function generateVenturePack(
 
     return {
       ok: true,
-      pack: mapPack(data, user.id),
+      pack: mapPack(data, user.id) ?? pack,
       storageMode: "database",
     };
   } catch (err) {
@@ -159,19 +174,16 @@ export async function getLatestVenturePack(): Promise<VenturePack | null> {
     if (!user) return null;
 
     const { data, error } = await supabase
-      .from("venture_packs")
+      .from("opportunities")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("category", VENTURE_PACK_CATEGORY)
+      .eq(PACK_OWNER_COLUMN, user.id)
       .eq("is_deleted", false)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (error) {
-      if (isMissingTableError(error.message)) return null;
-      return null;
-    }
-    if (!data) return null;
+    if (error || !data) return null;
     return mapPack(data, user.id);
   } catch {
     return null;
@@ -193,10 +205,11 @@ export async function getVenturePackById(
     if (!user) return null;
 
     const { data, error } = await supabase
-      .from("venture_packs")
+      .from("opportunities")
       .select("*")
       .eq("id", packId)
-      .eq("user_id", user.id)
+      .eq("category", VENTURE_PACK_CATEGORY)
+      .eq(PACK_OWNER_COLUMN, user.id)
       .maybeSingle();
 
     if (error || !data) return null;

@@ -28,6 +28,12 @@ export type TrashActionResult = {
 
 const RECOVERY_WINDOW_DAYS = 30;
 
+/** Venture packs (blueprints) live on the `opportunities` table under this category. */
+const VENTURE_PACK_CATEGORY = "venture-pack";
+
+/** PostgREST JSON path to the pack owner inside mode_data. */
+const PACK_OWNER_COLUMN = "mode_data->venturePack->>ownerId";
+
 function daysLeftInWindow(deletedAt: string | null): number {
   if (!deletedAt) return RECOVERY_WINDOW_DAYS;
   const elapsedMs = Date.now() - new Date(deletedAt).getTime();
@@ -59,9 +65,10 @@ export async function getTrashItems(): Promise<TrashItem[]> {
         .eq("is_deleted", true)
         .order("deleted_at", { ascending: false }),
       supabase
-        .from("venture_packs")
-        .select("id, query, deleted_at")
-        .eq("user_id", user.id)
+        .from("opportunities")
+        .select("id, title, deleted_at")
+        .eq("category", VENTURE_PACK_CATEGORY)
+        .eq(PACK_OWNER_COLUMN, user.id)
         .eq("is_deleted", true)
         .order("deleted_at", { ascending: false }),
     ]);
@@ -77,7 +84,7 @@ export async function getTrashItems(): Promise<TrashItem[]> {
     const blueprints: TrashItem[] = (packsRes.data ?? []).map((row) => ({
       id: row.id,
       kind: "blueprint",
-      title: row.query,
+      title: row.title,
       deletedAt: row.deleted_at,
       daysLeft: daysLeftInWindow(row.deleted_at),
     }));
@@ -140,10 +147,11 @@ export async function moveVenturePackToTrash(
     if (!user) return { ok: false, error: "Not authenticated" };
 
     const { error } = await supabase
-      .from("venture_packs")
+      .from("opportunities")
       .update({ is_deleted: true, deleted_at: new Date().toISOString() })
       .eq("id", packId)
-      .eq("user_id", user.id);
+      .eq("category", VENTURE_PACK_CATEGORY)
+      .eq(PACK_OWNER_COLUMN, user.id);
 
     if (error) return { ok: false, error: "Could not move blueprint to Trash." };
 
@@ -179,12 +187,19 @@ export async function recoverTrashItem(
       };
     }
 
-    const table = kind === "project" ? "workspaces" : "venture_packs";
-    const { error } = await supabase
-      .from(table)
-      .update({ is_deleted: false, deleted_at: null })
-      .eq("id", id)
-      .eq("user_id", user.id);
+    const { error } =
+      kind === "project"
+        ? await supabase
+            .from("workspaces")
+            .update({ is_deleted: false, deleted_at: null })
+            .eq("id", id)
+            .eq("user_id", user.id)
+        : await supabase
+            .from("opportunities")
+            .update({ is_deleted: false, deleted_at: null })
+            .eq("id", id)
+            .eq("category", VENTURE_PACK_CATEGORY)
+            .eq(PACK_OWNER_COLUMN, user.id);
 
     if (error) return { ok: false, error: "Could not recover this item." };
 
@@ -218,13 +233,21 @@ export async function permanentDeleteTrashItem(
         .eq("workspace_id", id);
     }
 
-    const table = kind === "project" ? "workspaces" : "venture_packs";
-    const { error } = await supabase
-      .from(table)
-      .delete()
-      .eq("id", id)
-      .eq("user_id", user.id)
-      .eq("is_deleted", true);
+    const { error } =
+      kind === "project"
+        ? await supabase
+            .from("workspaces")
+            .delete()
+            .eq("id", id)
+            .eq("user_id", user.id)
+            .eq("is_deleted", true)
+        : await supabase
+            .from("opportunities")
+            .delete()
+            .eq("id", id)
+            .eq("category", VENTURE_PACK_CATEGORY)
+            .eq(PACK_OWNER_COLUMN, user.id)
+            .eq("is_deleted", true);
 
     if (error) return { ok: false, error: "Could not delete this item." };
 

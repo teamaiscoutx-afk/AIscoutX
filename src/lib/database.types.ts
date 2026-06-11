@@ -42,6 +42,16 @@ export type OpportunityModeData = {
   deepDive?: OpportunityDeepDive;
   disruption?: number;
   liveSynthesizedAt?: string;
+  /** Generated venture pack stored on the opportunities table, scoped by ownerId. */
+  venturePack?: VenturePackData;
+};
+
+export type VenturePackData = {
+  ownerId: string;
+  query: string;
+  analyze: AnalyzePack;
+  blueprint: BlueprintPack;
+  launch: LaunchPack;
 };
 
 export type ProfileRow = {
@@ -71,18 +81,6 @@ export type UsageWalletRow = {
   chat_messages_this_month: number;
   chat_month_key: string;
   updated_at: string;
-};
-
-export type VenturePackRow = {
-  id: string;
-  user_id: string;
-  query: string;
-  analyze_json: AnalyzePack;
-  blueprint_json: BlueprintPack;
-  launch_json: LaunchPack;
-  is_deleted: boolean;
-  deleted_at: string | null;
-  created_at: string;
 };
 
 export type WorkspaceRow = {
@@ -147,6 +145,8 @@ export type OpportunityRow = {
   workspace_mode: WorkspaceIdentity | null;
   current_niche: string | null;
   mode_data: OpportunityModeData;
+  is_deleted: boolean;
+  deleted_at: string | null;
   created_at: string;
 };
 
@@ -225,22 +225,6 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Omit<UsageWalletRow, "user_id">>;
-        Relationships: [];
-      };
-      venture_packs: {
-        Row: VenturePackRow;
-        Insert: {
-          id?: string;
-          user_id: string;
-          query: string;
-          analyze_json?: AnalyzePack;
-          blueprint_json?: BlueprintPack;
-          launch_json?: LaunchPack;
-          is_deleted?: boolean;
-          deleted_at?: string | null;
-          created_at?: string;
-        };
-        Update: Partial<Omit<VenturePackRow, "id" | "user_id">>;
         Relationships: [];
       };
       workspaces: {
@@ -344,6 +328,8 @@ export type Database = {
           workspace_mode?: WorkspaceIdentity | null;
           current_niche?: string | null;
           mode_data?: OpportunityModeData;
+          is_deleted?: boolean;
+          deleted_at?: string | null;
           created_at?: string;
         };
         Update: Partial<{
@@ -356,6 +342,8 @@ export type Database = {
           workspace_mode: WorkspaceIdentity | null;
           current_niche: string | null;
           mode_data: OpportunityModeData;
+          is_deleted: boolean;
+          deleted_at: string | null;
         }>;
         Relationships: [];
       };
