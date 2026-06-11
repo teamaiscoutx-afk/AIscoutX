@@ -1,14 +1,41 @@
 "use client";
 
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Trash2 } from "lucide-react";
+
+import { moveVenturePackToTrash } from "@/app/actions/trash";
 import { FeatureMatrixGrid } from "@/components/mvp/feature-matrix-grid";
 import { listFeatureStrings } from "@/lib/mvp/normalize-features";
+import { clearVenturePackLocal } from "@/lib/mvp/venture-pack-storage";
 import type { VenturePack } from "@/lib/mvp/types";
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type BlueprintsViewProps = {
   pack: VenturePack | null;
 };
 
 export function BlueprintsView({ pack }: BlueprintsViewProps) {
+  const router = useRouter();
+  const [deleting, setDeleting] = useState(false);
+  const [, startTransition] = useTransition();
+
+  function handleMoveToBin() {
+    if (!pack || deleting) return;
+    setDeleting(true);
+    startTransition(async () => {
+      // Persisted packs go to the recoverable Trash; local-only packs are cleared.
+      if (UUID_REGEX.test(pack.id)) {
+        await moveVenturePackToTrash(pack.id);
+      }
+      clearVenturePackLocal();
+      router.push("/dashboard/discover");
+      router.refresh();
+    });
+  }
+
   if (!pack) {
     return (
       <div className="mx-auto max-w-lg px-4 py-20 text-center">
@@ -27,11 +54,24 @@ export function BlueprintsView({ pack }: BlueprintsViewProps) {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#deff9a]/80">
-        Module 3 · Blueprints
-      </p>
-      <h1 className="mt-2 text-2xl font-semibold text-white">Execution blueprint</h1>
-      <p className="mt-1 text-sm text-zinc-500">Query: &ldquo;{pack.query}&rdquo;</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#deff9a]/80">
+            Module 3 · Blueprints
+          </p>
+          <h1 className="mt-2 text-2xl font-semibold text-white">Execution blueprint</h1>
+          <p className="mt-1 text-sm text-zinc-500">Query: &ldquo;{pack.query}&rdquo;</p>
+        </div>
+        <button
+          type="button"
+          onClick={handleMoveToBin}
+          disabled={deleting}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-red-500/25 bg-red-500/[0.05] px-3 py-1.5 text-xs text-red-400 transition-colors hover:bg-red-500/15 hover:text-red-300 disabled:opacity-50"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          {deleting ? "Moving…" : "Move to Bin"}
+        </button>
+      </div>
 
       <div className="mt-6 glass-panel rounded-2xl p-6">
         <h2 className="text-sm font-semibold text-white">Name suggestions</h2>

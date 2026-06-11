@@ -38,7 +38,17 @@ export async function SiteHeader() {
           ))}
         </nav>
 
-        <UserAvatarMenu menu={menu} />
+        <div className="flex items-center gap-2 sm:gap-3">
+          {!menu.isAuthenticated && (
+            <Link
+              href="/login"
+              className="text-sm text-zinc-400 transition-colors hover:text-white"
+            >
+              Login
+            </Link>
+          )}
+          <UserAvatarMenu menu={menu} />
+        </div>
       </div>
     </header>
   );

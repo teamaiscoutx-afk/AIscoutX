@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { incrementBlueprintUsage } from "@/app/actions/usage";
-import { requirePro } from "@/lib/billing/paywall";
+import { isProUser, UPGRADE_REQUIRED } from "@/lib/billing/paywall";
 import { toClientError } from "@/lib/server/safe-action";
 import type { Opportunity } from "@/lib/dashboard/opportunities";
 import type { DailyTaskRow, WorkspaceRow } from "@/lib/database.types";
@@ -75,6 +75,7 @@ export async function getUserWorkspaces(): Promise<StartupWorkspace[]> {
       .from("workspaces")
       .select("*")
       .eq("user_id", user.id)
+      .eq("is_deleted", false)
       .order("updated_at", { ascending: false });
 
     if (error || !data) return [];
@@ -101,6 +102,7 @@ export async function getWorkspaceById(
       .select("*")
       .eq("id", workspaceId)
       .eq("user_id", user.id)
+      .eq("is_deleted", false)
       .maybeSingle();
 
     if (error || !data) return null;
@@ -124,9 +126,23 @@ export async function createWorkspaceFromOpportunity(
     } = await supabase.auth.getUser();
     if (!user) return { ok: false, error: "Not authenticated" };
 
-    const gate = await requirePro("gps");
-    if (!gate.allowed) {
-      return { ok: false, error: gate.reason, code: gate.code };
+    // Free tier: 1 active project. Pro: unlimited.
+    const pro = await isProUser();
+    if (!pro) {
+      const { count } = await supabase
+        .from("workspaces")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("is_deleted", false);
+
+      if ((count ?? 0) >= 1) {
+        return {
+          ok: false,
+          code: UPGRADE_REQUIRED,
+          error:
+            "Free plan includes 1 active project. Upgrade to Pro for unlimited projects.",
+        };
+      }
     }
 
     const summary = buildWorkspaceSummaryFromOpportunity(opportunity);

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 
+import { getUserWorkspaces } from "@/app/actions/workspaces";
 import { UpgradeModalProvider } from "@/components/billing/upgrade-modal";
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
 import { UserMenuProvider } from "@/components/layout/user-menu-provider";
-import { UserAvatarMenu } from "@/components/layout/user-avatar-menu";
 import { getUserMenuContext } from "@/lib/auth/user-menu";
 
 export const metadata: Metadata = {
@@ -16,7 +16,15 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const menu = await getUserMenuContext();
+  const [menu, workspaces] = await Promise.all([
+    getUserMenuContext(),
+    getUserWorkspaces(),
+  ]);
+  const projects = workspaces.map((w) => ({
+    id: w.id,
+    name: w.opportunityName,
+    isActive: w.isActive,
+  }));
 
   return (
     <UserMenuProvider value={menu}>
@@ -32,13 +40,8 @@ export default async function DashboardLayout({
         />
 
         <div className="relative z-10 flex min-h-screen w-full flex-col lg:flex-row">
-          <DashboardSidebar />
-          <div className="flex min-h-0 flex-1 flex-col">
-            <div className="flex items-center justify-end border-b border-white/[0.06] bg-[#030308]/60 px-4 py-2 backdrop-blur-xl lg:hidden">
-              <UserAvatarMenu menu={menu} compact />
-            </div>
-            {children}
-          </div>
+          <DashboardSidebar projects={projects} />
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
         </div>
       </div>
       </UpgradeModalProvider>

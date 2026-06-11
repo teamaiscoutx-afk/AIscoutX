@@ -95,36 +95,32 @@ const steps = [
 
 const pricingPlans = [
   {
-    name: "Starter",
-    price: "$19",
-    period: "/month",
-    description: "Perfect for solo founders testing the waters.",
-    features: ["Daily Briefing", "5 Keywords", "Email alerts"],
-    cta: "Get Starter",
+    name: "Freemium",
+    price: "$0",
+    period: "/forever",
+    description: "Scout the market. See what the engine finds.",
+    features: [
+      "Dashboard search",
+      "2 deep looks per month",
+      "1 active project",
+      "10 AI chat messages",
+    ],
+    cta: "Start for Free",
     popular: false,
   },
   {
     name: "Pro",
-    price: "$49",
+    price: "$19",
     period: "/month",
-    description: "For creators and founders who move fast.",
-    features: ["Viral Hooks", "Full Access", "Weekly deep dives", "Priority signals"],
-    cta: "Get Pro",
-    popular: true,
-  },
-  {
-    name: "Agency",
-    price: "$99",
-    period: "/month",
-    description: "Built for teams managing multiple brands.",
+    description: "For founders who move fast. Everything unlocked.",
     features: [
-      "Team Management",
-      "Custom Monitoring",
-      "White-label reports",
-      "Dedicated support",
+      "Unlimited blueprints + deep dives",
+      "Founder GPS progress engine",
+      "Unlimited projects + Trash recovery",
+      "Priority niche alerts",
     ],
-    cta: "Get Agency",
-    popular: false,
+    cta: "Unlock Pro",
+    popular: true,
   },
 ];
 
@@ -579,7 +575,7 @@ export function LandingPageContent({ ctaHref }: LandingPageContentProps) {
             </p>
           </FadeIn>
 
-          <StaggerContainer className="mt-12 grid gap-6 lg:grid-cols-3 lg:gap-8">
+          <StaggerContainer className="mx-auto mt-12 grid max-w-3xl gap-6 sm:grid-cols-2 lg:gap-8">
             {pricingPlans.map((plan) => (
               <StaggerItem key={plan.name}>
                 <PricingCard plan={plan} />

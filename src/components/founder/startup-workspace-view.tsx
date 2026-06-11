@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Layers } from "lucide-react";
+import { ArrowLeft, Layers, Trash2 } from "lucide-react";
 
 import { setWorkspaceActive } from "@/app/actions/notifications";
+import { moveWorkspaceToTrash } from "@/app/actions/trash";
 import { FounderGps } from "@/components/founder/founder-gps";
 import { WorkspacePhasePanels } from "@/components/founder/workspace-phase-panels";
 import type { DailyTask, StartupWorkspace } from "@/lib/founder/types";
@@ -35,6 +37,23 @@ export function StartupWorkspaceView({
   const [tasks, setTasks] = useState(initialTasks);
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [watching, setWatching] = useState(workspace.isActive);
+  const router = useRouter();
+  const [deleting, setDeleting] = useState(false);
+  const [, startTransition] = useTransition();
+
+  function handleMoveToBin() {
+    if (deleting) return;
+    setDeleting(true);
+    startTransition(async () => {
+      const result = await moveWorkspaceToTrash(workspace.id);
+      if (result.ok) {
+        router.push("/dashboard/discover");
+        router.refresh();
+        return;
+      }
+      setDeleting(false);
+    });
+  }
 
   async function toggleWorkspaceWatch() {
     const next = !watching;
@@ -66,18 +85,29 @@ export function StartupWorkspaceView({
             ? "Watching this niche for live pain-point alerts."
             : "Enable watch to get bell notifications when your niche shifts."}
         </p>
-        <button
-          type="button"
-          onClick={() => void toggleWorkspaceWatch()}
-          className={cn(
-            "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
-            watching
-              ? "border-[#deff9a]/40 bg-[#deff9a]/10 text-[#deff9a]"
-              : "border-white/10 text-zinc-400 hover:border-white/20 hover:text-white"
-          )}
-        >
-          {watching ? "Active workspace" : "Mark as active"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void toggleWorkspaceWatch()}
+            className={cn(
+              "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+              watching
+                ? "border-[#deff9a]/40 bg-[#deff9a]/10 text-[#deff9a]"
+                : "border-white/10 text-zinc-400 hover:border-white/20 hover:text-white"
+            )}
+          >
+            {watching ? "Active workspace" : "Mark as active"}
+          </button>
+          <button
+            type="button"
+            onClick={handleMoveToBin}
+            disabled={deleting}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/25 bg-red-500/[0.05] px-3 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/15 hover:text-red-300 disabled:opacity-50"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            {deleting ? "Moving…" : "Move to Bin"}
+          </button>
+        </div>
       </div>
 
       <div className="relative mt-6">

@@ -80,6 +80,8 @@ export type VenturePackRow = {
   analyze_json: AnalyzePack;
   blueprint_json: BlueprintPack;
   launch_json: LaunchPack;
+  is_deleted: boolean;
+  deleted_at: string | null;
   created_at: string;
 };
 
@@ -96,6 +98,8 @@ export type WorkspaceRow = {
   sales_score: number;
   is_active: boolean;
   niche_focus: string | null;
+  is_deleted: boolean;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -232,6 +236,8 @@ export type Database = {
           analyze_json?: AnalyzePack;
           blueprint_json?: BlueprintPack;
           launch_json?: LaunchPack;
+          is_deleted?: boolean;
+          deleted_at?: string | null;
           created_at?: string;
         };
         Update: Partial<Omit<VenturePackRow, "id" | "user_id">>;
@@ -252,6 +258,8 @@ export type Database = {
           sales_score?: number;
           is_active?: boolean;
           niche_focus?: string | null;
+          is_deleted?: boolean;
+          deleted_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -266,6 +274,8 @@ export type Database = {
           sales_score: number;
           is_active: boolean;
           niche_focus: string | null;
+          is_deleted: boolean;
+          deleted_at: string | null;
         }>;
         Relationships: [];
       };

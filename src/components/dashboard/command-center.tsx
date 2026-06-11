@@ -17,6 +17,7 @@ import { TrendingSection } from "@/components/dashboard/trending-section";
 import type { OpportunitiesDataSource } from "@/app/actions/opportunities";
 import type { PlatformNotification } from "@/app/actions/notifications";
 import { gateOpportunityExpansion } from "@/app/actions/usage";
+import { PlanSelectorModal } from "@/components/billing/plan-selector-modal";
 import { useUpgradeModal } from "@/components/billing/upgrade-modal";
 import { completeOnboardingProfile, updateProfileWorkspace } from "@/app/actions/profile";
 import { buildFeedViewModel } from "@/lib/dashboard/feed-utils";
@@ -43,7 +44,12 @@ import {
 } from "@/lib/dashboard/onboarding";
 import { Badge } from "@/components/ui/badge";
 
-type ExperiencePhase = "hydrating" | "onboarding" | "scanning" | "ready";
+type ExperiencePhase =
+  | "hydrating"
+  | "onboarding"
+  | "scanning"
+  | "plan-select"
+  | "ready";
 
 type CommandCenterProps = {
   initialOpportunities: Opportunity[];
@@ -325,7 +331,7 @@ export function CommandCenter({
       nicheFocus: draftNicheFocus,
       currentNiche: draftNiche,
     });
-    setPhase("ready");
+    setPhase("plan-select");
   }, [
     draftIdentity,
     draftGoal,
@@ -377,6 +383,7 @@ export function CommandCenter({
     const lockScroll =
       phase === "onboarding" ||
       phase === "scanning" ||
+      phase === "plan-select" ||
       Boolean(selectedOpportunity);
     document.body.style.overflow = lockScroll ? "hidden" : "";
     return () => {
@@ -413,6 +420,11 @@ export function CommandCenter({
           />
         )}
       </AnimatePresence>
+
+      <PlanSelectorModal
+        open={phase === "plan-select"}
+        onSelectFree={() => setPhase("ready")}
+      />
 
       <AnimatePresence>
         {phase === "scanning" && draftNicheLabel && (

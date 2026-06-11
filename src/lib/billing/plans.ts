@@ -29,7 +29,7 @@ export const BILLING_PLANS: BillingPlan[] = [
   {
     id: "pro",
     name: "Pro",
-    price: 49,
+    price: 19,
     period: "/month",
     description: "Build with the full engine. No limits, no waiting.",
     popular: true,
@@ -38,6 +38,7 @@ export const BILLING_PLANS: BillingPlan[] = [
       "Unlimited Generate Blueprint runs",
       "Deep Dive specs with cited market gaps",
       "Founder GPS progress engine",
+      "Unlimited projects + 30-day Trash recovery",
       "Unlimited AI Founder Chat",
       "Priority niche alerts to your inbox",
     ],

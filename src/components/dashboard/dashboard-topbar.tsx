@@ -199,7 +199,8 @@ export function DashboardTopbar({
         />
       </div>
 
-      <div className="flex shrink-0 items-center gap-2">
+      {/* Mobile owns this cluster in the sidebar header — avoid duplicates */}
+      <div className="hidden shrink-0 items-center gap-2 lg:flex">
         <UpgradeToPro compact />
         <NotificationHub initialNotifications={initialNotifications} />
         <UserAvatarMenu menu={menu} compact />

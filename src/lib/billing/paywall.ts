@@ -19,6 +19,32 @@ const PRO_FEATURE_COPY: Record<string, string> = {
   chat: "AI Founder Chat is a Pro feature. Upgrade for unlimited strategy sessions.",
 };
 
+/** True when the signed-in user has an active Pro subscription. */
+export async function isProUser(): Promise<boolean> {
+  if (!isSupabaseConfigured()) return true;
+
+  try {
+    const supabase = createServerSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return false;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("plan, subscription_status")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    return (
+      normalizePlanTier(profile?.plan) === "pro" &&
+      (profile?.subscription_status ?? "active") === "active"
+    );
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Server-side Pro gate. Reads the signed-in user's plan directly from
  * the database — never trusts client-provided plan values.

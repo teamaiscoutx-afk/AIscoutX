@@ -162,6 +162,7 @@ export async function getLatestVenturePack(): Promise<VenturePack | null> {
       .from("venture_packs")
       .select("*")
       .eq("user_id", user.id)
+      .eq("is_deleted", false)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
