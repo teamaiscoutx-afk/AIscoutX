@@ -82,15 +82,22 @@ function resolveActiveNiche(
 const SOURCE_LABEL: Record<OpportunitiesDataSource, string> = {
   live: "Live Web",
   cache: "Cached Signals",
-  unconfigured: "API Keys Needed",
+  curated: "Curated Feed",
+  unconfigured: "Setup Required",
 };
 
 function resolveFeedSourceLabel(
   source: OpportunitiesDataSource,
-  engineReady: boolean
+  engineReady: boolean,
+  hasOpportunities: boolean
 ): string {
-  if (!engineReady) return "API Keys Needed";
-  return SOURCE_LABEL[source === "unconfigured" ? "live" : source];
+  if (engineReady) {
+    return SOURCE_LABEL[source === "unconfigured" ? "live" : source];
+  }
+  if (hasOpportunities) {
+    return source === "live" ? "Live Web" : "Curated Feed";
+  }
+  return "Setup Required";
 }
 
 export function CommandCenter({
@@ -529,14 +536,21 @@ export function CommandCenter({
                     <span className="mr-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#deff9a]" />
                     {feedLoading
                       ? "Scanning Live Web…"
-                      : resolveFeedSourceLabel(feedSource, engineReady)}
+                      : resolveFeedSourceLabel(
+                          feedSource,
+                          engineReady,
+                          allOpportunities.length > 0
+                        )}
                   </Badge>
                 </div>
 
-                {feedStatus && !engineReady && (
+                {feedStatus && !engineReady && allOpportunities.length === 0 && (
                   <p className="mb-4 rounded-xl border border-amber-500/25 bg-amber-500/[0.08] px-4 py-3 text-xs text-amber-200/90">
                     {feedStatus}
                   </p>
+                )}
+                {feedStatus && !engineReady && allOpportunities.length > 0 && (
+                  <p className="mb-4 text-xs text-zinc-500">{feedStatus}</p>
                 )}
                 {feedStatus && engineReady && allOpportunities.length === 0 && (
                   <p className="mb-4 text-xs text-zinc-500">{feedStatus}</p>

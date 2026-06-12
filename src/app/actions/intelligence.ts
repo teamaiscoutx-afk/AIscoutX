@@ -7,7 +7,7 @@ import { requirePro } from "@/lib/billing/paywall";
 import { mapOpportunityRowToClient } from "@/lib/dashboard/opportunity-mapper";
 import type { Opportunity } from "@/lib/dashboard/opportunities";
 import type { NicheId, WorkspaceIdentity } from "@/lib/dashboard/onboarding";
-import { getIntelligenceEnvStatus, isIntelligenceEngineReady } from "@/lib/intelligence/env";
+import { getIntelligenceEnvStatus, isIntelligenceEngineReady, getIntelligenceSetupMessage } from "@/lib/intelligence/env";
 import { resolveDiscoverySeeds } from "@/lib/intelligence/niche-seeds";
 import {
   discoverOpportunityBatch,
@@ -39,19 +39,11 @@ export async function getIntelligenceStatus(): Promise<IntelligenceStatus> {
     };
   }
 
-  const missing: string[] = [];
-  if (!env.hasWebSearch) {
-    missing.push("TAVILY_API_KEY, SERPER_API_KEY, or PERPLEXITY_API_KEY");
-  }
-  if (!env.hasLlm) {
-    missing.push("OPENAI_API_KEY or ANTHROPIC_API_KEY");
-  }
-
   return {
     ready: false,
     webProvider: env.webProvider,
     llmProvider: env.llmProvider,
-    message: `Configure: ${missing.join(" and ")}. Restart dev server after updating .env.local.`,
+    message: getIntelligenceSetupMessage(),
   };
 }
 
@@ -83,7 +75,11 @@ export async function refreshLiveOpportunityFeed(
       opportunities = await upsertLiveOpportunities(drafts, workspace, niche);
     }
 
-    revalidatePath("/dashboard/discover");
+    try {
+      revalidatePath("/dashboard/discover");
+    } catch {
+      // revalidatePath requires a Next.js request context — safe to skip in scripts/tests.
+    }
     return { ok: true, opportunities };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Live refresh failed";

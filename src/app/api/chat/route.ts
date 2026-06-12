@@ -13,6 +13,7 @@ import { checkChatMessage, incrementChatMessage } from "@/app/actions/usage";
 import { CHAT_LIMIT_MESSAGE } from "@/lib/billing/tier-limits";
 import { HUMAN_COPY_SYSTEM_PROMPT } from "@/lib/intelligence/copy-engine";
 import { getLlmProvider } from "@/lib/intelligence/llm-router";
+import { readServerEnv } from "@/lib/env";
 import { logServerError } from "@/lib/server/safe-action";
 import {
   createServerSupabaseClient,
@@ -159,13 +160,9 @@ export async function POST(request: Request) {
     // Count the message up-front so the cap can't be bypassed by aborting the stream.
     await incrementChatMessage().catch(() => undefined);
 
-    // 🚨 FOOLPROOF WORKAROUND FOR STRIPE APPROVAL / PRE-REVENUE TESTING
-    // Check if real keys are available, if not or if we want to save balance, trigger Mock Stream
-    const hasOpenAiKey = !!process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.startsWith("sk-");
-    const hasAnthropicKey = !!process.env.ANTHROPIC_API_KEY;
     const provider = getLlmProvider();
 
-    if (!provider || (!hasOpenAiKey && !hasAnthropicKey)) {
+    if (!provider) {
       // Create a beautifully simulated streaming response that mimics the real AI SDK chunks
       const encoder = new TextEncoder();
       const customStream = new ReadableStream({
@@ -194,8 +191,8 @@ export async function POST(request: Request) {
 
     const model =
       provider === "openai"
-        ? openai(process.env.OPENAI_MODEL ?? "gpt-4o-mini")
-        : anthropic(process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-20250514");
+        ? openai(readServerEnv("OPENAI_MODEL") ?? "gpt-4o-mini")
+        : anthropic(readServerEnv("ANTHROPIC_MODEL") ?? "claude-sonnet-4-20250514");
 
     const result = streamText({
       model,
