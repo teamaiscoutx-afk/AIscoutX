@@ -7,6 +7,8 @@ import { mapOpportunityRowToClient } from "@/lib/dashboard/opportunity-mapper";
 import type { Opportunity } from "@/lib/dashboard/opportunities";
 import type { NicheId, WorkspaceIdentity } from "@/lib/dashboard/onboarding";
 import { getNicheLabel } from "@/lib/dashboard/onboarding";
+import { DISCOVERY_IDEA_TARGET } from "@/lib/intelligence/discovery-config";
+import { generateStructuredFallbackDrafts } from "@/lib/intelligence/discovery-fallback";
 import { getIntelligenceEnvStatus, isIntelligenceEngineReady, getIntelligenceSetupMessage } from "@/lib/intelligence/env";
 import { resolveDiscoverySeeds } from "@/lib/intelligence/niche-seeds";
 import {
@@ -17,7 +19,7 @@ import {
   liveDraftToOpportunity,
   upsertLiveOpportunities,
 } from "@/lib/intelligence/opportunity-persistence";
-import type { OpportunityDeepDive } from "@/lib/intelligence/types";
+import type { LiveOpportunityDraft, OpportunityDeepDive } from "@/lib/intelligence/types";
 import { createCatalogWriterClient } from "@/lib/server/supabase-writer";
 import { createServerSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
 
@@ -51,26 +53,82 @@ export async function refreshLiveOpportunityFeed(
   workspace: WorkspaceIdentity = "founder",
   niche: NicheId = "b2b-saas",
   extraSeeds: string[] = []
-): Promise<{ ok: boolean; opportunities: Opportunity[]; error?: string; saved?: boolean }> {
+): Promise<{
+  ok: boolean;
+  opportunities: Opportunity[];
+  error?: string;
+  saved?: boolean;
+  source?: "live" | "optimized" | "mixed";
+}> {
   try {
     const seeds = resolveDiscoverySeeds(workspace, niche, extraSeeds);
     const nicheLabel = getNicheLabel(workspace, niche);
-    const drafts = await discoverOpportunityBatch(seeds, {
-      workspace,
-      niche,
-      nicheLabel,
-      seedTokens: seeds,
-    });
 
-    if (!drafts.length) {
-      return { ok: false, opportunities: [], error: "No live signals returned." };
+    let liveDrafts: LiveOpportunityDraft[] = [];
+    let liveError: string | undefined;
+
+    if (isIntelligenceEngineReady()) {
+      try {
+        liveDrafts = await discoverOpportunityBatch(seeds, {
+          workspace,
+          niche,
+          nicheLabel,
+          seedTokens: seeds,
+        });
+      } catch (err) {
+        liveError = err instanceof Error ? err.message : "Live discovery failed";
+        console.error("[refreshLiveOpportunityFeed] live batch error", err);
+      }
+    } else {
+      liveError = getIntelligenceSetupMessage();
     }
 
-    let opportunities = drafts.map((d) => liveDraftToOpportunity(d, workspace, niche));
+    const liveNames = liveDrafts.map((d) => d.name);
+    const padCount = Math.max(0, DISCOVERY_IDEA_TARGET - liveDrafts.length);
+    const fallbackDrafts =
+      padCount > 0
+        ? generateStructuredFallbackDrafts(workspace, niche, padCount, liveNames)
+        : [];
+
+    const allDrafts = [...liveDrafts, ...fallbackDrafts].slice(0, DISCOVERY_IDEA_TARGET);
+
+    if (!allDrafts.length) {
+      return {
+        ok: false,
+        opportunities: [],
+        error:
+          liveError ??
+          "Live discovery failed for all niche seeds. Check Tavily and OpenAI keys, then restart the dev server.",
+      };
+    }
+
+    const source: "live" | "optimized" | "mixed" =
+      liveDrafts.length === 0
+        ? "optimized"
+        : fallbackDrafts.length > 0
+          ? "mixed"
+          : "live";
+
+    let opportunities = allDrafts.map((d) =>
+      liveDraftToOpportunity(
+        d,
+        workspace,
+        niche,
+        liveNames.includes(d.name) ? "live" : "optimized"
+      )
+    );
     let saved = false;
 
     if (isSupabaseConfigured()) {
-      opportunities = await upsertLiveOpportunities(drafts, workspace, niche);
+      const savedLive =
+        liveDrafts.length > 0
+          ? await upsertLiveOpportunities(liveDrafts, workspace, niche, "live")
+          : [];
+      const savedFallback =
+        fallbackDrafts.length > 0
+          ? await upsertLiveOpportunities(fallbackDrafts, workspace, niche, "optimized")
+          : [];
+      opportunities = [...savedLive, ...savedFallback].slice(0, DISCOVERY_IDEA_TARGET);
       saved = opportunities.length > 0;
     }
 
@@ -79,9 +137,31 @@ export async function refreshLiveOpportunityFeed(
     } catch {
       // revalidatePath requires a Next.js request context — safe to skip in scripts/tests.
     }
-    return { ok: true, opportunities, saved };
+
+    return { ok: true, opportunities, saved, source };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Live refresh failed";
+    console.error("[refreshLiveOpportunityFeed] unhandled", err);
+
+    try {
+      const fallbackDrafts = generateStructuredFallbackDrafts(
+        workspace,
+        niche,
+        DISCOVERY_IDEA_TARGET
+      );
+      const opportunities = fallbackDrafts.map((d) =>
+        liveDraftToOpportunity(d, workspace, niche, "optimized")
+      );
+      if (opportunities.length) {
+        if (isSupabaseConfigured()) {
+          await upsertLiveOpportunities(fallbackDrafts, workspace, niche, "optimized");
+        }
+        return { ok: true, opportunities, source: "optimized" };
+      }
+    } catch (fallbackErr) {
+      console.error("[refreshLiveOpportunityFeed] fallback failed", fallbackErr);
+    }
+
     return { ok: false, opportunities: [], error: message };
   }
 }
@@ -202,6 +282,7 @@ export async function loadCachedOpportunities(
     } | null;
     return (
       modeData?.catalogSource === "live" ||
+      modeData?.catalogSource === "optimized" ||
       Boolean(modeData?.liveSynthesizedAt)
     );
   });

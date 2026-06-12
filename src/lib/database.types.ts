@@ -43,7 +43,7 @@ export type OpportunityModeData = {
   disruption?: number;
   liveSynthesizedAt?: string;
   /** Distinguishes Tavily/OpenAI rows from legacy seed catalog entries. */
-  catalogSource?: "live" | "seed";
+  catalogSource?: "live" | "seed" | "optimized";
   /** Nested score block persisted for 10-idea live cards (snake/camel tolerant reads). */
   scores?: {
     demand?: number;

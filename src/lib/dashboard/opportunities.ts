@@ -45,7 +45,7 @@ export type Opportunity = {
   /** Set when loaded from Supabase for workspace/niche filtering */
   workspace?: import("@/lib/dashboard/onboarding").WorkspaceIdentity;
   niche?: import("@/lib/dashboard/onboarding").NicheId;
-  catalogSource?: "live" | "seed";
+  catalogSource?: "live" | "seed" | "optimized";
 };
 
 export const OPPORTUNITY_OF_THE_DAY_ID = "4";

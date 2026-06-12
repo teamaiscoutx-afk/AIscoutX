@@ -1,8 +1,15 @@
 import { buildEvidencePromptBlock } from "@/lib/intelligence/copy-engine";
 import { synthesizeJson } from "@/lib/intelligence/llm-router";
 import { computeMetrics, computeScores } from "@/lib/intelligence/score-engine";
-import { DISCOVERY_CONCURRENCY, DISCOVERY_IDEA_TARGET } from "@/lib/intelligence/discovery-config";
-import { runInChunks } from "@/lib/intelligence/run-in-chunks";
+import {
+  DISCOVERY_BATCH_BUDGET_MS,
+  DISCOVERY_BATCH_DELAY_MS,
+  DISCOVERY_CONCURRENCY,
+  DISCOVERY_IDEA_TARGET,
+  DISCOVERY_LIVE_SEED_CAP,
+  DISCOVERY_SEED_TIMEOUT_MS,
+} from "@/lib/intelligence/discovery-config";
+import { runInChunks, withTimeout } from "@/lib/intelligence/run-in-chunks";
 import {
   flattenSnippets,
   isWebSearchConfigured,
@@ -193,32 +200,53 @@ export async function discoverOpportunityBatch(
 ): Promise<LiveOpportunityDraft[]> {
   const unique = Array.from(new Set(seeds.map((s) => s.trim()).filter(Boolean))).slice(
     0,
-    DISCOVERY_IDEA_TARGET
+    DISCOVERY_LIVE_SEED_CAP
   );
 
-  const results = await runInChunks(unique, DISCOVERY_CONCURRENCY, async (seed) => {
-    try {
-      return await discoverLiveOpportunity(seed, context);
-    } catch (err) {
-      console.error(`[discoverLiveOpportunity] seed="${seed}"`, err);
-      return null;
-    }
-  });
+  if (!unique.length) return [];
 
-  const deduped: LiveOpportunityDraft[] = [];
-  const seen = new Set<string>();
-  for (const draft of results) {
-    const key = draft.name.trim().toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    deduped.push(draft);
-  }
-
-  if (!deduped.length && unique.length) {
-    throw new Error(
-      "Live discovery failed for all niche seeds. Check Tavily and OpenAI keys, then restart the dev server."
+  try {
+    const results = await runInChunks(
+      unique,
+      DISCOVERY_CONCURRENCY,
+      async (seed) => {
+        try {
+          const draft = await withTimeout(
+            discoverLiveOpportunity(seed, context).catch((err) => {
+              console.error(`[discoverLiveOpportunity] seed="${seed}"`, err);
+              return null;
+            }),
+            DISCOVERY_SEED_TIMEOUT_MS,
+            null as LiveOpportunityDraft | null
+          );
+          if (!draft) {
+            console.warn(`[discoverLiveOpportunity] seed="${seed}" timed out or failed`);
+          }
+          return draft;
+        } catch (err) {
+          console.error(`[discoverLiveOpportunity] seed="${seed}"`, err);
+          return null;
+        }
+      },
+      {
+        delayBetweenBatchesMs: DISCOVERY_BATCH_DELAY_MS,
+        budgetMs: DISCOVERY_BATCH_BUDGET_MS,
+      }
     );
-  }
 
-  return deduped.slice(0, DISCOVERY_IDEA_TARGET);
+    const deduped: LiveOpportunityDraft[] = [];
+    const seen = new Set<string>();
+    for (const draft of results) {
+      if (!draft) continue;
+      const key = draft.name.trim().toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(draft);
+    }
+
+    return deduped.slice(0, DISCOVERY_IDEA_TARGET);
+  } catch (err) {
+    console.error("[discoverOpportunityBatch] live batch failed", err);
+    return [];
+  }
 }

@@ -9,7 +9,8 @@ import { createCatalogWriterClient } from "@/lib/server/supabase-writer";
 export function liveDraftToOpportunity(
   draft: LiveOpportunityDraft,
   workspace?: WorkspaceIdentity,
-  niche?: NicheId
+  niche?: NicheId,
+  catalogSource: "live" | "optimized" = "live"
 ): Opportunity {
   const modeData: OpportunityModeData = {
     aiConfidence: draft.scores.aiConfidence,
@@ -25,11 +26,11 @@ export function liveDraftToOpportunity(
     deepDive: draft.deepDive,
     disruption: draft.scores.scores.disruption,
     liveSynthesizedAt: draft.deepDive.synthesizedAt,
-    catalogSource: "live",
+    catalogSource,
   };
 
   return {
-    id: `live-${draft.name.toLowerCase().replace(/\s+/g, "-").slice(0, 40)}-${Date.now()}`,
+    id: `${catalogSource}-${draft.name.toLowerCase().replace(/\s+/g, "-").slice(0, 40)}-${Date.now()}`,
     name: draft.name,
     category: draft.category,
     score: draft.scores.overallScore,
@@ -58,7 +59,7 @@ export function liveDraftToOpportunity(
     deepDive: draft.deepDive,
     workspace,
     niche,
-    catalogSource: "live",
+    catalogSource,
   };
 }
 
@@ -69,15 +70,16 @@ export function liveDraftToOpportunity(
 export async function upsertLiveOpportunities(
   drafts: LiveOpportunityDraft[],
   workspace?: WorkspaceIdentity,
-  niche?: NicheId
+  niche?: NicheId,
+  catalogSource: "live" | "optimized" = "live"
 ): Promise<Opportunity[]> {
   const supabase = createCatalogWriterClient();
   if (!supabase) {
-    return drafts.map((d) => liveDraftToOpportunity(d, workspace, niche));
+    return drafts.map((d) => liveDraftToOpportunity(d, workspace, niche, catalogSource));
   }
 
   const opportunities = drafts.map((d) =>
-    liveDraftToOpportunity(d, workspace, niche)
+    liveDraftToOpportunity(d, workspace, niche, catalogSource)
   );
 
   for (const opp of opportunities) {

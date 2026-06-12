@@ -11,16 +11,19 @@ import { buildFeedViewModel } from "@/lib/dashboard/feed-utils";
 import { mapOpportunityRowToClient } from "@/lib/dashboard/opportunity-mapper";
 import type { NicheId, WorkspaceIdentity } from "@/lib/dashboard/onboarding";
 import type { Opportunity } from "@/lib/dashboard/opportunities";
+import { DISCOVERY_IDEA_TARGET } from "@/lib/intelligence/discovery-config";
+import { generateStructuredFallbackDrafts } from "@/lib/intelligence/discovery-fallback";
 import {
   getIntelligenceSetupMessage,
   isIntelligenceEngineReady,
 } from "@/lib/intelligence/env";
+import { liveDraftToOpportunity } from "@/lib/intelligence/opportunity-persistence";
 import {
   createServerSupabaseClient,
   isSupabaseConfigured,
 } from "@/lib/supabase";
 
-export type OpportunitiesDataSource = "live" | "cache" | "unconfigured";
+export type OpportunitiesDataSource = "live" | "cache" | "optimized" | "unconfigured";
 
 export type FetchAllOpportunitiesResult = {
   opportunities: Opportunity[];
@@ -45,7 +48,7 @@ export async function loadNicheDiscoverCache(
   return loadCachedOpportunities(workspace, niche);
 }
 
-/** Client + server discover refresh — always hits the live Tavily/OpenAI pipeline. */
+/** Client + server discover refresh — live scan with structured fallback padding. */
 export async function refreshDiscoverFeed(
   workspace: WorkspaceIdentity = "founder",
   niche: NicheId = "b2b-saas",
@@ -57,27 +60,56 @@ export async function refreshDiscoverFeed(
 
   if (!isIntelligenceEngineReady()) {
     const cached = await loadCachedOpportunities(workspace, niche);
+    if (cached.length) {
+      return { opportunities: cached, source: "cache" };
+    }
+
+    const fallbackDrafts = generateStructuredFallbackDrafts(
+      workspace,
+      niche,
+      DISCOVERY_IDEA_TARGET
+    );
+    const opportunities = fallbackDrafts.map((d) =>
+      liveDraftToOpportunity(d, workspace, niche, "optimized")
+    );
+    if (opportunities.length) {
+      return { opportunities, source: "optimized" };
+    }
+
     return {
-      opportunities: cached,
-      source: cached.length ? "cache" : "unconfigured",
-      statusMessage: cached.length ? undefined : getIntelligenceSetupMessage(),
+      opportunities: [],
+      source: "unconfigured",
+      statusMessage: getIntelligenceSetupMessage(),
     };
   }
 
   const live = await refreshLiveOpportunityFeed(workspace, niche, extraSeeds);
 
-  if (live.ok && live.opportunities.length) {
-    return { opportunities: live.opportunities, source: "live" };
+  if (live.opportunities.length > 0) {
+    const source: OpportunitiesDataSource =
+      live.source === "optimized"
+        ? "optimized"
+        : live.source === "mixed"
+          ? "live"
+          : "live";
+    return { opportunities: live.opportunities, source };
   }
 
   const cached = await loadCachedOpportunities(workspace, niche);
   if (cached.length) {
-    return {
-      opportunities: cached,
-      source: "cache",
-      statusMessage:
-        live.error ?? "Showing your last live signals while the web scan completes.",
-    };
+    return { opportunities: cached, source: "cache" };
+  }
+
+  const fallbackDrafts = generateStructuredFallbackDrafts(
+    workspace,
+    niche,
+    DISCOVERY_IDEA_TARGET
+  );
+  const opportunities = fallbackDrafts.map((d) =>
+    liveDraftToOpportunity(d, workspace, niche, "optimized")
+  );
+  if (opportunities.length) {
+    return { opportunities, source: "optimized" };
   }
 
   return {
@@ -85,7 +117,7 @@ export async function refreshDiscoverFeed(
     source: "live",
     statusMessage:
       live.error ??
-      "Live scan in progress — results usually appear in under a minute.",
+      "Live discovery failed for all niche seeds. Check Tavily and OpenAI keys, then restart the dev server.",
   };
 }
 
