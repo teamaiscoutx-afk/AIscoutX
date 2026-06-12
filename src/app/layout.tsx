@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Urbanist } from "next/font/google";
 
+import { AppProviders } from "@/components/providers/app-providers";
+
 import "./globals.css";
 
 const urbanist = Urbanist({
@@ -26,6 +28,7 @@ export default function RootLayout({
       <body
         className={`${urbanist.variable} min-h-screen bg-[#030308] font-sans antialiased`}
       >
+      <AppProviders>
         <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-[#030308]">
           <div
             aria-hidden
@@ -57,6 +60,7 @@ export default function RootLayout({
           />
           {children}
         </div>
+      </AppProviders>
       </body>
     </html>
   );

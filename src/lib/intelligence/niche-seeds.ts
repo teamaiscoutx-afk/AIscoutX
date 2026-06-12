@@ -1,5 +1,6 @@
 import type { NicheId, WorkspaceIdentity } from "@/lib/dashboard/onboarding";
 import { getNicheLabel } from "@/lib/dashboard/onboarding";
+import { DISCOVERY_IDEA_TARGET } from "@/lib/intelligence/discovery-config";
 
 const WORKSPACE_CONTEXT: Record<WorkspaceIdentity, string> = {
   founder: "startup founder building a venture",
@@ -80,10 +81,20 @@ export function resolveDiscoverySeeds(
   ];
 
   const seeds = [
-    `${label} opportunities for ${persona} 2025`,
+    `${label} top SaaS opportunities for ${persona} 2025`,
+    `${label} high demand startup ideas ${persona}`,
+    `${label} underserved market gaps reddit ${persona}`,
+    `${label} profitable micro SaaS ideas ${persona}`,
+    `${label} workflow automation pain points ${persona}`,
+    `${label} AI business ideas low competition ${persona}`,
+    `${label} recurring revenue software opportunities ${persona}`,
+    `${label} trending niche opportunities product hunt ${persona}`,
     ...mapped.map((query) => `${query} ${persona}`),
     ...extraTokens,
   ];
 
-  return Array.from(new Set(seeds.map((s) => s.trim()).filter(Boolean))).slice(0, 4);
+  return Array.from(new Set(seeds.map((s) => s.trim()).filter(Boolean))).slice(
+    0,
+    DISCOVERY_IDEA_TARGET
+  );
 }

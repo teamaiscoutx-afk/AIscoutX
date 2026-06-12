@@ -21,6 +21,10 @@ export function getClientSupabaseEnv(): PublicSupabaseConfig | null {
   return { url, anonKey };
 }
 
+/**
+ * Browser Supabase client — @supabase/ssr persists session in cookies
+ * so new tabs and server middleware share auth state.
+ */
 export function createBrowserSupabaseClient(
   config?: PublicSupabaseConfig | null
 ) {
@@ -31,7 +35,13 @@ export function createBrowserSupabaseClient(
     );
   }
 
-  return createBrowserClient<Database>(env.url, env.anonKey);
+  return createBrowserClient<Database>(env.url, env.anonKey, {
+    cookieOptions: {
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+    },
+  });
 }
 
 export function tryCreateBrowserSupabaseClient(

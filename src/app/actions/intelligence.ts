@@ -51,7 +51,7 @@ export async function refreshLiveOpportunityFeed(
   workspace: WorkspaceIdentity = "founder",
   niche: NicheId = "b2b-saas",
   extraSeeds: string[] = []
-): Promise<{ ok: boolean; opportunities: Opportunity[]; error?: string }> {
+): Promise<{ ok: boolean; opportunities: Opportunity[]; error?: string; saved?: boolean }> {
   try {
     const seeds = resolveDiscoverySeeds(workspace, niche, extraSeeds);
     const nicheLabel = getNicheLabel(workspace, niche);
@@ -67,9 +67,11 @@ export async function refreshLiveOpportunityFeed(
     }
 
     let opportunities = drafts.map((d) => liveDraftToOpportunity(d, workspace, niche));
+    let saved = false;
 
     if (isSupabaseConfigured()) {
       opportunities = await upsertLiveOpportunities(drafts, workspace, niche);
+      saved = opportunities.length > 0;
     }
 
     try {
@@ -77,7 +79,7 @@ export async function refreshLiveOpportunityFeed(
     } catch {
       // revalidatePath requires a Next.js request context — safe to skip in scripts/tests.
     }
-    return { ok: true, opportunities };
+    return { ok: true, opportunities, saved };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Live refresh failed";
     return { ok: false, opportunities: [], error: message };
@@ -182,7 +184,7 @@ export async function loadCachedOpportunities(
     .neq("category", "venture-pack")
     .eq("is_deleted", false)
     .order("score", { ascending: false })
-    .limit(20);
+    .limit(10);
 
   if (workspace) {
     query = query.eq("workspace_mode", workspace);

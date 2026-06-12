@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { ensureUserProfile } from "@/lib/auth/ensure-profile";
@@ -122,7 +123,8 @@ export async function signInWithEmail(
     return { error: profileResult.error ?? "Could not sync profile." };
   }
 
-  return { authenticated: true, redirectTo: parsed.redirectTo };
+  revalidatePath("/dashboard");
+  redirect(parsed.redirectTo);
 }
 
 /** Register new users only — never attempts sign-in. */
@@ -157,7 +159,8 @@ export async function signUpWithEmail(
   }
 
   if (data.session && data.user) {
-    return { authenticated: true, redirectTo: parsed.redirectTo };
+    revalidatePath("/dashboard");
+    redirect(parsed.redirectTo);
   }
 
   return {
@@ -208,5 +211,6 @@ export async function signOut(): Promise<void> {
 
   const supabase = createServerSupabaseClient();
   await supabase.auth.signOut();
+  revalidatePath("/dashboard");
   redirect("/");
 }

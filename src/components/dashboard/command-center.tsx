@@ -2,18 +2,19 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import nextDynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import { Zap } from "lucide-react";
 
 import { BuildInput } from "@/components/mvp/build-input";
 import { DashboardTopbar } from "@/components/dashboard/dashboard-topbar";
-import { IntelligenceScanner } from "@/components/dashboard/intelligence-scanner";
+import { LiveScanModal } from "@/components/dashboard/live-scan-modal";
 import { NicheSwitcher } from "@/components/dashboard/niche-switcher";
 import { OnboardingModal } from "@/components/dashboard/onboarding-modal";
 import { OpportunitiesFeed } from "@/components/dashboard/opportunities-feed";
-import { OpportunityDrawer } from "@/components/dashboard/opportunity-drawer";
 import { OpportunityOfDay } from "@/components/dashboard/opportunity-of-day";
 import { TrendingSection } from "@/components/dashboard/trending-section";
+import { useLoading } from "@/components/providers/loading-provider";
 import type { OpportunitiesDataSource } from "@/app/actions/opportunities";
 import type { PlatformNotification } from "@/app/actions/notifications";
 import {
@@ -33,6 +34,7 @@ import {
   getDefaultNicheForIdentity,
   getNicheLabel,
   getNichesForIdentity,
+  IDENTITY_OPTIONS,
   loadNicheByWorkspace,
   loadOnboardingProfile,
   saveNicheByWorkspace,
@@ -45,6 +47,14 @@ import {
   type WorkspaceIdentity,
 } from "@/lib/dashboard/onboarding";
 import { Badge } from "@/components/ui/badge";
+
+const OpportunityDrawer = nextDynamic(
+  () =>
+    import("@/components/dashboard/opportunity-drawer").then(
+      (mod) => mod.OpportunityDrawer
+    ),
+  { ssr: false }
+);
 
 type ExperiencePhase =
   | "hydrating"
@@ -95,6 +105,7 @@ export function CommandCenter({
   initialWorkspace,
   initialNiche,
 }: CommandCenterProps) {
+  const { startLoading, stopLoading } = useLoading();
   const [phase, setPhase] = useState<ExperiencePhase>("hydrating");
   const [, setProfile] = useState<UserOnboardingProfile | null>(null);
   const [allOpportunities, setAllOpportunities] =
@@ -104,6 +115,7 @@ export function CommandCenter({
   const [feedLoading, setFeedLoading] = useState(false);
   const [feedError, setFeedError] = useState<string | undefined>();
   const feedRequestRef = useRef(0);
+  const onboardingScanRef = useRef(false);
 
   const [draftIdentity, setDraftIdentity] = useState<WorkspaceIdentity | null>(
     null
@@ -143,6 +155,17 @@ export function CommandCenter({
 
   const activeNiche = activeNicheEntry.id;
   const activeNicheLabel = activeNicheEntry.label;
+  const activeWorkspaceLabel =
+    IDENTITY_OPTIONS.find((item) => item.id === activeWorkspace)?.label ??
+    activeWorkspace;
+
+  const liveScanOpen = feedLoading || phase === "scanning";
+  const liveScanNicheLabel =
+    phase === "scanning" && draftNicheLabel ? draftNicheLabel : activeNicheLabel;
+  const liveScanWorkspaceLabel =
+    phase === "scanning" && draftIdentity
+      ? IDENTITY_OPTIONS.find((item) => item.id === draftIdentity)?.label
+      : activeWorkspaceLabel;
 
   const runDiscoverRefresh = useCallback(
     (search?: string, workspace = activeWorkspace, niche = activeNiche) => {
@@ -150,6 +173,11 @@ export function CommandCenter({
 
       setFeedLoading(true);
       setFeedError(undefined);
+      startLoading(
+        search
+          ? "Searching live web for matching opportunities…"
+          : "Scanning live opportunities for your niche…"
+      );
 
       if (!search) {
         void loadNicheDiscoverCache(workspace, niche).then((cached) => {
@@ -177,10 +205,11 @@ export function CommandCenter({
       ).finally(() => {
         if (feedRequestRef.current === requestId) {
           setFeedLoading(false);
+          stopLoading();
         }
       });
     },
-    [activeWorkspace, activeNiche]
+    [activeWorkspace, activeNiche, startLoading, stopLoading]
   );
 
   const handleSearchSubmit = useCallback(
@@ -441,6 +470,28 @@ export function CommandCenter({
     ]
   );
 
+  // Onboarding: run a real live scan before entering the dashboard.
+  useEffect(() => {
+    if (phase !== "scanning" || !draftIdentity || !draftNiche || !draftNicheLabel) {
+      if (phase !== "scanning") onboardingScanRef.current = false;
+      return;
+    }
+
+    if (onboardingScanRef.current) return;
+    onboardingScanRef.current = true;
+
+    let cancelled = false;
+
+    void runDiscoverRefresh(undefined, draftIdentity, draftNiche).then(() => {
+      if (cancelled) return;
+      handleScanComplete();
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [phase, draftIdentity, draftNiche, draftNicheLabel, runDiscoverRefresh, handleScanComplete]);
+
   // Refresh live niche feed when workspace/niche changes.
   useEffect(() => {
     if (phase !== "ready") return;
@@ -503,15 +554,16 @@ export function CommandCenter({
         onSelectFree={() => setPhase("ready")}
       />
 
-      <AnimatePresence>
-        {phase === "scanning" && draftNicheLabel && (
-          <IntelligenceScanner
-            key="scanner"
-            nicheLabel={draftNicheLabel}
-            onComplete={handleScanComplete}
-          />
-        )}
-      </AnimatePresence>
+      <LiveScanModal
+        open={liveScanOpen}
+        nicheLabel={liveScanNicheLabel}
+        workspaceLabel={liveScanWorkspaceLabel}
+        progressHint={
+          feedLoading
+            ? "Fetching and saving up to 10 live opportunities to your intelligence DB…"
+            : undefined
+        }
+      />
 
       {phase !== "hydrating" && (
         <DashboardTopbar

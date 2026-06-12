@@ -49,6 +49,13 @@
     scrollbar-color: hsl(var(--muted-foreground) / 0.2) transparent;
   }
 
+  body[data-global-loading="true"] button:not([data-loading-exempt]),
+  body[data-global-loading="true"] [role="tab"],
+  body[data-global-loading="true"] input[type="submit"] {
+    pointer-events: none;
+    opacity: 0.65;
+  }
+
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
     height: 6px;

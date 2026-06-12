@@ -6,6 +6,8 @@ import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
 import { UserMenuProvider } from "@/components/layout/user-menu-provider";
 import { getUserMenuContext } from "@/lib/auth/user-menu";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Dashboard — AIscoutX",
   description: "Your AI Founder Operating System.",

@@ -1,7 +1,21 @@
+import nextDynamic from "next/dynamic";
+
 import { ProLockScreen } from "@/components/billing/pro-lock-screen";
-import { FounderGpsPage } from "@/components/founder/founder-gps-page";
 import { requirePro } from "@/lib/billing/paywall";
 import { loadPhaseData } from "@/lib/founder/load-phase-data";
+
+const FounderGpsPage = nextDynamic(
+  () =>
+    import("@/components/founder/founder-gps-page").then((mod) => mod.FounderGpsPage),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex flex-1 items-center justify-center p-8 text-sm text-zinc-500">
+        Loading Founder GPS…
+      </div>
+    ),
+  }
+);
 
 export const dynamic = "force-dynamic";
 

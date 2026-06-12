@@ -1,11 +1,8 @@
 import { buildEvidencePromptBlock } from "@/lib/intelligence/copy-engine";
 import { synthesizeJson } from "@/lib/intelligence/llm-router";
 import { computeMetrics, computeScores } from "@/lib/intelligence/score-engine";
-import type {
-  DiscoveryContext,
-  LiveOpportunityDraft,
-  OpportunityDeepDive,
-} from "@/lib/intelligence/types";
+import { DISCOVERY_CONCURRENCY, DISCOVERY_IDEA_TARGET } from "@/lib/intelligence/discovery-config";
+import { runInChunks } from "@/lib/intelligence/run-in-chunks";
 import {
   flattenSnippets,
   isWebSearchConfigured,
@@ -13,6 +10,11 @@ import {
 } from "@/lib/intelligence/web-search";
 import type { ModeIntelligence } from "@/lib/dashboard/workspace";
 import { getIntelligenceConfig } from "@/lib/intelligence/config";
+import type {
+  DiscoveryContext,
+  LiveOpportunityDraft,
+  OpportunityDeepDive,
+} from "@/lib/intelligence/types";
 
 type LlmOpportunityCard = {
   name: string;
@@ -41,7 +43,9 @@ type LlmOpportunityCard = {
   };
 };
 
-const OPPORTUNITY_TASK = `From the web evidence and computed metrics, produce ONE startup opportunity card as JSON:
+const OPPORTUNITY_TASK = `From the web evidence and computed metrics, produce ONE startup opportunity card as JSON.
+CRITICAL: Use the computed demand/competition/disruption metrics provided — do NOT invent round placeholder numbers.
+Each card must reflect the specific seed query and evidence snippets (unique name, category, keywords).
 {
   "name": "short product category name",
   "category": "market segment",
@@ -189,27 +193,32 @@ export async function discoverOpportunityBatch(
 ): Promise<LiveOpportunityDraft[]> {
   const unique = Array.from(new Set(seeds.map((s) => s.trim()).filter(Boolean))).slice(
     0,
-    3
+    DISCOVERY_IDEA_TARGET
   );
 
-  const settled = await Promise.all(
-    unique.map(async (seed) => {
-      try {
-        return await discoverLiveOpportunity(seed, context);
-      } catch (err) {
-        console.error(`[discoverLiveOpportunity] seed="${seed}"`, err);
-        return null;
-      }
-    })
-  );
+  const results = await runInChunks(unique, DISCOVERY_CONCURRENCY, async (seed) => {
+    try {
+      return await discoverLiveOpportunity(seed, context);
+    } catch (err) {
+      console.error(`[discoverLiveOpportunity] seed="${seed}"`, err);
+      return null;
+    }
+  });
 
-  const results = settled.filter((d): d is LiveOpportunityDraft => d !== null);
+  const deduped: LiveOpportunityDraft[] = [];
+  const seen = new Set<string>();
+  for (const draft of results) {
+    const key = draft.name.trim().toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(draft);
+  }
 
-  if (!results.length && unique.length) {
+  if (!deduped.length && unique.length) {
     throw new Error(
       "Live discovery failed for all niche seeds. Check Tavily and OpenAI keys, then restart the dev server."
     );
   }
 
-  return results;
+  return deduped.slice(0, DISCOVERY_IDEA_TARGET);
 }

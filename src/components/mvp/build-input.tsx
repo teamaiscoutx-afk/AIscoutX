@@ -6,6 +6,7 @@ import { Loader2, Rocket, Sparkles } from "lucide-react";
 
 import { generateVenturePack } from "@/app/actions/generation";
 import { useUpgradeModal } from "@/components/billing/upgrade-modal";
+import { useLoading } from "@/components/providers/loading-provider";
 import {
   incrementLocalBlueprintCount,
   saveVenturePackLocal,
@@ -16,6 +17,7 @@ import { Input } from "@/components/ui/input";
 export function BuildInput() {
   const router = useRouter();
   const { openUpgradeModal } = useUpgradeModal();
+  const { trackPromise } = useLoading();
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -25,7 +27,10 @@ export function BuildInput() {
     setError(null);
 
     startTransition(async () => {
-      const result = await generateVenturePack(query);
+      const result = await trackPromise(
+        generateVenturePack(query),
+        "Generating your 10-minute blueprint…"
+      );
       if (!result.ok || !result.pack) {
         if (result.code === "UPGRADE_REQUIRED") {
           openUpgradeModal(result.error);

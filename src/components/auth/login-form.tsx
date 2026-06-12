@@ -1,11 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useFormState, useFormStatus } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Sparkles } from "lucide-react";
-import Link from "next/link";
 
 import {
   signInWithEmail,
@@ -70,7 +69,6 @@ export function LoginForm({
   supabaseUrl,
   supabaseAnonKey,
 }: LoginFormProps) {
-  const router = useRouter();
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [signInState, signInAction] = useFormState(signInWithEmail, initialState);
   const [signUpState, signUpAction] = useFormState(signUpWithEmail, initialState);
@@ -93,17 +91,6 @@ export function LoginForm({
   useEffect(() => {
     setMode(initialMode);
   }, [initialMode]);
-
-  useEffect(() => {
-    if (state.authenticated) {
-      const target =
-        state.redirectTo?.startsWith("/") && !state.redirectTo.startsWith("//")
-          ? state.redirectTo
-          : "/dashboard";
-      router.push(target);
-      router.refresh();
-    }
-  }, [state.authenticated, state.redirectTo, router]);
 
   const handleGoogleSignIn = useCallback(async () => {
     setGoogleError(null);
