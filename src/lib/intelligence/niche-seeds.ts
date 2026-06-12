@@ -1,6 +1,13 @@
 import type { NicheId, WorkspaceIdentity } from "@/lib/dashboard/onboarding";
 import { getNicheLabel } from "@/lib/dashboard/onboarding";
 
+const WORKSPACE_CONTEXT: Record<WorkspaceIdentity, string> = {
+  founder: "startup founder building a venture",
+  creator: "content creator growing an audience",
+  agency: "service agency winning clients",
+  solopreneur: "solopreneur building digital income",
+};
+
 const NICHE_QUERY_MAP: Record<NicheId, string[]> = {
   "b2b-saas": [
     "B2B workflow automation SaaS startup opportunity",
@@ -66,14 +73,15 @@ export function resolveDiscoverySeeds(
   extraTokens: string[] = []
 ): string[] {
   const label = getNicheLabel(workspace, niche);
+  const persona = WORKSPACE_CONTEXT[workspace];
   const mapped = NICHE_QUERY_MAP[niche] ?? [
-    `${label} startup opportunity`,
-    `${label} SaaS pain points reddit`,
+    `${label} ${persona} startup opportunity`,
+    `${label} pain points reddit ${persona}`,
   ];
 
   const seeds = [
-    `${label} startup opportunities 2025`,
-    ...mapped,
+    `${label} opportunities for ${persona} 2025`,
+    ...mapped.map((query) => `${query} ${persona}`),
     ...extraTokens,
   ];
 

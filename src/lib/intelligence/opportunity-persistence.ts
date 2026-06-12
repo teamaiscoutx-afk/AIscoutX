@@ -82,11 +82,16 @@ export async function upsertLiveOpportunities(
 
   for (const opp of opportunities) {
     const row = mapOpportunityToInsertRow(opp);
+    const workspaceMode = workspace ?? "founder";
+    const currentNiche = niche ?? "b2b-saas";
+
     const { data: existing, error: lookupError } = await supabase
       .from("opportunities")
       .select("id")
       .eq("title", opp.name)
       .eq("category", opp.category)
+      .eq("workspace_mode", workspaceMode)
+      .eq("current_niche", currentNiche)
       .maybeSingle();
 
     if (lookupError) {

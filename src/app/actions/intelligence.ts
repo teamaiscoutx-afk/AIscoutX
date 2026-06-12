@@ -6,6 +6,7 @@ import { getCurrentProfile } from "@/app/actions/profile";
 import { mapOpportunityRowToClient } from "@/lib/dashboard/opportunity-mapper";
 import type { Opportunity } from "@/lib/dashboard/opportunities";
 import type { NicheId, WorkspaceIdentity } from "@/lib/dashboard/onboarding";
+import { getNicheLabel } from "@/lib/dashboard/onboarding";
 import { getIntelligenceEnvStatus, isIntelligenceEngineReady, getIntelligenceSetupMessage } from "@/lib/intelligence/env";
 import { resolveDiscoverySeeds } from "@/lib/intelligence/niche-seeds";
 import {
@@ -53,9 +54,11 @@ export async function refreshLiveOpportunityFeed(
 ): Promise<{ ok: boolean; opportunities: Opportunity[]; error?: string }> {
   try {
     const seeds = resolveDiscoverySeeds(workspace, niche, extraSeeds);
+    const nicheLabel = getNicheLabel(workspace, niche);
     const drafts = await discoverOpportunityBatch(seeds, {
       workspace,
       niche,
+      nicheLabel,
       seedTokens: seeds,
     });
 
@@ -173,13 +176,22 @@ export async function loadCachedOpportunities(
   if (!isSupabaseConfigured()) return [];
 
   const supabase = createServerSupabaseClient();
-  const { data } = await supabase
+  let query = supabase
     .from("opportunities")
     .select("*")
     .neq("category", "venture-pack")
     .eq("is_deleted", false)
     .order("score", { ascending: false })
-    .limit(40);
+    .limit(20);
+
+  if (workspace) {
+    query = query.eq("workspace_mode", workspace);
+  }
+  if (niche) {
+    query = query.eq("current_niche", niche);
+  }
+
+  const { data } = await query;
 
   const liveRows = (data ?? []).filter((row) => {
     const modeData = row.mode_data as {
@@ -192,17 +204,5 @@ export async function loadCachedOpportunities(
     );
   });
 
-  let scoped = liveRows;
-  if (workspace && niche) {
-    const nicheScoped = liveRows.filter(
-      (row) =>
-        (!row.workspace_mode || row.workspace_mode === workspace) &&
-        (!row.current_niche || row.current_niche === niche)
-    );
-    if (nicheScoped.length > 0) {
-      scoped = nicheScoped;
-    }
-  }
-
-  return scoped.slice(0, 20).map(mapOpportunityRowToClient);
+  return liveRows.map(mapOpportunityRowToClient);
 }

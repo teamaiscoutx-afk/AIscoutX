@@ -37,6 +37,14 @@ export type DashboardFeedPayload = {
   statusMessage?: string;
 };
 
+/** Fast niche-scoped cache read for instant UI while live scan runs. */
+export async function loadNicheDiscoverCache(
+  workspace: WorkspaceIdentity,
+  niche: NicheId
+): Promise<Opportunity[]> {
+  return loadCachedOpportunities(workspace, niche);
+}
+
 /** Client + server discover refresh — always hits the live Tavily/OpenAI pipeline. */
 export async function refreshDiscoverFeed(
   workspace: WorkspaceIdentity = "founder",

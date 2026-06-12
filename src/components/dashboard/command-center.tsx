@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { Zap } from "lucide-react";
@@ -16,7 +16,10 @@ import { OpportunityOfDay } from "@/components/dashboard/opportunity-of-day";
 import { TrendingSection } from "@/components/dashboard/trending-section";
 import type { OpportunitiesDataSource } from "@/app/actions/opportunities";
 import type { PlatformNotification } from "@/app/actions/notifications";
-import { refreshDiscoverFeed } from "@/app/actions/opportunities";
+import {
+  loadNicheDiscoverCache,
+  refreshDiscoverFeed,
+} from "@/app/actions/opportunities";
 import { PlanSelectorModal } from "@/components/billing/plan-selector-modal";
 import { completeOnboardingProfile, updateProfileWorkspace } from "@/app/actions/profile";
 import { buildFeedViewModel } from "@/lib/dashboard/feed-utils";
@@ -100,6 +103,7 @@ export function CommandCenter({
     useState<OpportunitiesDataSource>(dataSource);
   const [feedLoading, setFeedLoading] = useState(false);
   const [feedError, setFeedError] = useState<string | undefined>();
+  const feedRequestRef = useRef(0);
 
   const [draftIdentity, setDraftIdentity] = useState<WorkspaceIdentity | null>(
     null
@@ -141,12 +145,26 @@ export function CommandCenter({
   const activeNicheLabel = activeNicheEntry.label;
 
   const runDiscoverRefresh = useCallback(
-    (search?: string) => {
+    (search?: string, workspace = activeWorkspace, niche = activeNiche) => {
+      const requestId = ++feedRequestRef.current;
+
       setFeedLoading(true);
       setFeedError(undefined);
 
-      return refreshDiscoverFeed(activeWorkspace, activeNiche, search).then(
+      if (!search) {
+        void loadNicheDiscoverCache(workspace, niche).then((cached) => {
+          if (feedRequestRef.current !== requestId) return;
+          if (cached.length > 0) {
+            setAllOpportunities(cached);
+            setFeedSource("cache");
+          }
+        });
+      }
+
+      return refreshDiscoverFeed(workspace, niche, search).then(
         (result) => {
+          if (feedRequestRef.current !== requestId) return result;
+
           if (result.opportunities.length > 0) {
             setAllOpportunities(result.opportunities);
             setFeedSource(result.source === "unconfigured" ? "live" : result.source);
@@ -157,7 +175,9 @@ export function CommandCenter({
           return result;
         }
       ).finally(() => {
-        setFeedLoading(false);
+        if (feedRequestRef.current === requestId) {
+          setFeedLoading(false);
+        }
       });
     },
     [activeWorkspace, activeNiche]
@@ -394,6 +414,8 @@ export function CommandCenter({
       setSearchTokens([]);
       setLiveSearchQuery(null);
       setSelectedOpportunity(null);
+      setAllOpportunities([]);
+      setFeedError(undefined);
       const niche = resolveActiveNiche(workspace, nicheByWorkspace);
       syncWorkspaceToProfile(workspace, niche.id);
     },
@@ -408,6 +430,8 @@ export function CommandCenter({
       setKeywordFilter(null);
       setLiveSearchQuery(null);
       setSelectedOpportunity(null);
+      setAllOpportunities([]);
+      setFeedError(undefined);
     },
     [
       activeWorkspace,
@@ -421,14 +445,7 @@ export function CommandCenter({
   useEffect(() => {
     if (phase !== "ready") return;
 
-    let cancelled = false;
-    void runDiscoverRefresh().then(() => {
-      if (cancelled) return;
-    });
-
-    return () => {
-      cancelled = true;
-    };
+    void runDiscoverRefresh(undefined, activeWorkspace, activeNiche);
   }, [phase, activeWorkspace, activeNiche, runDiscoverRefresh]);
 
   useEffect(() => {
@@ -545,7 +562,7 @@ export function CommandCenter({
                 </div>
 
                 <motion.div
-                  key={`${activeWorkspace}-${activeNiche}-${feedSource}-${allOpportunities.length}`}
+                  key={`${activeWorkspace}-${activeNiche}-${feedSource}-${allOpportunities.map((o) => o.id).join(",")}`}
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
@@ -603,7 +620,7 @@ export function CommandCenter({
 
                   <div className="mt-5">
                     <OpportunitiesFeed
-                      key={`feed-${searchQuery}-${keywordFilter ?? "all"}`}
+                      key={`feed-${activeWorkspace}-${activeNiche}-${searchQuery}-${keywordFilter ?? "all"}`}
                       opportunities={filteredOpportunities}
                       activeId={selectedOpportunity?.id ?? null}
                       activeKeyword={keywordFilter}
