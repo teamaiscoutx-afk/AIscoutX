@@ -44,6 +44,15 @@ export type OpportunityModeData = {
   liveSynthesizedAt?: string;
   /** Distinguishes Tavily/OpenAI rows from legacy seed catalog entries. */
   catalogSource?: "live" | "seed";
+  /** Nested score block persisted for 10-idea live cards (snake/camel tolerant reads). */
+  scores?: {
+    demand?: number;
+    competition?: number;
+    virality?: number;
+    monetization?: number;
+    momentum?: number;
+    disruption?: number;
+  };
   /** Generated venture pack stored on the opportunities table, scoped by ownerId. */
   venturePack?: VenturePackData;
 };

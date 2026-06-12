@@ -6,10 +6,10 @@ import {
   normalizeModeData,
   resolveDrawerContent,
 } from "@/lib/dashboard/mode-data-normalize";
+import { extractOpportunityMetrics } from "@/lib/dashboard/opportunity-metrics";
 import type {
   Opportunity,
   OpportunityDrawerContent,
-  TrendStage,
 } from "@/lib/dashboard/opportunities";
 import type { ModeIntelligence } from "@/lib/dashboard/workspace";
 
@@ -22,25 +22,25 @@ export function deriveDrawerFromIntelligence(
 export function mapOpportunityRowToClient(row: OpportunityRow): Opportunity {
   const modeData = normalizeModeData(row.mode_data);
   const intelligence = modeData.intelligence ?? normalizeIntelligence(null);
-  const trendStage = (modeData.trendStage ?? "Emerging") as TrendStage;
+  const metrics = extractOpportunityMetrics(row, modeData);
+  const trendStage = metrics.trendStage;
 
   return {
     id: row.id,
     name: row.title,
     category: row.category,
-    score: row.score,
-    aiConfidence: modeData.aiConfidence ?? row.score,
-    growth: row.growth,
+    score: metrics.score,
+    aiConfidence: metrics.aiConfidence,
+    growth: metrics.growth,
     hot: modeData.hot ?? false,
-    competitionLabel: modeData.competitionLabel ?? "Medium",
+    competitionLabel: metrics.competitionLabel,
     trendStage,
     scores: {
-      demand: row.demand,
-      competition: row.competition,
-      virality: modeData.virality ?? Math.round((row.demand + row.score) / 2),
-      monetization:
-        modeData.monetization ?? Math.round((row.score + row.demand) / 2),
-      disruption: modeData.disruption,
+      demand: metrics.demand,
+      competition: metrics.competition,
+      virality: metrics.virality,
+      monetization: metrics.monetization,
+      disruption: metrics.disruption,
     },
     revenuePotential: modeData.revenuePotential ?? "$1k–$5k/mo",
     sources: modeData.sources ?? ["Reddit", "Product Hunt"],
@@ -119,6 +119,14 @@ export function mapOpportunityToInsertRow(
       liveSynthesizedAt: opportunity.deepDive?.synthesizedAt,
       catalogSource: opportunity.catalogSource ??
         (opportunity.deepDive?.synthesizedAt ? "live" : undefined),
+      scores: {
+        demand: opportunity.scores.demand,
+        competition: opportunity.scores.competition,
+        virality: opportunity.scores.virality,
+        monetization: opportunity.scores.monetization,
+        momentum: opportunity.score,
+        disruption: opportunity.scores.disruption,
+      },
     },
   };
 }

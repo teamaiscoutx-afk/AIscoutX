@@ -3,6 +3,7 @@
 import { TrendingUp } from "lucide-react";
 
 import type { Opportunity } from "@/lib/dashboard/opportunities";
+import { getOpportunityDisplayMetrics } from "@/lib/dashboard/opportunity-metrics";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -109,6 +110,7 @@ export function OpportunitiesFeed({
             ) : (
               opportunities.map((row) => {
                 const isActive = activeId === row.id;
+                const metrics = getOpportunityDisplayMetrics(row);
                 return (
                   <tr
                     key={row.id}
@@ -153,19 +155,19 @@ export function OpportunitiesFeed({
                           className="h-3.5 w-3.5"
                           strokeWidth={1.5}
                         />
-                        {row.growth}
+                        {metrics.growth}
                       </span>
                     </td>
                     <td className="px-4 py-4 sm:px-6">
                       <span className="font-semibold tabular-nums text-[#deff9a]">
-                        {row.score}
+                        {metrics.demand}
                         <span className="text-xs font-normal text-zinc-500">
                           /100
                         </span>
                       </span>
                     </td>
                     <td className="px-4 py-4 sm:px-6">
-                      <MiniBar score={row.score} />
+                      <MiniBar score={metrics.momentum} />
                     </td>
                   </tr>
                 );

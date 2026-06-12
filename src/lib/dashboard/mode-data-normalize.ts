@@ -231,6 +231,9 @@ export function normalizeModeData(raw: unknown): OpportunityModeData {
     disruption:
       typeof root.disruption === "number" ? root.disruption : undefined,
     liveSynthesizedAt: pickString(root, "liveSynthesizedAt", "live_synthesized_at"),
+    catalogSource: pickString(root, "catalogSource", "catalog_source") as
+      | OpportunityModeData["catalogSource"]
+      | undefined,
   };
 
   modeData.drawer = resolveDrawerContent(modeData, intelligence);
