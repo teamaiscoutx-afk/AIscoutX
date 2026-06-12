@@ -7,7 +7,7 @@ export default async function HomePage() {
     data: { user },
   } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
 
-  const ctaHref = user ? "/dashboard" : "/login";
+  const ctaHref = user ? "/dashboard" : "/login?mode=signup";
 
   return <LandingPageContent ctaHref={ctaHref} />;
 }

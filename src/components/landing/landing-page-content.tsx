@@ -265,7 +265,7 @@ function PricingCard({
 }
 
 type LandingPageContentProps = {
-  ctaHref: "/dashboard" | "/login";
+  ctaHref: "/dashboard" | "/login?mode=signup";
 };
 
 export function LandingPageContent({ ctaHref }: LandingPageContentProps) {

@@ -16,6 +16,8 @@ export type AuthActionState = {
   redirectTo?: string;
 };
 
+export type AuthMode = "signin" | "signup";
+
 function getSiteUrl(): string {
   if (process.env.NEXT_PUBLIC_SITE_URL) {
     return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
@@ -34,11 +36,61 @@ function getRedirectPath(formData: FormData): string {
   return path;
 }
 
-/**
- * Sign in existing users, or create account + profile for new emails.
- * Redirects to dashboard when a session is established.
- */
-export async function continueWithEmail(
+function parseCredentials(formData: FormData): {
+  email: string;
+  password: string;
+  redirectTo: string;
+  error?: string;
+} {
+  const email = String(formData.get("email") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+  const redirectTo = getRedirectPath(formData);
+
+  if (!email || !password) {
+    return { email, password, redirectTo, error: "Email and password are required." };
+  }
+
+  if (password.length < 8) {
+    return {
+      email,
+      password,
+      redirectTo,
+      error: "Password must be at least 8 characters.",
+    };
+  }
+
+  return { email, password, redirectTo };
+}
+
+function normalizeSignInError(message: string): string {
+  const lower = message.toLowerCase();
+  if (
+    lower.includes("invalid login") ||
+    lower.includes("invalid credentials") ||
+    lower.includes("invalid email or password")
+  ) {
+    return "Incorrect email or password. Please try again.";
+  }
+  if (lower.includes("email not confirmed")) {
+    return "Please confirm your email before signing in.";
+  }
+  return message;
+}
+
+function normalizeSignUpError(message: string): string {
+  const lower = message.toLowerCase();
+  if (
+    lower.includes("already registered") ||
+    lower.includes("already exists") ||
+    lower.includes("already exist")
+  ) {
+    return "An account with this email already exists. Please sign in instead.";
+  }
+  return message;
+}
+
+/** Sign in existing users only — never attempts registration. */
+export async function signInWithEmail(
   _prev: AuthActionState,
   formData: FormData
 ): Promise<AuthActionState> {
@@ -46,85 +98,72 @@ export async function continueWithEmail(
     return { error: "Supabase is not configured. Add env vars to .env.local." };
   }
 
-  const email = String(formData.get("email") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-  const redirectTo = getRedirectPath(formData);
-
-  if (!email || !password) {
-    return { error: "Email and password are required." };
-  }
-
-  if (password.length < 8) {
-    return { error: "Password must be at least 8 characters." };
+  const parsed = parseCredentials(formData);
+  if (parsed.error) {
+    return { error: parsed.error };
   }
 
   const supabase = createServerSupabaseClient();
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: parsed.email,
+    password: parsed.password,
+  });
 
-  const { data: signInData, error: signInError } =
-    await supabase.auth.signInWithPassword({ email, password });
-
-  if (!signInError && signInData.user) {
-    const profileResult = await ensureUserProfile(supabase, signInData.user);
-    if (!profileResult.ok) {
-      return { error: profileResult.error ?? "Could not sync profile." };
-    }
-    return { authenticated: true, redirectTo };
+  if (error) {
+    return { error: normalizeSignInError(error.message) };
   }
 
-  const signInMessage = signInError?.message?.toLowerCase() ?? "";
-  const shouldTrySignUp =
-    signInMessage.includes("invalid login") ||
-    signInMessage.includes("invalid credentials") ||
-    signInMessage.includes("user not found");
-
-  if (!shouldTrySignUp && signInError) {
-    return { error: signInError.message };
+  if (!data.user) {
+    return { error: "Sign-in failed. Please try again." };
   }
 
-  const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-    email,
-    password,
+  const profileResult = await ensureUserProfile(supabase, data.user);
+  if (!profileResult.ok) {
+    return { error: profileResult.error ?? "Could not sync profile." };
+  }
+
+  return { authenticated: true, redirectTo: parsed.redirectTo };
+}
+
+/** Register new users only — never attempts sign-in. */
+export async function signUpWithEmail(
+  _prev: AuthActionState,
+  formData: FormData
+): Promise<AuthActionState> {
+  if (!isSupabaseConfigured()) {
+    return { error: "Supabase is not configured. Add env vars to .env.local." };
+  }
+
+  const parsed = parseCredentials(formData);
+  if (parsed.error) {
+    return { error: parsed.error };
+  }
+
+  const supabase = createServerSupabaseClient();
+  const { data, error } = await supabase.auth.signUp({
+    email: parsed.email,
+    password: parsed.password,
     options: {
-      emailRedirectTo: `${getSiteUrl()}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
+      emailRedirectTo: `${getSiteUrl()}/auth/callback?next=${encodeURIComponent(parsed.redirectTo)}`,
     },
   });
 
-  if (signUpError) {
-    if (
-      signUpError.message.toLowerCase().includes("already registered") ||
-      signUpError.message.toLowerCase().includes("already exists")
-    ) {
-      return { error: "Account exists — check your password and try again." };
-    }
-    return { error: signUpError.message };
+  if (error) {
+    return { error: normalizeSignUpError(error.message) };
   }
 
-  if (signUpData.user) {
-    await ensureUserProfile(supabase, signUpData.user);
+  if (data.user) {
+    await ensureUserProfile(supabase, data.user);
   }
 
-  if (signUpData.session && signUpData.user) {
-    return { authenticated: true, redirectTo };
+  if (data.session && data.user) {
+    return { authenticated: true, redirectTo: parsed.redirectTo };
   }
 
   return {
     success:
       "Account created. Check your email to confirm, then sign in — or disable email confirmation in Supabase for instant access.",
   };
-}
-
-export async function signInWithEmail(
-  prev: AuthActionState,
-  formData: FormData
-): Promise<AuthActionState> {
-  return continueWithEmail(prev, formData);
-}
-
-export async function signUpWithEmail(
-  prev: AuthActionState,
-  formData: FormData
-): Promise<AuthActionState> {
-  return continueWithEmail(prev, formData);
 }
 
 export async function signInWithGoogle(formData?: FormData): Promise<void> {
@@ -134,9 +173,7 @@ export async function signInWithGoogle(formData?: FormData): Promise<void> {
     );
   }
 
-  const redirectTo = formData
-    ? getRedirectPath(formData)
-    : "/dashboard";
+  const redirectTo = formData ? getRedirectPath(formData) : "/dashboard";
 
   const supabase = createServerSupabaseClient();
   const { data, error } = await supabase.auth.signInWithOAuth({

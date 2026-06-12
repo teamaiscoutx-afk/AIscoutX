@@ -3,11 +3,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useFormState, useFormStatus } from "react-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Sparkles } from "lucide-react";
 import Link from "next/link";
 
-import { continueWithEmail, type AuthActionState } from "@/app/actions/auth";
+import {
+  signInWithEmail,
+  signUpWithEmail,
+  type AuthActionState,
+  type AuthMode,
+} from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +24,13 @@ import { cn } from "@/lib/utils";
 
 const initialState: AuthActionState = {};
 
-function SubmitButton({ disabled }: { disabled: boolean }) {
+function SubmitButton({
+  disabled,
+  mode,
+}: {
+  disabled: boolean;
+  mode: AuthMode;
+}) {
   const { pending } = useFormStatus();
   return (
     <Button
@@ -30,10 +41,12 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
       {pending ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Continuing…
+          {mode === "signin" ? "Signing in…" : "Creating account…"}
         </>
+      ) : mode === "signin" ? (
+        "Sign in →"
       ) : (
-        "Continue to workspace →"
+        "Create account →"
       )}
     </Button>
   );
@@ -42,6 +55,7 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
 type LoginFormProps = {
   redirectTo?: string;
   authError?: string;
+  initialMode?: AuthMode;
   /** From server — accurate even when client bundle env is stale */
   authEnabled: boolean;
   supabaseUrl?: string;
@@ -51,14 +65,20 @@ type LoginFormProps = {
 export function LoginForm({
   redirectTo = "/dashboard",
   authError,
+  initialMode = "signin",
   authEnabled,
   supabaseUrl,
   supabaseAnonKey,
 }: LoginFormProps) {
   const router = useRouter();
-  const [state, formAction] = useFormState(continueWithEmail, initialState);
+  const [mode, setMode] = useState<AuthMode>(initialMode);
+  const [signInState, signInAction] = useFormState(signInWithEmail, initialState);
+  const [signUpState, signUpAction] = useFormState(signUpWithEmail, initialState);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
+
+  const state = mode === "signin" ? signInState : signUpState;
+  const formAction = mode === "signin" ? signInAction : signUpAction;
 
   const supabaseConfig = useMemo((): PublicSupabaseConfig | null => {
     if (!authEnabled || !supabaseUrl || !supabaseAnonKey) {
@@ -67,8 +87,12 @@ export function LoginForm({
     return { url: supabaseUrl, anonKey: supabaseAnonKey };
   }, [authEnabled, supabaseUrl, supabaseAnonKey]);
 
-  const error = authError ?? googleError ?? state.error;
-  const success = state.success;
+  const toastMessage = authError ?? googleError ?? state.error ?? state.success;
+  const toastIsError = Boolean(authError ?? googleError ?? state.error);
+
+  useEffect(() => {
+    setMode(initialMode);
+  }, [initialMode]);
 
   useEffect(() => {
     if (state.authenticated) {
@@ -118,7 +142,9 @@ export function LoginForm({
         return;
       }
 
-      setGoogleError("Could not start Google sign-in. Check Supabase Google provider settings.");
+      setGoogleError(
+        "Could not start Google sign-in. Check Supabase Google provider settings."
+      );
       setGoogleLoading(false);
     } catch (err) {
       const message =
@@ -127,6 +153,11 @@ export function LoginForm({
       setGoogleLoading(false);
     }
   }, [supabaseConfig, redirectTo]);
+
+  const toggleMode = useCallback(() => {
+    setGoogleError(null);
+    setMode((current) => (current === "signin" ? "signup" : "signin"));
+  }, []);
 
   return (
     <motion.div
@@ -146,11 +177,12 @@ export function LoginForm({
           AIscoutX
         </Link>
         <h1 className="mt-6 text-2xl font-semibold tracking-tight text-white">
-          Welcome back
+          {mode === "signin" ? "Welcome back" : "Create your account"}
         </h1>
         <p className="mt-2 text-sm text-zinc-500">
-          Sign in or create your account — we&apos;ll sync your intelligence
-          profile automatically.
+          {mode === "signin"
+            ? "Sign in to access your intelligence dashboard."
+            : "Start scouting opportunities with your AI founder workspace."}
         </p>
       </div>
 
@@ -165,16 +197,25 @@ export function LoginForm({
           </p>
         )}
 
-        {error && (
-          <p className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">
-            {error}
-          </p>
-        )}
-        {success && (
-          <p className="mb-4 rounded-lg border border-[#deff9a]/20 bg-[#deff9a]/10 px-3 py-2 text-xs text-[#deff9a]">
-            {success}
-          </p>
-        )}
+        <AnimatePresence mode="wait">
+          {toastMessage && (
+            <motion.p
+              key={toastMessage}
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              role="alert"
+              className={cn(
+                "mb-4 rounded-lg px-3 py-2 text-xs",
+                toastIsError
+                  ? "border border-red-500/20 bg-red-500/10 text-red-300"
+                  : "border border-[#deff9a]/20 bg-[#deff9a]/10 text-[#deff9a]"
+              )}
+            >
+              {toastMessage}
+            </motion.p>
+          )}
+        </AnimatePresence>
 
         <form action={formAction} className="space-y-4">
           <input type="hidden" name="redirect" value={redirectTo} readOnly />
@@ -202,7 +243,7 @@ export function LoginForm({
               id="password"
               name="password"
               type="password"
-              autoComplete="current-password"
+              autoComplete={mode === "signin" ? "current-password" : "new-password"}
               required
               disabled={!authEnabled}
               minLength={8}
@@ -210,12 +251,34 @@ export function LoginForm({
               className="border-white/[0.08] bg-white/[0.03] text-white"
             />
           </div>
-          <SubmitButton disabled={!authEnabled} />
-          <p className="text-center text-[11px] text-zinc-600">
-            Existing account? We sign you in. New email? We create your profile
-            and redirect to the dashboard.
-          </p>
+          <SubmitButton disabled={!authEnabled} mode={mode} />
         </form>
+
+        <p className="mt-4 text-center text-sm text-zinc-500">
+          {mode === "signin" ? (
+            <>
+              Don&apos;t have an account?{" "}
+              <button
+                type="button"
+                onClick={toggleMode}
+                className="font-medium text-[#deff9a] transition-colors hover:text-[#deff9a]/80"
+              >
+                Sign up
+              </button>
+            </>
+          ) : (
+            <>
+              Already have an account?{" "}
+              <button
+                type="button"
+                onClick={toggleMode}
+                className="font-medium text-[#deff9a] transition-colors hover:text-[#deff9a]/80"
+              >
+                Sign in
+              </button>
+            </>
+          )}
+        </p>
 
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">

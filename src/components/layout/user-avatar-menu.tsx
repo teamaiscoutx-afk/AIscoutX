@@ -46,7 +46,7 @@ export function UserAvatarMenu({ menu, compact = false }: UserAvatarMenuProps) {
         className="border-white/10 bg-white/[0.02] text-zinc-300 backdrop-blur-sm hover:border-[#deff9a]/25 hover:bg-white/[0.05] hover:text-white"
         asChild
       >
-        <Link href="/login">Get Started</Link>
+        <Link href="/login?mode=signup">Get Started</Link>
       </Button>
     );
   }

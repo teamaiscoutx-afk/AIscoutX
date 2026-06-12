@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { LoginForm } from "@/components/auth/login-form";
+import type { AuthMode } from "@/app/actions/auth";
 import {
   isSupabaseConfigured,
   tryCreateServerSupabaseClient,
@@ -12,8 +13,13 @@ type LoginPageProps = {
   searchParams?: {
     redirect?: string;
     error?: string;
+    mode?: string;
   };
 };
+
+function parseAuthMode(value?: string): AuthMode {
+  return value === "signup" ? "signup" : "signin";
+}
 
 /**
  * Server-side env read (always fresh after restart) — passed to the client form
@@ -21,6 +27,7 @@ type LoginPageProps = {
  */
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const redirectTo = searchParams?.redirect ?? "/dashboard";
+  const initialMode = parseAuthMode(searchParams?.mode);
   const authError = searchParams?.error
     ? decodeURIComponent(searchParams.error)
     : undefined;
@@ -50,6 +57,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       <LoginForm
         redirectTo={redirectTo}
         authError={authError}
+        initialMode={initialMode}
         authEnabled={authEnabled}
         supabaseUrl={env?.url}
         supabaseAnonKey={env?.anonKey}

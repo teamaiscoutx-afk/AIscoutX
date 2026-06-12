@@ -41,7 +41,7 @@ export async function SiteHeader() {
         <div className="flex items-center gap-2 sm:gap-3">
           {!menu.isAuthenticated && (
             <Link
-              href="/login"
+              href="/login?mode=signin"
               className="text-sm text-zinc-400 transition-colors hover:text-white"
             >
               Login
