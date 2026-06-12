@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { incrementBlueprintUsage } from "@/app/actions/usage";
 import { requirePro } from "@/lib/billing/paywall";
-import { toClientError } from "@/lib/server/safe-action";
+import { toClientError, logServerError } from "@/lib/server/safe-action";
 import { runGenerationPipeline } from "@/lib/mvp/generation-pipeline";
 import { isIntelligenceEngineReady } from "@/lib/intelligence/config";
 import type {
@@ -16,8 +16,10 @@ import type {
 import type { OpportunityRow } from "@/lib/database.types";
 import {
   createServerSupabaseClient,
+  createServiceRoleSupabaseClient,
   isSupabaseConfigured,
 } from "@/lib/supabase";
+import { isRlsOrPermissionError } from "@/lib/server/supabase-writer";
 
 /** Venture packs live on the shared `opportunities` table under this category. */
 const VENTURE_PACK_CATEGORY = "venture-pack";
@@ -273,15 +275,21 @@ async function buildMockPack(query: string, userId: string): Promise<VenturePack
   };
 }
 
-/** Live pipeline when keys are configured; seamless premium mock otherwise. */
-async function buildPack(query: string, userId: string): Promise<VenturePack> {
+/** Live pipeline when keys are configured; premium mock only when keys are absent. */
+async function buildPack(
+  query: string,
+  userId: string
+): Promise<{ pack: VenturePack; source: "live" | "mock" }> {
   if (!isIntelligenceEngineReady()) {
-    return await buildMockPack(query, userId);
+    return {
+      pack: await buildMockPack(query, userId),
+      source: "mock",
+    };
   }
 
-  try {
-    const { analyze, blueprint, launch } = await runGenerationPipeline(query);
-    return {
+  const { analyze, blueprint, launch } = await runGenerationPipeline(query);
+  return {
+    pack: {
       id: `pack-${Date.now()}`,
       userId,
       query,
@@ -289,27 +297,80 @@ async function buildPack(query: string, userId: string): Promise<VenturePack> {
       blueprint,
       launch,
       createdAt: new Date().toISOString(),
-    };
-  } catch {
-    return await buildMockPack(query, userId);
-  }
+    },
+    source: "live",
+  };
 }
 
 function isMissingTableError(message: string): boolean {
   const lower = message.toLowerCase();
   return (
-    lower.includes("opportunities") ||
     lower.includes("schema cache") ||
     lower.includes("does not exist") ||
-    lower.includes("pgrst205") ||
-    lower.includes("row-level security")
+    lower.includes("pgrst205")
   );
+}
+
+async function persistVenturePack(
+  userId: string,
+  query: string,
+  pack: Pick<VenturePack, "analyze" | "blueprint" | "launch">
+): Promise<{ row: OpportunityRow | null; storageMode: "database" | "local" }> {
+  const payload = {
+    title: query,
+    category: VENTURE_PACK_CATEGORY,
+    mode_data: {
+      venturePack: {
+        ownerId: userId,
+        query,
+        analyze: pack.analyze,
+        blueprint: pack.blueprint,
+        launch: pack.launch,
+      },
+    },
+  };
+
+  const sessionClient = createServerSupabaseClient();
+  let { data, error } = await sessionClient
+    .from("opportunities")
+    .insert(payload)
+    .select("*")
+    .single();
+
+  if (!error && data) {
+    return { row: data, storageMode: "database" };
+  }
+
+  const admin = createServiceRoleSupabaseClient();
+  if (admin && error) {
+    logServerError("generation.insert.session", error);
+    ({ data, error } = await admin
+      .from("opportunities")
+      .insert(payload)
+      .select("*")
+      .single());
+
+    if (!error && data) {
+      return { row: data, storageMode: "database" };
+    }
+  }
+
+  if (error && (isMissingTableError(error.message) || isRlsOrPermissionError(error.message))) {
+    return { row: null, storageMode: "local" };
+  }
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return { row: null, storageMode: "local" };
 }
 
 export type GenerateVenturePackResult = {
   ok: boolean;
   pack?: VenturePack;
   storageMode?: "database" | "local";
+  source?: "live" | "mock";
   error?: string;
   code?: string;
 };
@@ -332,8 +393,8 @@ export async function generateVenturePack(
 
   if (!isSupabaseConfigured()) {
     try {
-      const pack = await buildPack(trimmed, "demo");
-      return { ok: true, pack, storageMode: "local" };
+      const { pack, source } = await buildPack(trimmed, "demo");
+      return { ok: true, pack, storageMode: "local", source };
     } catch (err) {
       return toClientError("generation.buildPack", err);
     }
@@ -346,43 +407,16 @@ export async function generateVenturePack(
     } = await supabase.auth.getUser();
 
     const userId = user?.id ?? "local";
-    const pack = await buildPack(trimmed, userId);
+    const { pack, source } = await buildPack(trimmed, userId);
 
     if (!user) {
-      return { ok: true, pack, storageMode: "local" };
+      return { ok: true, pack, storageMode: "local", source };
     }
 
-    const { data, error } = await supabase
-      .from("opportunities")
-      .insert({
-        title: trimmed,
-        category: VENTURE_PACK_CATEGORY,
-        mode_data: {
-          venturePack: {
-            ownerId: user.id,
-            query: trimmed,
-            analyze: pack.analyze,
-            blueprint: pack.blueprint,
-            launch: pack.launch,
-          },
-        },
-      })
-      .select("*")
-      .single();
+    const persisted = await persistVenturePack(user.id, trimmed, pack);
 
-    if (error) {
-      if (isMissingTableError(error.message)) {
-        return { ok: true, pack, storageMode: "local" };
-      }
-      return toClientError(
-        "generation.insert",
-        new Error(error.message),
-        "Could not save your blueprint. Try again."
-      );
-    }
-
-    if (!data) {
-      return { ok: true, pack, storageMode: "local" };
+    if (persisted.storageMode === "local") {
+      return { ok: true, pack, storageMode: "local", source };
     }
 
     await incrementBlueprintUsage().catch(() => undefined);
@@ -390,18 +424,20 @@ export async function generateVenturePack(
     revalidatePath("/dashboard/analyze");
     revalidatePath("/dashboard/blueprints");
     revalidatePath("/dashboard/launch");
+    revalidatePath("/dashboard/discover");
 
     return {
       ok: true,
-      pack: mapPack(data, user.id) ?? pack,
+      pack: mapPack(persisted.row!, user.id) ?? pack,
       storageMode: "database",
+      source,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Generation failed";
     if (isMissingTableError(message)) {
       try {
-        const pack = await buildPack(trimmed, "local");
-        return { ok: true, pack, storageMode: "local" };
+        const { pack, source } = await buildPack(trimmed, "local");
+        return { ok: true, pack, storageMode: "local", source };
       } catch (buildErr) {
         return toClientError("generation.fallback", buildErr);
       }

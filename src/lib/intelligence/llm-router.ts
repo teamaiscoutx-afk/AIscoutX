@@ -3,12 +3,13 @@ import {
   HUMAN_COPY_SYSTEM_PROMPT,
   scrubBannedVocabulary,
 } from "@/lib/intelligence/copy-engine";
+import { readServerEnv } from "@/lib/env";
 
 export type LlmProvider = "openai" | "anthropic";
 
 export function getLlmProvider(): LlmProvider | null {
-  if (process.env.OPENAI_API_KEY) return "openai";
-  if (process.env.ANTHROPIC_API_KEY) return "anthropic";
+  if (readServerEnv("OPENAI_API_KEY")) return "openai";
+  if (readServerEnv("ANTHROPIC_API_KEY")) return "anthropic";
   return null;
 }
 
@@ -17,14 +18,17 @@ export function isLlmConfigured(): boolean {
 }
 
 async function callOpenAi(system: string, user: string): Promise<string> {
+  const apiKey = readServerEnv("OPENAI_API_KEY");
+  if (!apiKey) throw new Error("OPENAI_API_KEY is not configured.");
+
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
+      model: readServerEnv("OPENAI_MODEL") ?? "gpt-4o-mini",
       temperature: 0.2,
       response_format: { type: "json_object" },
       messages: [
@@ -47,15 +51,18 @@ async function callOpenAi(system: string, user: string): Promise<string> {
 }
 
 async function callAnthropic(system: string, user: string): Promise<string> {
+  const apiKey = readServerEnv("ANTHROPIC_API_KEY");
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured.");
+
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": process.env.ANTHROPIC_API_KEY ?? "",
+      "x-api-key": apiKey,
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-20250514",
+      model: readServerEnv("ANTHROPIC_MODEL") ?? "claude-sonnet-4-20250514",
       max_tokens: 4096,
       temperature: 0.2,
       system: `${system}\n\nRespond with valid JSON only.`,

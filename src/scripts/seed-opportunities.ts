@@ -3,10 +3,11 @@ import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 
 /**
- * Seed premium mock opportunities into Supabase.
+ * Seed premium global discovery opportunities into Supabase.
  *
  * Usage:
  *   npm run seed:opportunities
+ *   npm run seed:opportunities -- --force
  *
  * Requires in .env.local:
  *   NEXT_PUBLIC_SUPABASE_URL
@@ -17,11 +18,15 @@ import { createClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/lib/database.types";
 import { mapOpportunityToInsertRow } from "@/lib/dashboard/opportunity-mapper";
-import { getSeedOpportunities } from "@/lib/seed/opportunity-seeds";
+import {
+  getSeedOpportunities,
+  USER_BLUEPRINT_CATEGORY,
+} from "@/lib/seed/opportunity-seeds";
 
 async function main() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const force = process.argv.includes("--force");
 
   if (!url || !serviceKey) {
     console.error(
@@ -36,18 +41,34 @@ async function main() {
 
   const { count, error: countError } = await supabase
     .from("opportunities")
-    .select("*", { count: "exact", head: true });
+    .select("*", { count: "exact", head: true })
+    .neq("category", USER_BLUEPRINT_CATEGORY);
 
   if (countError) {
     console.error("Count failed:", countError.message);
     process.exit(1);
   }
 
-  if ((count ?? 0) > 0) {
+  const discoveryCount = count ?? 0;
+
+  if (!force && discoveryCount > 0) {
     console.log(
-      `Skipping seed: ${count} opportunities already exist. Delete rows or truncate table to re-seed.`
+      `Skipping seed: ${discoveryCount} discovery opportunities already exist. Run with --force to replace.`
     );
     process.exit(0);
+  }
+
+  if (force && discoveryCount > 0) {
+    const { error: deleteError } = await supabase
+      .from("opportunities")
+      .delete()
+      .neq("category", USER_BLUEPRINT_CATEGORY);
+
+    if (deleteError) {
+      console.error("Delete failed:", deleteError.message);
+      process.exit(1);
+    }
+    console.log(`Removed ${discoveryCount} existing discovery rows.`);
   }
 
   const seeds = getSeedOpportunities();
@@ -60,8 +81,8 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`✓ Inserted ${rows.length} opportunities into Supabase.`);
-  seeds.forEach((s) => console.log(`  · ${s.name}`));
+  console.log(`✓ Inserted ${rows.length} global discovery opportunities.`);
+  seeds.forEach((s) => console.log(`  · ${s.name} (${s.category}, score ${s.score})`));
 }
 
 main();

@@ -1,4 +1,5 @@
 import type { ChannelSearchResult, SearchChannel, WebSnippet } from "@/lib/intelligence/types";
+import { readServerEnv } from "@/lib/env";
 
 const COMPLAINT_TERMS = [
   "pain",
@@ -62,7 +63,7 @@ function hitsToSnippets(hits: RawHit[], channel: SearchChannel): WebSnippet[] {
 }
 
 async function searchTavily(query: string, maxResults = 8): Promise<RawHit[]> {
-  const apiKey = process.env.TAVILY_API_KEY;
+  const apiKey = readServerEnv("TAVILY_API_KEY");
   if (!apiKey) return [];
 
   const res = await fetch("https://api.tavily.com/search", {
@@ -94,7 +95,7 @@ async function searchTavily(query: string, maxResults = 8): Promise<RawHit[]> {
 }
 
 async function searchSerper(query: string, maxResults = 8): Promise<RawHit[]> {
-  const apiKey = process.env.SERPER_API_KEY;
+  const apiKey = readServerEnv("SERPER_API_KEY");
   if (!apiKey) return [];
 
   const res = await fetch("https://google.serper.dev/search", {
@@ -122,7 +123,7 @@ async function searchSerper(query: string, maxResults = 8): Promise<RawHit[]> {
 }
 
 async function searchPerplexity(query: string): Promise<RawHit[]> {
-  const apiKey = process.env.PERPLEXITY_API_KEY;
+  const apiKey = readServerEnv("PERPLEXITY_API_KEY");
   if (!apiKey) return [];
 
   const res = await fetch("https://api.perplexity.ai/chat/completions", {
@@ -162,15 +163,15 @@ async function searchPerplexity(query: string): Promise<RawHit[]> {
 }
 
 async function runQuery(query: string, maxResults = 8): Promise<RawHit[]> {
-  if (process.env.TAVILY_API_KEY) {
+  if (readServerEnv("TAVILY_API_KEY")) {
     const hits = await searchTavily(query, maxResults);
     if (hits.length) return hits;
   }
-  if (process.env.SERPER_API_KEY) {
+  if (readServerEnv("SERPER_API_KEY")) {
     const hits = await searchSerper(query, maxResults);
     if (hits.length) return hits;
   }
-  if (process.env.PERPLEXITY_API_KEY) {
+  if (readServerEnv("PERPLEXITY_API_KEY")) {
     const hits = await searchPerplexity(query);
     if (hits.length) return hits;
   }
@@ -178,9 +179,9 @@ async function runQuery(query: string, maxResults = 8): Promise<RawHit[]> {
 }
 
 export function getWebSearchProvider(): "tavily" | "serper" | "perplexity" | null {
-  if (process.env.TAVILY_API_KEY) return "tavily";
-  if (process.env.SERPER_API_KEY) return "serper";
-  if (process.env.PERPLEXITY_API_KEY) return "perplexity";
+  if (readServerEnv("TAVILY_API_KEY")) return "tavily";
+  if (readServerEnv("SERPER_API_KEY")) return "serper";
+  if (readServerEnv("PERPLEXITY_API_KEY")) return "perplexity";
   return null;
 }
 

@@ -3,7 +3,8 @@ import type { Opportunity } from "@/lib/dashboard/opportunities";
 import type { LiveOpportunityDraft } from "@/lib/intelligence/types";
 import type { NicheId, WorkspaceIdentity } from "@/lib/dashboard/onboarding";
 import type { OpportunityModeData } from "@/lib/database.types";
-import { createServerSupabaseClient } from "@/lib/supabase";
+import { logServerError } from "@/lib/server/safe-action";
+import { createCatalogWriterClient } from "@/lib/server/supabase-writer";
 
 export function liveDraftToOpportunity(
   draft: LiveOpportunityDraft,
@@ -41,6 +42,7 @@ export function liveDraftToOpportunity(
       competition: draft.scores.scores.competition,
       virality: draft.scores.scores.virality,
       monetization: draft.scores.scores.monetization,
+      disruption: draft.scores.scores.disruption,
     },
     revenuePotential: draft.revenuePotential,
     sources: draft.sources,
@@ -58,27 +60,40 @@ export function liveDraftToOpportunity(
   };
 }
 
+/**
+ * Persists live discovery rows into `opportunities.mode_data` using the
+ * service-role client when available (required by catalog RLS in migration 005).
+ */
 export async function upsertLiveOpportunities(
   drafts: LiveOpportunityDraft[],
   workspace?: WorkspaceIdentity,
   niche?: NicheId
 ): Promise<Opportunity[]> {
-  const supabase = createServerSupabaseClient();
+  const supabase = createCatalogWriterClient();
+  if (!supabase) {
+    return drafts.map((d) => liveDraftToOpportunity(d, workspace, niche));
+  }
+
   const opportunities = drafts.map((d) =>
     liveDraftToOpportunity(d, workspace, niche)
   );
 
   for (const opp of opportunities) {
     const row = mapOpportunityToInsertRow(opp);
-    const { data: existing } = await supabase
+    const { data: existing, error: lookupError } = await supabase
       .from("opportunities")
       .select("id")
       .eq("title", opp.name)
       .eq("category", opp.category)
       .maybeSingle();
 
+    if (lookupError) {
+      logServerError("opportunities.upsert.lookup", lookupError);
+      continue;
+    }
+
     if (existing?.id) {
-      await supabase
+      const { error: updateError } = await supabase
         .from("opportunities")
         .update({
           score: row.score,
@@ -90,13 +105,23 @@ export async function upsertLiveOpportunities(
           current_niche: row.current_niche,
         })
         .eq("id", existing.id);
+
+      if (updateError) {
+        logServerError("opportunities.upsert.update", updateError);
+        continue;
+      }
       opp.id = existing.id;
     } else {
-      const { data: inserted } = await supabase
+      const { data: inserted, error: insertError } = await supabase
         .from("opportunities")
         .insert(row)
         .select("id")
         .single();
+
+      if (insertError) {
+        logServerError("opportunities.upsert.insert", insertError);
+        continue;
+      }
       if (inserted?.id) opp.id = inserted.id;
     }
   }

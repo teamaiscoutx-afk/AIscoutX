@@ -18,6 +18,7 @@ import {
   upsertLiveOpportunities,
 } from "@/lib/intelligence/opportunity-persistence";
 import type { OpportunityDeepDive } from "@/lib/intelligence/types";
+import { createCatalogWriterClient } from "@/lib/server/supabase-writer";
 import { createServerSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
 
 export type IntelligenceStatus = {
@@ -126,18 +127,20 @@ export async function fetchOpportunityDeepDive(
     const deepDive = await refreshOpportunityDeepDive(seed, existing);
 
     if (isSupabaseConfigured()) {
-      const supabase = createServerSupabaseClient();
-      const { data: row } = await supabase
-        .from("opportunities")
-        .select("mode_data")
-        .eq("id", opportunityId)
-        .maybeSingle();
+      const supabase = createCatalogWriterClient();
+      if (supabase) {
+        const { data: row } = await supabase
+          .from("opportunities")
+          .select("mode_data")
+          .eq("id", opportunityId)
+          .maybeSingle();
 
-      const modeData = (row?.mode_data ?? {}) as Record<string, unknown>;
-      await supabase
-        .from("opportunities")
-        .update({ mode_data: { ...modeData, deepDive } })
-        .eq("id", opportunityId);
+        const modeData = (row?.mode_data ?? {}) as Record<string, unknown>;
+        await supabase
+          .from("opportunities")
+          .update({ mode_data: { ...modeData, deepDive } })
+          .eq("id", opportunityId);
+      }
     }
 
     return { ok: true, deepDive };
