@@ -7,8 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed:opportunities": "tsx --tsconfig tsconfig.json src/scripts/seed-opportunities.ts",
-    "deploy:env": "node scripts/sync-vercel-env.mjs"
+    "sync:vercel-env": "node scripts/sync-vercel-env.mjs",
+    "seed:opportunities": "tsx --tsconfig tsconfig.json src/scripts/seed-opportunities.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.82",
@@ -47,6 +47,7 @@
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "tsx": "^4.22.4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vercel": "^54.12.2"
   }
 }

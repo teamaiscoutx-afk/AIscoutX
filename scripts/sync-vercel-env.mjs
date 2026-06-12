@@ -5,7 +5,7 @@
  * Requires one-time login: npx vercel login
  * Or set VERCEL_TOKEN in the environment.
  *
- * Usage: node scripts/sync-vercel-env.mjs
+ * Usage: npm run sync:vercel-env
  */
 import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -23,7 +23,15 @@ const SYNC_KEYS = [
   "NEXT_PUBLIC_SUPABASE_URL",
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
   "NEXT_PUBLIC_SITE_URL",
+  "STRIPE_PRO_PAYMENT_LINK",
+  "STRIPE_WEBHOOK_SECRET",
 ];
+
+/** Map legacy NEXT_PUBLIC_* keys to server-only names when migrating. */
+const LEGACY_ALIASES = {
+  OPENAI_API_KEY: "NEXT_PUBLIC_OPENAI_API_KEY",
+  TAVILY_API_KEY: "NEXT_PUBLIC_TAVILY_API_KEY",
+};
 
 function parseEnvFile(content) {
   const map = new Map();
@@ -45,18 +53,25 @@ function parseEnvFile(content) {
   return map;
 }
 
+function resolveValue(env, key) {
+  const direct = env.get(key)?.trim();
+  if (direct) return direct;
+  const legacy = LEGACY_ALIASES[key];
+  if (legacy) return env.get(legacy)?.trim() ?? "";
+  return "";
+}
+
 function runVercel(args, input) {
-  const result = spawnSync("npx", ["vercel", ...args], {
+  const vercelBin = resolve(root, "node_modules/.bin/vercel");
+  return spawnSync(vercelBin, args, {
     cwd: root,
     input,
     encoding: "utf8",
     stdio: ["pipe", "pipe", "pipe"],
   });
-  return result;
 }
 
 function upsertEnv(key, value, target) {
-  // Remove existing var (ignore errors), then add fresh value.
   runVercel(["env", "rm", key, target, "--yes"]);
   const add = runVercel(["env", "add", key, target], `${value}\n`);
   if (add.status !== 0) {
@@ -70,7 +85,7 @@ function upsertEnv(key, value, target) {
 const raw = readFileSync(envPath, "utf8");
 const env = parseEnvFile(raw);
 
-const link = runVercel(["link", "--yes"]);
+const link = runVercel(["link", "--project", "a-iscout-x", "--yes"]);
 if (link.status !== 0) {
   console.error(
     "Vercel project not linked. Run: npx vercel login && npx vercel link"
@@ -83,7 +98,7 @@ let ok = 0;
 let skipped = 0;
 
 for (const key of SYNC_KEYS) {
-  const value = env.get(key)?.trim();
+  const value = resolveValue(env, key);
   if (!value) {
     console.warn(`⊘ Skipping ${key} (empty in .env.local)`);
     skipped += 1;
