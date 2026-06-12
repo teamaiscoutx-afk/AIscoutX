@@ -52,11 +52,6 @@ export async function refreshLiveOpportunityFeed(
   niche: NicheId = "b2b-saas",
   extraSeeds: string[] = []
 ): Promise<{ ok: boolean; opportunities: Opportunity[]; error?: string }> {
-  if (!isIntelligenceEngineReady()) {
-    const status = await getIntelligenceStatus();
-    return { ok: false, opportunities: [], error: status.message };
-  }
-
   try {
     const seeds = resolveDiscoverySeeds(workspace, niche, extraSeeds);
     const drafts = await discoverOpportunityBatch(seeds, {

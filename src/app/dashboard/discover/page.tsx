@@ -1,5 +1,4 @@
 import { CommandCenter } from "@/components/dashboard/command-center";
-import { getIntelligenceStatus } from "@/app/actions/intelligence";
 import { fetchAllOpportunities } from "@/app/actions/opportunities";
 import { fetchNotifications, syncActiveWorkspaceSignals } from "@/app/actions/notifications";
 import { getCurrentProfile } from "@/app/actions/profile";
@@ -18,21 +17,18 @@ export default async function DiscoverPage() {
     profile?.current_niche
   );
 
-  const [, feed, notifications, intelligence] = await Promise.all([
+  const [, feed, notifications] = await Promise.all([
     syncActiveWorkspaceSignals(),
     fetchAllOpportunities(initialWorkspace, initialNiche),
     fetchNotifications(),
-    getIntelligenceStatus(),
   ]);
 
-  const { opportunities, source, statusMessage } = feed;
+  const { opportunities, source } = feed;
 
   return (
     <CommandCenter
       initialOpportunities={opportunities}
       dataSource={source}
-      statusMessage={statusMessage}
-      intelligenceReady={intelligence.ready}
       initialNotifications={notifications}
       initialWorkspace={initialWorkspace}
       initialNiche={initialNiche}
