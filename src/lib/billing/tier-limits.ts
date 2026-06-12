@@ -2,16 +2,25 @@ export type PlanTier = "free" | "pro";
 
 export type SubscriptionStatus = "active" | "canceled";
 
+/** Free tier — generous discovery; Pro unlocks unlimited + premium exports. */
 export const FREE_TIER_LIMITS = {
-  opportunityViewsPerDay: 5,
-  opportunityExpansionsPerMonth: 2,
-  blueprintsPerMonth: 2,
-  savedIdeasMax: 5,
+  /** Discovery feed + niche switching — not enforced in UI. */
+  opportunityViewsPerDay: Number.POSITIVE_INFINITY,
+  opportunityExpansionsPerMonth: Number.POSITIVE_INFINITY,
+  blueprintsPerMonth: 3,
+  savedIdeasMax: 25,
   chatMessagesPerMonth: 10,
+  activeProjectsMax: 1,
 } as const;
 
+export const BLUEPRINT_LIMIT_MESSAGE =
+  "You've used your 3 free blueprint generations this month. Upgrade to Pro for unlimited runs + PDF export.";
+
 export const CHAT_LIMIT_MESSAGE =
-  "✨ You have reached your free strategy limit. Upgrade to Pro for unlimited advisory support.";
+  "You've reached your free chat limit this month. Upgrade to Pro for unlimited AI founder strategy.";
+
+export const PDF_EXPORT_MESSAGE =
+  "1-Click PDF Export is a Pro feature. Upgrade to download client-ready blueprint decks.";
 
 /** Map legacy plan values (starter/agency) to the two-tier model. */
 export function normalizePlanTier(
@@ -23,10 +32,6 @@ export function normalizePlanTier(
 
 export function isPaidPlan(plan: PlanTier | string | null | undefined): boolean {
   return normalizePlanTier(plan) === "pro";
-}
-
-export function canAccessDeepAnalysis(plan: PlanTier | string | null | undefined): boolean {
-  return isPaidPlan(plan);
 }
 
 export function monthKey(date = new Date()): string {

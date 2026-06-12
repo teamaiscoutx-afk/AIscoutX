@@ -2,6 +2,7 @@
 
 import type { PlanTier } from "@/lib/billing/tier-limits";
 import {
+  BLUEPRINT_LIMIT_MESSAGE,
   CHAT_LIMIT_MESSAGE,
   FREE_TIER_LIMITS,
   isPaidPlan,
@@ -156,84 +157,20 @@ export async function getUsageSnapshot(): Promise<UsageSnapshot> {
 }
 
 /**
- * Analyze-module gate: free users get exactly 2 successful opportunity
- * expansions per month. Single round trip — checks the wallet, increments
- * on success, and returns UPGRADE_REQUIRED from the 3rd attempt onward.
+ * Discovery drawer — always allowed on free tier (no expansion cap).
  */
 export async function gateOpportunityExpansion(): Promise<{
   allowed: boolean;
   reason?: string;
   code?: string;
 }> {
-  if (!isSupabaseConfigured()) {
-    return { allowed: true };
-  }
-
-  try {
-    const supabase = createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { allowed: true };
-
-    const profile = await getCurrentProfile();
-    if (isPaidPlan(profile?.plan)) {
-      return { allowed: true };
-    }
-
-    const wallet = resetWalletCounters(
-      (await ensureWallet(user.id)) ?? {
-        user_id: user.id,
-        opportunity_views_today: 0,
-        opportunity_views_date: todayKey(),
-        opportunity_expansions_this_month: 0,
-        expansions_month_key: monthKey(),
-        blueprints_this_month: 0,
-        blueprints_month_key: monthKey(),
-        chat_messages_this_month: 0,
-        chat_month_key: monthKey(),
-        updated_at: new Date().toISOString(),
-      }
-    );
-
-    const used = wallet.opportunity_expansions_this_month ?? 0;
-
-    if (used >= FREE_TIER_LIMITS.opportunityExpansionsPerMonth) {
-      return {
-        allowed: false,
-        code: "UPGRADE_REQUIRED",
-        reason: `You've used your ${FREE_TIER_LIMITS.opportunityExpansionsPerMonth} free deep looks this month. Upgrade to Pro for unlimited opportunity analysis.`,
-      };
-    }
-
-    // Increment is best-effort: if the migration hasn't run yet, allow through
-    await supabase
-      .from("usage_wallets")
-      .update({
-        opportunity_expansions_this_month: used + 1,
-        expansions_month_key: monthKey(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", user.id);
-
-    return { allowed: true };
-  } catch {
-    return { allowed: true };
-  }
+  return { allowed: true };
 }
 
 export async function checkOpportunityView(): Promise<{
   allowed: boolean;
   reason?: string;
 }> {
-  const usage = await getUsageSnapshot();
-  if (usage.isPaid) return { allowed: true };
-  if (usage.opportunityViewsToday >= usage.opportunityViewsLimit) {
-    return {
-      allowed: false,
-      reason: `Free plan limit: ${FREE_TIER_LIMITS.opportunityViewsPerDay} opportunity views per day. Upgrade to Starter for unlimited access.`,
-    };
-  }
   return { allowed: true };
 }
 
@@ -269,7 +206,7 @@ export async function checkBlueprintGeneration(): Promise<{
   if (usage.blueprintsThisMonth >= usage.blueprintsLimit) {
     return {
       allowed: false,
-      reason: `Free plan limit: ${FREE_TIER_LIMITS.blueprintsPerMonth} blueprints per month. Upgrade to Starter for unlimited generation.`,
+      reason: BLUEPRINT_LIMIT_MESSAGE,
     };
   }
   return { allowed: true };
@@ -345,7 +282,7 @@ export async function checkSavedIdea(): Promise<{
   if (usage.savedIdeasCount >= usage.savedIdeasLimit) {
     return {
       allowed: false,
-      reason: `Free plan limit: ${FREE_TIER_LIMITS.savedIdeasMax} saved ideas. Upgrade to Starter for unlimited storage.`,
+      reason: `Free plan includes ${FREE_TIER_LIMITS.savedIdeasMax} saved signals. Upgrade to Pro for unlimited saves.`,
     };
   }
   return { allowed: true };

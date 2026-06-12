@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 
 import { getCurrentProfile } from "@/app/actions/profile";
-import { incrementBlueprintUsage } from "@/app/actions/usage";
-import { requirePro } from "@/lib/billing/paywall";
+import { checkBlueprintGeneration, incrementBlueprintUsage } from "@/app/actions/usage";
+import { UPGRADE_REQUIRED } from "@/lib/billing/paywall";
 import { toClientError, logServerError } from "@/lib/server/safe-action";
 import {
   runGenerationPipeline,
@@ -396,9 +396,9 @@ export async function generateVenturePack(
     };
   }
 
-  const gate = await requirePro("blueprint");
+  const gate = await checkBlueprintGeneration();
   if (!gate.allowed) {
-    return { ok: false, error: gate.reason, code: gate.code };
+    return { ok: false, error: gate.reason, code: UPGRADE_REQUIRED };
   }
 
   const profile = await getCurrentProfile();

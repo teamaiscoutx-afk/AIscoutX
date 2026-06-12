@@ -73,7 +73,7 @@ export function UpgradeModalProvider({
               </DialogPrimitive.Title>
               <DialogPrimitive.Description className="mt-2 text-sm text-zinc-400">
                 {reason ??
-                  "Blueprints, Deep Dive specs, and Founder GPS run on Pro. One plan, everything unlocked."}
+                  "PDF export, Founder GPS, unlimited blueprints, and trash recovery run on Pro."}
               </DialogPrimitive.Description>
 
               <DialogPrimitive.Close

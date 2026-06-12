@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 
+import type { UsageSnapshot } from "@/app/actions/usage";
 import { BlueprintsView } from "@/components/mvp/blueprints-view";
 import { loadVenturePackLocal } from "@/lib/mvp/venture-pack-storage";
 import type { VenturePack } from "@/lib/mvp/types";
 
 type BlueprintsPageClientProps = {
   serverPack: VenturePack | null;
+  usage: UsageSnapshot;
 };
 
 function pickLatest(
@@ -21,12 +23,15 @@ function pickLatest(
     : server;
 }
 
-export function BlueprintsPageClient({ serverPack }: BlueprintsPageClientProps) {
+export function BlueprintsPageClient({
+  serverPack,
+  usage,
+}: BlueprintsPageClientProps) {
   const [pack, setPack] = useState<VenturePack | null>(serverPack);
 
   useEffect(() => {
     setPack(pickLatest(loadVenturePackLocal(), serverPack));
   }, [serverPack]);
 
-  return <BlueprintsView pack={pack} />;
+  return <BlueprintsView pack={pack} usage={usage} />;
 }

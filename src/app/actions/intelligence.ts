@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 
 import { getCurrentProfile } from "@/app/actions/profile";
-import { requirePro } from "@/lib/billing/paywall";
 import { mapOpportunityRowToClient } from "@/lib/dashboard/opportunity-mapper";
 import type { Opportunity } from "@/lib/dashboard/opportunities";
 import type { NicheId, WorkspaceIdentity } from "@/lib/dashboard/onboarding";
@@ -91,11 +90,6 @@ export async function fetchOpportunityDeepDive(
   error?: string;
   code?: string;
 }> {
-  const gate = await requirePro("deepdive");
-  if (!gate.allowed) {
-    return { ok: false, error: gate.reason, code: gate.code };
-  }
-
   if (!isIntelligenceEngineReady()) {
     return { ok: false, error: "Intelligence engine not configured." };
   }

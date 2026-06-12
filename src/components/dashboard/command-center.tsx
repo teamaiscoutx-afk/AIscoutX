@@ -17,9 +17,7 @@ import { TrendingSection } from "@/components/dashboard/trending-section";
 import type { OpportunitiesDataSource } from "@/app/actions/opportunities";
 import type { PlatformNotification } from "@/app/actions/notifications";
 import { refreshLiveOpportunityFeed } from "@/app/actions/intelligence";
-import { gateOpportunityExpansion } from "@/app/actions/usage";
 import { PlanSelectorModal } from "@/components/billing/plan-selector-modal";
-import { useUpgradeModal } from "@/components/billing/upgrade-modal";
 import { completeOnboardingProfile, updateProfileWorkspace } from "@/app/actions/profile";
 import { buildFeedViewModel } from "@/lib/dashboard/feed-utils";
 import {
@@ -95,7 +93,6 @@ export function CommandCenter({
   initialWorkspace,
   initialNiche,
 }: CommandCenterProps) {
-  const { openUpgradeModal } = useUpgradeModal();
   const [phase, setPhase] = useState<ExperiencePhase>("hydrating");
   const [, setProfile] = useState<UserOnboardingProfile | null>(null);
   const [allOpportunities, setAllOpportunities] =
@@ -254,19 +251,9 @@ export function CommandCenter({
     }
   }, []);
 
-  const openOpportunity = useCallback(
-    (opportunity: Opportunity) => {
-      void (async () => {
-        const gate = await gateOpportunityExpansion();
-        if (!gate.allowed) {
-          openUpgradeModal(gate.reason);
-          return;
-        }
-        setSelectedOpportunity(opportunity);
-      })();
-    },
-    [openUpgradeModal]
-  );
+  const openOpportunity = useCallback((opportunity: Opportunity) => {
+    setSelectedOpportunity(opportunity);
+  }, []);
 
   const closeDrawer = useCallback(() => {
     setSelectedOpportunity(null);

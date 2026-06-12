@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { incrementBlueprintUsage } from "@/app/actions/usage";
 import { isProUser, UPGRADE_REQUIRED } from "@/lib/billing/paywall";
+import { FREE_TIER_LIMITS } from "@/lib/billing/tier-limits";
 import { toClientError } from "@/lib/server/safe-action";
 import type { Opportunity } from "@/lib/dashboard/opportunities";
 import type { DailyTaskRow, WorkspaceRow } from "@/lib/database.types";
@@ -135,12 +136,11 @@ export async function createWorkspaceFromOpportunity(
         .eq("user_id", user.id)
         .eq("is_deleted", false);
 
-      if ((count ?? 0) >= 1) {
+      if ((count ?? 0) >= FREE_TIER_LIMITS.activeProjectsMax) {
         return {
           ok: false,
           code: UPGRADE_REQUIRED,
-          error:
-            "Free plan includes 1 active project. Upgrade to Pro for unlimited projects.",
+          error: `Free plan includes ${FREE_TIER_LIMITS.activeProjectsMax} active project. Upgrade to Pro for unlimited projects.`,
         };
       }
     }
