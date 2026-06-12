@@ -25,6 +25,7 @@ export function liveDraftToOpportunity(
     deepDive: draft.deepDive,
     disruption: draft.scores.scores.disruption,
     liveSynthesizedAt: draft.deepDive.synthesizedAt,
+    catalogSource: "live",
   };
 
   return {
@@ -57,6 +58,7 @@ export function liveDraftToOpportunity(
     deepDive: draft.deepDive,
     workspace,
     niche,
+    catalogSource: "live",
   };
 }
 

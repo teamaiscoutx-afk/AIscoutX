@@ -77,8 +77,7 @@ function resolveActiveNiche(
 
 const SOURCE_LABEL: Record<OpportunitiesDataSource, string> = {
   live: "Live Web",
-  cache: "Cached Signals",
-  curated: "Curated Feed",
+  cache: "Live Cache",
   unconfigured: "Live Web",
 };
 

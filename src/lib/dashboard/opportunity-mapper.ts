@@ -50,6 +50,7 @@ export function mapOpportunityRowToClient(row: OpportunityRow): Opportunity {
     deepDive: modeData.deepDive,
     workspace: row.workspace_mode ?? undefined,
     niche: (row.current_niche as NicheId | null) ?? undefined,
+    catalogSource: modeData.catalogSource,
   };
 }
 
@@ -116,6 +117,8 @@ export function mapOpportunityToInsertRow(
       deepDive: opportunity.deepDive,
       disruption: opportunity.scores.disruption,
       liveSynthesizedAt: opportunity.deepDive?.synthesizedAt,
+      catalogSource: opportunity.catalogSource ??
+        (opportunity.deepDive?.synthesizedAt ? "live" : undefined),
     },
   };
 }

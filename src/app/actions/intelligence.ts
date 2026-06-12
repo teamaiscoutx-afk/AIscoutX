@@ -175,6 +175,7 @@ export async function loadCachedOpportunities(): Promise<Opportunity[]> {
     .select("*")
     .neq("category", "venture-pack")
     .eq("is_deleted", false)
+    .eq("mode_data->>catalogSource", "live")
     .order("score", { ascending: false })
     .limit(20);
 

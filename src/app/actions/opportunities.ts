@@ -11,17 +11,16 @@ import { buildFeedViewModel } from "@/lib/dashboard/feed-utils";
 import { mapOpportunityRowToClient } from "@/lib/dashboard/opportunity-mapper";
 import type { NicheId, WorkspaceIdentity } from "@/lib/dashboard/onboarding";
 import type { Opportunity } from "@/lib/dashboard/opportunities";
-import { isIntelligenceEngineReady, getIntelligenceSetupMessage } from "@/lib/intelligence/env";
 import {
-  getCuratedDiscoveryFallback,
-  tryBootstrapDiscoveryCatalog,
-} from "@/lib/intelligence/discovery-bootstrap";
+  getIntelligenceSetupMessage,
+  isIntelligenceEngineReady,
+} from "@/lib/intelligence/env";
 import {
   createServerSupabaseClient,
   isSupabaseConfigured,
 } from "@/lib/supabase";
 
-export type OpportunitiesDataSource = "live" | "cache" | "curated" | "unconfigured";
+export type OpportunitiesDataSource = "live" | "cache" | "unconfigured";
 
 export type FetchAllOpportunitiesResult = {
   opportunities: Opportunity[];
@@ -38,57 +37,45 @@ export type DashboardFeedPayload = {
   statusMessage?: string;
 };
 
-/** Live web intelligence feed — never returns an empty dashboard. */
+/** Live Tavily + OpenAI feed only — no curated/seed fallbacks. */
 export async function fetchAllOpportunities(
   workspace: WorkspaceIdentity = "founder",
   niche: NicheId = "b2b-saas"
 ): Promise<FetchAllOpportunitiesResult> {
-  const keysReady = isIntelligenceEngineReady();
-  const setupHint = getIntelligenceSetupMessage();
-
-  if (keysReady) {
-    const live = await refreshLiveOpportunityFeed(workspace, niche);
-
-    if (live.ok && live.opportunities.length) {
-      return { opportunities: live.opportunities, source: "live" };
-    }
-
+  if (!isIntelligenceEngineReady()) {
     const cached = await loadCachedOpportunities();
     if (cached.length) {
-      return {
-        opportunities: cached,
-        source: "cache",
-        statusMessage:
-          live.error ?? "Showing cached signals while live refresh retries.",
-      };
+      return { opportunities: cached, source: "cache" };
     }
-
-    const curated = getCuratedDiscoveryFallback();
     return {
-      opportunities: curated,
-      source: "curated",
-      statusMessage:
-        live.error ??
-        "Live engine is running — showing curated signals while niche data loads.",
+      opportunities: [],
+      source: "unconfigured",
+      statusMessage: getIntelligenceSetupMessage(),
     };
   }
 
-  // Keys missing — bootstrap DB if possible, then serve cache or curated catalog.
-  await tryBootstrapDiscoveryCatalog().catch(() => 0);
+  const live = await refreshLiveOpportunityFeed(workspace, niche);
+
+  if (live.ok && live.opportunities.length) {
+    return { opportunities: live.opportunities, source: "live" };
+  }
 
   const cached = await loadCachedOpportunities();
   if (cached.length) {
     return {
       opportunities: cached,
       source: "cache",
-      statusMessage: setupHint,
+      statusMessage:
+        live.error ?? "Showing your last live signals while we refresh the web scan.",
     };
   }
 
   return {
-    opportunities: getCuratedDiscoveryFallback(),
-    source: "curated",
-    statusMessage: setupHint,
+    opportunities: [],
+    source: "live",
+    statusMessage:
+      live.error ??
+      "Scanning live web signals for your niche — try switching niche or refresh in a moment.",
   };
 }
 

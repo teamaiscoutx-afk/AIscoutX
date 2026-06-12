@@ -42,6 +42,8 @@ export type OpportunityModeData = {
   deepDive?: OpportunityDeepDive;
   disruption?: number;
   liveSynthesizedAt?: string;
+  /** Distinguishes Tavily/OpenAI rows from legacy seed catalog entries. */
+  catalogSource?: "live" | "seed";
   /** Generated venture pack stored on the opportunities table, scoped by ownerId. */
   venturePack?: VenturePackData;
 };
