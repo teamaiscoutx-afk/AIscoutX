@@ -16,6 +16,7 @@ import { OpportunityOfDay } from "@/components/dashboard/opportunity-of-day";
 import { TrendingSection } from "@/components/dashboard/trending-section";
 import type { OpportunitiesDataSource } from "@/app/actions/opportunities";
 import type { PlatformNotification } from "@/app/actions/notifications";
+import { refreshLiveOpportunityFeed, getIntelligenceStatus } from "@/app/actions/intelligence";
 import { gateOpportunityExpansion } from "@/app/actions/usage";
 import { PlanSelectorModal } from "@/components/billing/plan-selector-modal";
 import { useUpgradeModal } from "@/components/billing/upgrade-modal";
@@ -55,6 +56,7 @@ type CommandCenterProps = {
   initialOpportunities: Opportunity[];
   dataSource: OpportunitiesDataSource;
   statusMessage?: string;
+  intelligenceReady: boolean;
   initialNotifications?: PlatformNotification[];
   initialWorkspace: WorkspaceIdentity;
   initialNiche: NicheId;
@@ -83,10 +85,19 @@ const SOURCE_LABEL: Record<OpportunitiesDataSource, string> = {
   unconfigured: "API Keys Needed",
 };
 
+function resolveFeedSourceLabel(
+  source: OpportunitiesDataSource,
+  engineReady: boolean
+): string {
+  if (!engineReady) return "API Keys Needed";
+  return SOURCE_LABEL[source === "unconfigured" ? "live" : source];
+}
+
 export function CommandCenter({
   initialOpportunities,
   dataSource,
   statusMessage,
+  intelligenceReady,
   initialNotifications,
   initialWorkspace,
   initialNiche,
@@ -94,7 +105,15 @@ export function CommandCenter({
   const { openUpgradeModal } = useUpgradeModal();
   const [phase, setPhase] = useState<ExperiencePhase>("hydrating");
   const [, setProfile] = useState<UserOnboardingProfile | null>(null);
-  const [allOpportunities] = useState<Opportunity[]>(initialOpportunities);
+  const [allOpportunities, setAllOpportunities] =
+    useState<Opportunity[]>(initialOpportunities);
+  const [feedSource, setFeedSource] =
+    useState<OpportunitiesDataSource>(dataSource);
+  const [feedStatus, setFeedStatus] = useState<string | undefined>(
+    statusMessage
+  );
+  const [engineReady, setEngineReady] = useState(intelligenceReady);
+  const [feedLoading, setFeedLoading] = useState(false);
 
   const [draftIdentity, setDraftIdentity] = useState<WorkspaceIdentity | null>(
     null
@@ -371,6 +390,41 @@ export function CommandCenter({
     ]
   );
 
+  // Sync intelligence engine status from server (keys in .env.local).
+  useEffect(() => {
+    void getIntelligenceStatus().then((status) => {
+      setEngineReady(status.ready);
+    });
+  }, []);
+
+  // Refresh live niche feed when workspace/niche changes or feed becomes ready.
+  useEffect(() => {
+    if (phase !== "ready" || !engineReady) return;
+
+    let cancelled = false;
+    setFeedLoading(true);
+
+    void refreshLiveOpportunityFeed(activeWorkspace, activeNiche).then(
+      (result) => {
+        if (cancelled) return;
+
+        if (result.ok && result.opportunities.length > 0) {
+          setAllOpportunities(result.opportunities);
+          setFeedSource("live");
+          setFeedStatus(undefined);
+        } else if (result.error) {
+          setFeedStatus(result.error);
+        }
+      }
+    ).finally(() => {
+      if (!cancelled) setFeedLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [phase, engineReady, activeWorkspace, activeNiche]);
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape" && phase === "ready") closeDrawer();
@@ -473,16 +527,26 @@ export function CommandCenter({
                     className="border-[#deff9a]/30 bg-[#deff9a]/10 text-[10px] uppercase tracking-wider text-[#deff9a]"
                   >
                     <span className="mr-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#deff9a]" />
-                    {SOURCE_LABEL[dataSource]}
+                    {feedLoading
+                      ? "Scanning Live Web…"
+                      : resolveFeedSourceLabel(feedSource, engineReady)}
                   </Badge>
                 </div>
 
-                {statusMessage && (
-                  <p className="mb-4 text-xs text-zinc-500">{statusMessage}</p>
+                {feedStatus && !engineReady && (
+                  <p className="mb-4 rounded-xl border border-amber-500/25 bg-amber-500/[0.08] px-4 py-3 text-xs text-amber-200/90">
+                    {feedStatus}
+                  </p>
+                )}
+                {feedStatus && engineReady && allOpportunities.length === 0 && (
+                  <p className="mb-4 text-xs text-zinc-500">{feedStatus}</p>
+                )}
+                {feedStatus && engineReady && allOpportunities.length > 0 && feedSource !== "live" && (
+                  <p className="mb-4 text-xs text-zinc-500">{feedStatus}</p>
                 )}
 
                 <motion.div
-                  key={`${activeWorkspace}-${activeNiche}-${dataSource}`}
+                  key={`${activeWorkspace}-${activeNiche}-${feedSource}-${allOpportunities.length}`}
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, ease: "easeOut" }}

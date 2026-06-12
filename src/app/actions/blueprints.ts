@@ -2,7 +2,7 @@
 
 import { getWorkspaceById } from "@/app/actions/workspaces";
 import { buildEvidencePromptBlock } from "@/lib/intelligence/copy-engine";
-import { isIntelligenceEngineReady } from "@/lib/intelligence/config";
+import { isIntelligenceEngineReady } from "@/lib/intelligence/env";
 import { synthesizeJson } from "@/lib/intelligence/llm-router";
 import { searchAllChannels, flattenSnippets } from "@/lib/intelligence/web-search";
 import { computeMetrics, computeScores } from "@/lib/intelligence/score-engine";

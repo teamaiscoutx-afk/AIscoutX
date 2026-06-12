@@ -1,27 +1,81 @@
 import type { NicheId, WorkspaceIdentity } from "@/lib/dashboard/onboarding";
 import { getNicheLabel } from "@/lib/dashboard/onboarding";
 
-const NICHE_QUERY_MAP: Record<string, string[]> = {
-  "b2b-saas": ["B2B workflow automation SaaS", "AI sales enablement tool"],
-  "ai-tools": ["AI developer tools startup", "AI agent builder platform"],
-  ecommerce: ["ecommerce automation AI", "DTC retention software"],
-  "content-creation": ["creator monetization tool", "AI content workflow"],
-  "personal-brand": ["personal brand automation", "creator CRM software"],
-  "tech-ai": ["AI startup opportunity 2025", "vertical AI agent"],
-  "local-services": ["AI receptionist local business", "appointment booking automation"],
-  "service-business": ["agency automation software", "client reporting AI"],
-  "productized-services": ["productized service SaaS", "done-for-you automation"],
-  "info-products": ["digital product launch tool", "course creator software"],
+const NICHE_QUERY_MAP: Record<NicheId, string[]> = {
+  "b2b-saas": [
+    "B2B workflow automation SaaS startup opportunity",
+    "AI sales enablement tool complaints reddit",
+  ],
+  "ai-tools": [
+    "AI developer tools startup opportunity",
+    "AI agent builder platform market gap",
+  ],
+  ecommerce: [
+    "ecommerce automation AI startup",
+    "DTC retention software pain points",
+  ],
+  "tech-ai": [
+    "AI startup opportunity 2025",
+    "vertical AI agent creator economy",
+  ],
+  "finance-business": [
+    "fintech creator tool opportunity",
+    "personal finance automation SaaS",
+  ],
+  lifestyle: [
+    "lifestyle creator monetization tool",
+    "wellness subscription startup opportunity",
+  ],
+  "coding-design": [
+    "developer productivity tool opportunity",
+    "design workflow automation SaaS",
+  ],
+  "marketing-services": [
+    "marketing agency automation software",
+    "client reporting AI tool opportunity",
+  ],
+  "ai-implementation": [
+    "AI implementation agency service opportunity",
+    "enterprise AI consulting automation",
+  ],
+  "growth-ops": [
+    "growth ops automation SaaS",
+    "revops tooling startup opportunity",
+  ],
+  "digital-products": [
+    "digital product launch tool solopreneur",
+    "course creator software opportunity",
+  ],
+  "freelance-ai": [
+    "freelance AI services productized offer",
+    "AI consulting solo founder SaaS",
+  ],
+  "side-hustles": [
+    "side hustle automation tool opportunity",
+    "micro SaaS indie hacker niche 2025",
+  ],
 };
 
+/**
+ * Build Tavily/OpenAI seed queries from the user's active workspace + niche.
+ * Always leads with the human-readable niche label for relevance.
+ */
 export function resolveDiscoverySeeds(
   workspace: WorkspaceIdentity,
   niche: NicheId,
   extraTokens: string[] = []
 ): string[] {
   const label = getNicheLabel(workspace, niche);
-  const mapped = NICHE_QUERY_MAP[niche] ?? [label];
-  const seeds = [label, ...mapped, ...extraTokens];
+  const mapped = NICHE_QUERY_MAP[niche] ?? [
+    `${label} startup opportunity`,
+    `${label} SaaS pain points reddit`,
+  ];
 
-  return Array.from(new Set(seeds.map((s) => s.trim()).filter(Boolean))).slice(0, 5);
+  const seeds = [
+    `${label} startup opportunities 2025`,
+    ...mapped,
+    ...extraTokens,
+  ];
+
+  return Array.from(new Set(seeds.map((s) => s.trim()).filter(Boolean))).slice(0, 4);
 }

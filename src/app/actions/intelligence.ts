@@ -7,7 +7,7 @@ import { requirePro } from "@/lib/billing/paywall";
 import { mapOpportunityRowToClient } from "@/lib/dashboard/opportunity-mapper";
 import type { Opportunity } from "@/lib/dashboard/opportunities";
 import type { NicheId, WorkspaceIdentity } from "@/lib/dashboard/onboarding";
-import { getIntelligenceConfig, isIntelligenceEngineReady } from "@/lib/intelligence/config";
+import { getIntelligenceEnvStatus, isIntelligenceEngineReady } from "@/lib/intelligence/env";
 import { resolveDiscoverySeeds } from "@/lib/intelligence/niche-seeds";
 import {
   discoverOpportunityBatch,
@@ -29,29 +29,29 @@ export type IntelligenceStatus = {
 };
 
 export async function getIntelligenceStatus(): Promise<IntelligenceStatus> {
-  const config = getIntelligenceConfig();
-  if (config.hasWebSearch && config.hasLlm) {
+  const env = getIntelligenceEnvStatus();
+  if (env.ready) {
     return {
       ready: true,
-      webProvider: config.webProvider,
-      llmProvider: config.llmProvider,
-      message: `Live engine active via ${config.webProvider} + ${config.llmProvider}.`,
+      webProvider: env.webProvider,
+      llmProvider: env.llmProvider,
+      message: `Live engine active via ${env.webProvider} + ${env.llmProvider}.`,
     };
   }
 
   const missing: string[] = [];
-  if (!config.hasWebSearch) {
+  if (!env.hasWebSearch) {
     missing.push("TAVILY_API_KEY, SERPER_API_KEY, or PERPLEXITY_API_KEY");
   }
-  if (!config.hasLlm) {
+  if (!env.hasLlm) {
     missing.push("OPENAI_API_KEY or ANTHROPIC_API_KEY");
   }
 
   return {
     ready: false,
-    webProvider: config.webProvider,
-    llmProvider: config.llmProvider,
-    message: `Configure: ${missing.join(" and ")}.`,
+    webProvider: env.webProvider,
+    llmProvider: env.llmProvider,
+    message: `Configure: ${missing.join(" and ")}. Restart dev server after updating .env.local.`,
   };
 }
 

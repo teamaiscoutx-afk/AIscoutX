@@ -189,17 +189,26 @@ export async function discoverOpportunityBatch(
 ): Promise<LiveOpportunityDraft[]> {
   const unique = Array.from(new Set(seeds.map((s) => s.trim()).filter(Boolean))).slice(
     0,
-    5
+    3
   );
 
-  const results: LiveOpportunityDraft[] = [];
-  for (const seed of unique) {
-    try {
-      const draft = await discoverLiveOpportunity(seed, context);
-      results.push(draft);
-    } catch (err) {
-      console.error(`[discoverLiveOpportunity] seed="${seed}"`, err);
-    }
+  const settled = await Promise.all(
+    unique.map(async (seed) => {
+      try {
+        return await discoverLiveOpportunity(seed, context);
+      } catch (err) {
+        console.error(`[discoverLiveOpportunity] seed="${seed}"`, err);
+        return null;
+      }
+    })
+  );
+
+  const results = settled.filter((d): d is LiveOpportunityDraft => d !== null);
+
+  if (!results.length && unique.length) {
+    throw new Error(
+      "Live discovery failed for all niche seeds. Check Tavily and OpenAI keys, then restart the dev server."
+    );
   }
 
   return results;

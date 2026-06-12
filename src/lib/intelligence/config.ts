@@ -1,20 +1,17 @@
-import { getLlmProvider, isLlmConfigured } from "@/lib/intelligence/llm-router";
 import {
-  getWebSearchProvider,
-  isWebSearchConfigured,
-} from "@/lib/intelligence/web-search";
+  getIntelligenceEnvStatus,
+  isIntelligenceEngineReady,
+} from "@/lib/intelligence/env";
 import type { IntelligenceConfig } from "@/lib/intelligence/types";
 
-export function getIntelligenceConfig(): IntelligenceConfig {
-  return {
-    hasWebSearch: isWebSearchConfigured(),
-    hasLlm: isLlmConfigured(),
-    webProvider: getWebSearchProvider(),
-    llmProvider: getLlmProvider(),
-  };
-}
+export { isIntelligenceEngineReady };
 
-export function isIntelligenceEngineReady(): boolean {
-  const config = getIntelligenceConfig();
-  return config.hasWebSearch && config.hasLlm;
+export function getIntelligenceConfig(): IntelligenceConfig {
+  const env = getIntelligenceEnvStatus();
+  return {
+    hasWebSearch: env.hasWebSearch,
+    hasLlm: env.hasLlm,
+    webProvider: env.webProvider,
+    llmProvider: env.llmProvider,
+  };
 }

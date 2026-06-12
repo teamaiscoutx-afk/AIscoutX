@@ -2,11 +2,20 @@
 
 import { revalidatePath } from "next/cache";
 
+import { getCurrentProfile } from "@/app/actions/profile";
 import { incrementBlueprintUsage } from "@/app/actions/usage";
 import { requirePro } from "@/lib/billing/paywall";
 import { toClientError, logServerError } from "@/lib/server/safe-action";
-import { runGenerationPipeline } from "@/lib/mvp/generation-pipeline";
-import { isIntelligenceEngineReady } from "@/lib/intelligence/config";
+import {
+  runGenerationPipeline,
+  type GenerationContext,
+} from "@/lib/mvp/generation-pipeline";
+import { isIntelligenceEngineReady } from "@/lib/intelligence/env";
+import {
+  getNicheLabel,
+  normalizeNicheForWorkspace,
+  type WorkspaceIdentity,
+} from "@/lib/dashboard/onboarding";
 import type {
   AnalyzePack,
   BlueprintPack,
@@ -278,7 +287,8 @@ async function buildMockPack(query: string, userId: string): Promise<VenturePack
 /** Live pipeline when keys are configured; premium mock only when keys are absent. */
 async function buildPack(
   query: string,
-  userId: string
+  userId: string,
+  context?: GenerationContext
 ): Promise<{ pack: VenturePack; source: "live" | "mock" }> {
   if (!isIntelligenceEngineReady()) {
     return {
@@ -287,7 +297,7 @@ async function buildPack(
     };
   }
 
-  const { analyze, blueprint, launch } = await runGenerationPipeline(query);
+  const { analyze, blueprint, launch } = await runGenerationPipeline(query, context);
   return {
     pack: {
       id: `pack-${Date.now()}`,
@@ -391,9 +401,16 @@ export async function generateVenturePack(
     return { ok: false, error: gate.reason, code: gate.code };
   }
 
+  const profile = await getCurrentProfile();
+  const workspace: WorkspaceIdentity =
+    (profile?.workspace_mode as WorkspaceIdentity | undefined) ?? "founder";
+  const niche = normalizeNicheForWorkspace(workspace, profile?.current_niche);
+  const nicheLabel = getNicheLabel(workspace, niche);
+  const genContext: GenerationContext = { workspace, niche, nicheLabel };
+
   if (!isSupabaseConfigured()) {
     try {
-      const { pack, source } = await buildPack(trimmed, "demo");
+      const { pack, source } = await buildPack(trimmed, "demo", genContext);
       return { ok: true, pack, storageMode: "local", source };
     } catch (err) {
       return toClientError("generation.buildPack", err);
@@ -407,7 +424,7 @@ export async function generateVenturePack(
     } = await supabase.auth.getUser();
 
     const userId = user?.id ?? "local";
-    const { pack, source } = await buildPack(trimmed, userId);
+    const { pack, source } = await buildPack(trimmed, userId, genContext);
 
     if (!user) {
       return { ok: true, pack, storageMode: "local", source };
@@ -436,7 +453,7 @@ export async function generateVenturePack(
     const message = err instanceof Error ? err.message : "Generation failed";
     if (isMissingTableError(message)) {
       try {
-        const { pack, source } = await buildPack(trimmed, "local");
+        const { pack, source } = await buildPack(trimmed, "local", genContext);
         return { ok: true, pack, storageMode: "local", source };
       } catch (buildErr) {
         return toClientError("generation.fallback", buildErr);

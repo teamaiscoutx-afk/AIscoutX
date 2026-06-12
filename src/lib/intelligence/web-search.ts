@@ -80,7 +80,10 @@ async function searchTavily(query: string, maxResults = 8): Promise<RawHit[]> {
     next: { revalidate: 0 },
   });
 
-  if (!res.ok) return [];
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Tavily search failed (${res.status}): ${errText.slice(0, 160)}`);
+  }
 
   const data = (await res.json()) as {
     results?: { title: string; url: string; content: string; published_date?: string }[];

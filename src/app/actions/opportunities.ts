@@ -11,7 +11,7 @@ import { buildFeedViewModel } from "@/lib/dashboard/feed-utils";
 import { mapOpportunityRowToClient } from "@/lib/dashboard/opportunity-mapper";
 import type { NicheId, WorkspaceIdentity } from "@/lib/dashboard/onboarding";
 import type { Opportunity } from "@/lib/dashboard/opportunities";
-import { isIntelligenceEngineReady } from "@/lib/intelligence/config";
+import { isIntelligenceEngineReady } from "@/lib/intelligence/env";
 import {
   createServerSupabaseClient,
   isSupabaseConfigured,
@@ -34,12 +34,14 @@ export type DashboardFeedPayload = {
   statusMessage?: string;
 };
 
-/** Live web intelligence feed — no mock fallback. */
+/** Live web intelligence feed — uses cache only when keys are missing or live fails. */
 export async function fetchAllOpportunities(
   workspace: WorkspaceIdentity = "founder",
   niche: NicheId = "b2b-saas"
 ): Promise<FetchAllOpportunitiesResult> {
-  if (!isIntelligenceEngineReady()) {
+  const keysReady = isIntelligenceEngineReady();
+
+  if (!keysReady) {
     const cached = await loadCachedOpportunities();
     if (cached.length) {
       return {
@@ -53,11 +55,12 @@ export async function fetchAllOpportunities(
       opportunities: [],
       source: "unconfigured",
       statusMessage:
-        "Live intelligence requires TAVILY_API_KEY or SERPER_API_KEY plus OPENAI_API_KEY or ANTHROPIC_API_KEY.",
+        "Add TAVILY_API_KEY (or SERPER_API_KEY) and OPENAI_API_KEY to .env.local, then restart the dev server.",
     };
   }
 
   const live = await refreshLiveOpportunityFeed(workspace, niche);
+
   if (live.ok && live.opportunities.length) {
     return { opportunities: live.opportunities, source: "live" };
   }
@@ -67,14 +70,17 @@ export async function fetchAllOpportunities(
     return {
       opportunities: cached,
       source: "cache",
-      statusMessage: live.error ?? "Live refresh unavailable — showing cache.",
+      statusMessage: live.error ?? "Showing cached signals while live refresh retries.",
     };
   }
 
+  // Keys are configured — never label this as "unconfigured".
   return {
     opportunities: [],
-    source: "unconfigured",
-    statusMessage: live.error ?? "No live signals returned.",
+    source: "live",
+    statusMessage:
+      live.error ??
+      "Live engine is running — signals will appear momentarily. Try switching niche or refreshing.",
   };
 }
 

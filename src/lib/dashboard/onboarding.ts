@@ -139,6 +139,17 @@ export function getNicheLabel(
   return match?.label ?? nicheId;
 }
 
+/** Coerce a stored profile niche into a valid NicheId for the workspace. */
+export function normalizeNicheForWorkspace(
+  workspace: WorkspaceIdentity,
+  niche: string | null | undefined
+): NicheId {
+  const valid = getNichesForIdentity(workspace);
+  const match = valid.find((n) => n.id === niche);
+  if (match) return match.id;
+  return getDefaultNicheForIdentity(workspace).id;
+}
+
 export const NICHE_PREFS_STORAGE_KEY = "aiscoutx-niche-by-workspace";
 
 export type NicheByWorkspace = Partial<

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { sendNicheAlertEmail } from "@/lib/email";
 import { scanWorkspaceForSignals } from "@/lib/intelligence/workspace-sync";
 import type { PlatformNotificationPayload } from "@/lib/intelligence/types";
-import { isIntelligenceEngineReady } from "@/lib/intelligence/config";
+import { isIntelligenceEngineReady } from "@/lib/intelligence/env";
 import { logServerError } from "@/lib/server/safe-action";
 import {
   createServerSupabaseClient,

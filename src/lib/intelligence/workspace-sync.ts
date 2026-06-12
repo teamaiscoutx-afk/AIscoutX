@@ -3,7 +3,7 @@ import type {
   PlatformNotificationPayload,
   WorkspaceSignalDelta,
 } from "@/lib/intelligence/types";
-import { isIntelligenceEngineReady } from "@/lib/intelligence/config";
+import { isIntelligenceEngineReady } from "@/lib/intelligence/env";
 
 export type WorkspaceWatchTarget = {
   id: string;
