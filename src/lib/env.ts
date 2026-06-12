@@ -13,3 +13,8 @@ export function readServerEnv(name: string): string | undefined {
 
   return trimmed.length > 0 ? trimmed : undefined;
 }
+
+/** Prefer server-only keys; fall back to legacy NEXT_PUBLIC_* names when misconfigured. */
+export function readIntelligenceEnv(name: string): string | undefined {
+  return readServerEnv(name) ?? readServerEnv(`NEXT_PUBLIC_${name}`);
+}

@@ -37,36 +37,38 @@ export type DashboardFeedPayload = {
   statusMessage?: string;
 };
 
-/** Live Tavily + OpenAI feed only — no curated/seed fallbacks. */
-export async function fetchAllOpportunities(
+/** Client + server discover refresh — always hits the live Tavily/OpenAI pipeline. */
+export async function refreshDiscoverFeed(
   workspace: WorkspaceIdentity = "founder",
-  niche: NicheId = "b2b-saas"
+  niche: NicheId = "b2b-saas",
+  searchQuery?: string
 ): Promise<FetchAllOpportunitiesResult> {
+  const extraSeeds = searchQuery?.trim()
+    ? [searchQuery.trim(), `${searchQuery.trim()} startup opportunity`]
+    : [];
+
   if (!isIntelligenceEngineReady()) {
-    const cached = await loadCachedOpportunities();
-    if (cached.length) {
-      return { opportunities: cached, source: "cache" };
-    }
+    const cached = await loadCachedOpportunities(workspace, niche);
     return {
-      opportunities: [],
-      source: "unconfigured",
-      statusMessage: getIntelligenceSetupMessage(),
+      opportunities: cached,
+      source: cached.length ? "cache" : "unconfigured",
+      statusMessage: cached.length ? undefined : getIntelligenceSetupMessage(),
     };
   }
 
-  const live = await refreshLiveOpportunityFeed(workspace, niche);
+  const live = await refreshLiveOpportunityFeed(workspace, niche, extraSeeds);
 
   if (live.ok && live.opportunities.length) {
     return { opportunities: live.opportunities, source: "live" };
   }
 
-  const cached = await loadCachedOpportunities();
+  const cached = await loadCachedOpportunities(workspace, niche);
   if (cached.length) {
     return {
       opportunities: cached,
       source: "cache",
       statusMessage:
-        live.error ?? "Showing your last live signals while we refresh the web scan.",
+        live.error ?? "Showing your last live signals while the web scan completes.",
     };
   }
 
@@ -75,8 +77,16 @@ export async function fetchAllOpportunities(
     source: "live",
     statusMessage:
       live.error ??
-      "Scanning live web signals for your niche — try switching niche or refresh in a moment.",
+      "Live scan in progress — results usually appear in under a minute.",
   };
+}
+
+/** Live Tavily + OpenAI feed only — no curated/seed fallbacks. */
+export async function fetchAllOpportunities(
+  workspace: WorkspaceIdentity = "founder",
+  niche: NicheId = "b2b-saas"
+): Promise<FetchAllOpportunitiesResult> {
+  return refreshDiscoverFeed(workspace, niche);
 }
 
 export async function fetchDashboardFeed(
@@ -87,7 +97,7 @@ export async function fetchDashboardFeed(
     workspace,
     niche
   );
-  const view = buildFeedViewModel(opportunities, workspace, niche);
+  const view = buildFeedViewModel(opportunities);
   return { ...view, source, statusMessage };
 }
 

@@ -16,7 +16,7 @@ import { OpportunityOfDay } from "@/components/dashboard/opportunity-of-day";
 import { TrendingSection } from "@/components/dashboard/trending-section";
 import type { OpportunitiesDataSource } from "@/app/actions/opportunities";
 import type { PlatformNotification } from "@/app/actions/notifications";
-import { refreshLiveOpportunityFeed } from "@/app/actions/intelligence";
+import { refreshDiscoverFeed } from "@/app/actions/opportunities";
 import { PlanSelectorModal } from "@/components/billing/plan-selector-modal";
 import { completeOnboardingProfile, updateProfileWorkspace } from "@/app/actions/profile";
 import { buildFeedViewModel } from "@/lib/dashboard/feed-utils";
@@ -99,6 +99,7 @@ export function CommandCenter({
   const [feedSource, setFeedSource] =
     useState<OpportunitiesDataSource>(dataSource);
   const [feedLoading, setFeedLoading] = useState(false);
+  const [feedError, setFeedError] = useState<string | undefined>();
 
   const [draftIdentity, setDraftIdentity] = useState<WorkspaceIdentity | null>(
     null
@@ -120,20 +121,11 @@ export function CommandCenter({
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [searchTokens, setSearchTokens] = useState<string[]>([]);
+  const [liveSearchQuery, setLiveSearchQuery] = useState<string | null>(null);
 
   const handleSearchQueryChange = useCallback((query: string) => {
     setSearchQuery(query);
     setSearchTokens(extractSearchTokens(query));
-  }, []);
-
-  const handleSearchSubmit = useCallback((query: string) => {
-    setSearchQuery(query);
-    setSearchTokens(extractSearchTokens(query));
-    requestAnimationFrame(() => {
-      document
-        .getElementById("opportunities")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
   }, []);
 
   const [selectedOpportunity, setSelectedOpportunity] =
@@ -148,9 +140,50 @@ export function CommandCenter({
   const activeNiche = activeNicheEntry.id;
   const activeNicheLabel = activeNicheEntry.label;
 
+  const runDiscoverRefresh = useCallback(
+    (search?: string) => {
+      setFeedLoading(true);
+      setFeedError(undefined);
+
+      return refreshDiscoverFeed(activeWorkspace, activeNiche, search).then(
+        (result) => {
+          if (result.opportunities.length > 0) {
+            setAllOpportunities(result.opportunities);
+            setFeedSource(result.source === "unconfigured" ? "live" : result.source);
+            setFeedError(undefined);
+          } else if (result.statusMessage) {
+            setFeedError(result.statusMessage);
+          }
+          return result;
+        }
+      ).finally(() => {
+        setFeedLoading(false);
+      });
+    },
+    [activeWorkspace, activeNiche]
+  );
+
+  const handleSearchSubmit = useCallback(
+    (query: string) => {
+      setSearchQuery(query);
+      setSearchTokens(extractSearchTokens(query));
+      requestAnimationFrame(() => {
+        document
+          .getElementById("opportunities")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+
+      if (query.trim()) {
+        setLiveSearchQuery(query.trim());
+        void runDiscoverRefresh(query.trim());
+      }
+    },
+    [runDiscoverRefresh]
+  );
+
   const contextFeed = useMemo(
-    () => buildFeedViewModel(allOpportunities, activeWorkspace, activeNiche),
-    [allOpportunities, activeWorkspace, activeNiche]
+    () => buildFeedViewModel(allOpportunities),
+    [allOpportunities]
   );
 
   const opportunityOfDay = useMemo(() => {
@@ -165,11 +198,23 @@ export function CommandCenter({
       contextFeed.opportunities,
       keywordFilter
     );
+    if (
+      liveSearchQuery &&
+      liveSearchQuery === searchQuery.trim()
+    ) {
+      return byKeyword;
+    }
     if (!searchQuery.trim() && searchTokens.length === 0) {
       return byKeyword;
     }
     return filterOpportunitiesBySearch(byKeyword, searchQuery);
-  }, [contextFeed.opportunities, keywordFilter, searchQuery, searchTokens]);
+  }, [
+    contextFeed.opportunities,
+    keywordFilter,
+    liveSearchQuery,
+    searchQuery,
+    searchTokens,
+  ]);
 
   const stats = useMemo(() => {
     const list = contextFeed.opportunities;
@@ -235,8 +280,12 @@ export function CommandCenter({
         nicheFocus: saved.nicheFocus ?? "ai",
       };
       const workspace = normalized.identity;
-      const nicheId = normalized.niche;
-      const label = normalized.nicheLabel || getNicheLabel(workspace, nicheId);
+      const savedForWorkspace = nichePrefs[workspace];
+      const nicheId = savedForWorkspace?.id ?? normalized.niche;
+      const label =
+        savedForWorkspace?.label ??
+        normalized.nicheLabel ??
+        getNicheLabel(workspace, nicheId);
       const mergedPrefs: NicheByWorkspace = {
         ...nichePrefs,
         [workspace]: { id: nicheId, label },
@@ -244,6 +293,7 @@ export function CommandCenter({
       setNicheByWorkspace(mergedPrefs);
       setActiveWorkspace(workspace);
       setProfile(normalized);
+      void updateProfileWorkspace(workspace, nicheId);
       setPhase("ready");
     } else {
       setPhase("onboarding");
@@ -342,6 +392,7 @@ export function CommandCenter({
       setKeywordFilter(null);
       setSearchQuery("");
       setSearchTokens([]);
+      setLiveSearchQuery(null);
       setSelectedOpportunity(null);
       const niche = resolveActiveNiche(workspace, nicheByWorkspace);
       syncWorkspaceToProfile(workspace, niche.id);
@@ -355,6 +406,7 @@ export function CommandCenter({
       syncProfileNiche(activeWorkspace, nicheId, label);
       syncWorkspaceToProfile(activeWorkspace, nicheId);
       setKeywordFilter(null);
+      setLiveSearchQuery(null);
       setSelectedOpportunity(null);
     },
     [
@@ -365,30 +417,19 @@ export function CommandCenter({
     ]
   );
 
-  // Refresh live niche feed when workspace/niche changes — server owns key validation.
+  // Refresh live niche feed when workspace/niche changes.
   useEffect(() => {
     if (phase !== "ready") return;
 
     let cancelled = false;
-    setFeedLoading(true);
-
-    void refreshLiveOpportunityFeed(activeWorkspace, activeNiche).then(
-      (result) => {
-        if (cancelled) return;
-
-        if (result.ok && result.opportunities.length > 0) {
-          setAllOpportunities(result.opportunities);
-          setFeedSource("live");
-        }
-      }
-    ).finally(() => {
-      if (!cancelled) setFeedLoading(false);
+    void runDiscoverRefresh().then(() => {
+      if (cancelled) return;
     });
 
     return () => {
       cancelled = true;
     };
-  }, [phase, activeWorkspace, activeNiche]);
+  }, [phase, activeWorkspace, activeNiche, runDiscoverRefresh]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -496,6 +537,11 @@ export function CommandCenter({
                       ? "Scanning Live Web…"
                       : resolveFeedSourceLabel(feedSource)}
                   </Badge>
+                  {feedError && !feedLoading && allOpportunities.length === 0 && (
+                    <p className="w-full text-xs text-amber-400/90 sm:w-auto">
+                      {feedError}
+                    </p>
+                  )}
                 </div>
 
                 <motion.div

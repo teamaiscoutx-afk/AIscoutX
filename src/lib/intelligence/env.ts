@@ -1,4 +1,4 @@
-import { readServerEnv } from "@/lib/env";
+import { readIntelligenceEnv } from "@/lib/env";
 
 export type IntelligenceEnvStatus = {
   openai: boolean;
@@ -15,11 +15,11 @@ export type IntelligenceEnvStatus = {
 
 /** Single source of truth for intelligence API key detection (server-only). */
 export function getIntelligenceEnvStatus(): IntelligenceEnvStatus {
-  const openai = Boolean(readServerEnv("OPENAI_API_KEY"));
-  const anthropic = Boolean(readServerEnv("ANTHROPIC_API_KEY"));
-  const tavily = Boolean(readServerEnv("TAVILY_API_KEY"));
-  const serper = Boolean(readServerEnv("SERPER_API_KEY"));
-  const perplexity = Boolean(readServerEnv("PERPLEXITY_API_KEY"));
+  const openai = Boolean(readIntelligenceEnv("OPENAI_API_KEY"));
+  const anthropic = Boolean(readIntelligenceEnv("ANTHROPIC_API_KEY"));
+  const tavily = Boolean(readIntelligenceEnv("TAVILY_API_KEY"));
+  const serper = Boolean(readIntelligenceEnv("SERPER_API_KEY"));
+  const perplexity = Boolean(readIntelligenceEnv("PERPLEXITY_API_KEY"));
 
   const hasLlm = openai || anthropic;
   const hasWebSearch = tavily || serper || perplexity;

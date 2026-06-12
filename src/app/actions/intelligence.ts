@@ -166,7 +166,10 @@ export async function discoverFromQuery(
   }
 }
 
-export async function loadCachedOpportunities(): Promise<Opportunity[]> {
+export async function loadCachedOpportunities(
+  workspace?: WorkspaceIdentity,
+  niche?: NicheId
+): Promise<Opportunity[]> {
   if (!isSupabaseConfigured()) return [];
 
   const supabase = createServerSupabaseClient();
@@ -175,9 +178,31 @@ export async function loadCachedOpportunities(): Promise<Opportunity[]> {
     .select("*")
     .neq("category", "venture-pack")
     .eq("is_deleted", false)
-    .eq("mode_data->>catalogSource", "live")
     .order("score", { ascending: false })
-    .limit(20);
+    .limit(40);
 
-  return (data ?? []).map(mapOpportunityRowToClient);
+  const liveRows = (data ?? []).filter((row) => {
+    const modeData = row.mode_data as {
+      catalogSource?: string;
+      liveSynthesizedAt?: string;
+    } | null;
+    return (
+      modeData?.catalogSource === "live" ||
+      Boolean(modeData?.liveSynthesizedAt)
+    );
+  });
+
+  let scoped = liveRows;
+  if (workspace && niche) {
+    const nicheScoped = liveRows.filter(
+      (row) =>
+        (!row.workspace_mode || row.workspace_mode === workspace) &&
+        (!row.current_niche || row.current_niche === niche)
+    );
+    if (nicheScoped.length > 0) {
+      scoped = nicheScoped;
+    }
+  }
+
+  return scoped.slice(0, 20).map(mapOpportunityRowToClient);
 }

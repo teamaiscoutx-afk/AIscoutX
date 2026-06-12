@@ -73,16 +73,9 @@ export function deriveViralHooks(opportunities: Opportunity[]): string[] {
   ];
 }
 
-export function buildFeedViewModel(
-  allOpportunities: Opportunity[],
-  workspace: WorkspaceIdentity,
-  niche: NicheId
-) {
-  const opportunities = filterOpportunitiesByWorkspaceAndNiche(
-    allOpportunities,
-    workspace,
-    niche
-  );
+export function buildFeedViewModel(allOpportunities: Opportunity[]) {
+  // Rows are fetched per workspace/niche live batch — no secondary filtering.
+  const opportunities = allOpportunities;
   const opportunityOfDay = pickOpportunityOfTheDay(opportunities);
 
   return {

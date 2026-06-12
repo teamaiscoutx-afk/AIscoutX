@@ -1,11 +1,13 @@
 import { CommandCenter } from "@/components/dashboard/command-center";
-import { fetchAllOpportunities } from "@/app/actions/opportunities";
+import { loadCachedOpportunities } from "@/app/actions/intelligence";
 import { fetchNotifications, syncActiveWorkspaceSignals } from "@/app/actions/notifications";
 import { getCurrentProfile } from "@/app/actions/profile";
 import type { NicheId, WorkspaceIdentity } from "@/lib/dashboard/onboarding";
 import { normalizeNicheForWorkspace } from "@/lib/dashboard/onboarding";
 
 export const dynamic = "force-dynamic";
+/** Live Tavily + OpenAI scans can exceed default serverless limits. */
+export const maxDuration = 60;
 
 export default async function DiscoverPage() {
   const profile = await getCurrentProfile();
@@ -17,18 +19,17 @@ export default async function DiscoverPage() {
     profile?.current_niche
   );
 
-  const [, feed, notifications] = await Promise.all([
+  // Fast SSR: show cached live rows immediately; client triggers fresh live scan.
+  const [, cached, notifications] = await Promise.all([
     syncActiveWorkspaceSignals(),
-    fetchAllOpportunities(initialWorkspace, initialNiche),
+    loadCachedOpportunities(initialWorkspace, initialNiche),
     fetchNotifications(),
   ]);
 
-  const { opportunities, source } = feed;
-
   return (
     <CommandCenter
-      initialOpportunities={opportunities}
-      dataSource={source}
+      initialOpportunities={cached}
+      dataSource={cached.length ? "cache" : "live"}
       initialNotifications={notifications}
       initialWorkspace={initialWorkspace}
       initialNiche={initialNiche}
