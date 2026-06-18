@@ -1,111 +1,74 @@
 import { NextResponse } from "next/server";
-
-import {
-  cancelProSubscription,
-  provisionProSubscription,
-  resolveUserIdFromNotes,
-  verifyWebhookSignature,
-} from "@/lib/billing/razorpay";
-import { logServerError } from "@/lib/server/safe-action";
-import { createServiceRoleSupabaseClient } from "@/lib/supabase";
+import crypto from "crypto";
+import { createClient } from "@supabase/supabase-js"; // Direct library se import, local file ka jhanjhat khatam!
 
 export const runtime = "nodejs";
-
-type RazorpayWebhookPayload = {
-  event?: string;
-  payload?: {
-    subscription?: {
-      entity?: {
-        id?: string;
-        status?: string;
-        notes?: Record<string, string>;
-      };
-    };
-    payment?: {
-      entity?: {
-        id?: string;
-        email?: string;
-        notes?: Record<string, string>;
-      };
-    };
-  };
-};
 
 export async function POST(request: Request) {
   try {
     const rawBody = await request.text();
-    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET?.trim();
+    const signature = request.headers.get("x-razorpay-signature") || "";
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET?.trim() || "";
 
-    if (webhookSecret) {
-      const valid = verifyWebhookSignature(
-        rawBody,
-        request.headers.get("x-razorpay-signature")
-      );
-      if (!valid) {
-        return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+    if (!webhookSecret) {
+      console.error("❌ Webhook Error: Missing RAZORPAY_WEBHOOK_SECRET");
+      return NextResponse.json({ error: "Webhook secret missing" }, { status: 500 });
+    }
+
+    // 1. Verify Razorpay Signature
+    const expectedSignature = crypto
+      .createHmac("sha256", webhookSecret)
+      .update(rawBody)
+      .digest("hex");
+
+    if (expectedSignature !== signature) {
+      console.error("❌ Invalid Razorpay Webhook Signature");
+      return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+    }
+
+    const payload = JSON.parse(rawBody);
+    const event = payload.event;
+
+    console.log(`🚀 Razorpay Webhook Event Received: ${event}`);
+
+    // 2. Handle Successful Payment Event
+    if (event === "payment.captured") {
+      const payment = payload.payload.payment.entity;
+      const orderId = payment.order_id;
+      const userEmail = payment.notes?.email || payment.email;
+
+      console.log(`💳 Processing successful payment for Order: ${orderId}, User: ${userEmail}`);
+
+      // 3. Initialize Supabase Admin Bypass Client inline safely
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+      
+      const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false
+        }
+      });
+      
+      const { error: dbError } = await supabase
+        .from("profiles")
+        .update({
+          plan_tier: "pro",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("email", userEmail);
+
+      if (dbError) {
+        console.error("❌ Database update failed during webhook:", dbError);
+        return NextResponse.json({ error: "Database update failed" }, { status: 500 });
       }
+
+      console.log(`🎉 User ${userEmail} has been successfully upgraded to PRO!`);
     }
 
-    const supabase = createServiceRoleSupabaseClient();
-    if (!supabase) {
-      logServerError("razorpay.webhook", "Service role client unavailable");
-      return NextResponse.json({ received: true });
-    }
-
-    let event: RazorpayWebhookPayload;
-    try {
-      event = JSON.parse(rawBody) as RazorpayWebhookPayload;
-    } catch {
-      return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
-    }
-
-    const eventType = event.event ?? "";
-    const subscription = event.payload?.subscription?.entity;
-    const payment = event.payload?.payment?.entity;
-
-    const activateEvents = new Set([
-      "subscription.activated",
-      "subscription.charged",
-      "subscription.resumed",
-      "payment.captured",
-    ]);
-
-    const cancelEvents = new Set([
-      "subscription.cancelled",
-      "subscription.completed",
-      "subscription.halted",
-    ]);
-
-    if (activateEvents.has(eventType)) {
-      const notes = subscription?.notes ?? payment?.notes;
-      const userId = await resolveUserIdFromNotes(notes);
-      if (userId) {
-        await provisionProSubscription({
-          userId,
-          email: payment?.email ?? null,
-          razorpayCustomerId: subscription?.id ?? null,
-        });
-      } else {
-        logServerError(
-          "razorpay.webhook",
-          `${eventType} without resolvable user_id in notes`
-        );
-      }
-    }
-
-    if (cancelEvents.has(eventType)) {
-      const userId = await resolveUserIdFromNotes(subscription?.notes);
-      if (userId) {
-        await cancelProSubscription(userId);
-      }
-    }
-
-    return NextResponse.json({ received: true });
-  } catch (err) {
-    logServerError("razorpay.webhook", err);
-    return NextResponse.json(
-      { error: "Webhook processing failed" },
-      { status: 500 }
-    );
+    return NextResponse.json({ received: true }, { status: 200 });
+  } catch (error: any) {
+    console.error("💥 Webhook crashed:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
