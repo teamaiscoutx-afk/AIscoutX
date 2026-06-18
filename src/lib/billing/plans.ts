@@ -4,6 +4,7 @@ export type BillingPlan = {
   id: BillingPlanId;
   name: string;
   price: number;
+  priceLabel: string;
   period: string;
   description: string;
   popular?: boolean;
@@ -16,6 +17,7 @@ export const BILLING_PLANS: BillingPlan[] = [
     id: "free",
     name: "Freemium",
     price: 0,
+    priceLabel: "Free",
     period: "/forever",
     description: "Full discovery + 3 blueprint runs every month.",
     cta: "You're on this plan",
@@ -30,6 +32,7 @@ export const BILLING_PLANS: BillingPlan[] = [
     id: "pro",
     name: "Pro",
     price: 19,
+    priceLabel: "$19",
     period: "/month",
     description: "Unlimited runs, exports, and founder ops.",
     popular: true,
@@ -48,9 +51,9 @@ export function getProPlan(): BillingPlan {
   return BILLING_PLANS.find((p) => p.id === "pro")!;
 }
 
-/** Send the user to Stripe checkout (payment link via /api/checkout). */
+/** @deprecated Use `useRazorpayCheckout().startCheckout()` in client components. */
 export function startProCheckout(): void {
   if (typeof window !== "undefined") {
-    window.location.href = "/api/checkout?plan=pro";
+    window.dispatchEvent(new CustomEvent("aiscoutx:start-pro-checkout"));
   }
 }

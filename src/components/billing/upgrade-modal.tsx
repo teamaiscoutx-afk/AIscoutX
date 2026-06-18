@@ -4,13 +4,15 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Check, Lock, Sparkles, X, Zap } from "lucide-react";
 
-import { BILLING_PLANS, startProCheckout } from "@/lib/billing/plans";
+import { BILLING_PLANS } from "@/lib/billing/plans";
+import { useRazorpayCheckout } from "@/lib/billing/use-razorpay-checkout";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -33,18 +35,28 @@ export function UpgradeModalProvider({
 }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<string | null>(null);
-  const [redirecting, setRedirecting] = useState(false);
+  const { startCheckout, loading: redirecting, error: checkoutError, clearError } =
+    useRazorpayCheckout();
 
   const openUpgradeModal = useCallback((triggerReason?: string) => {
+    clearError();
     setReason(triggerReason ?? null);
     setOpen(true);
-  }, []);
+  }, [clearError]);
 
   const value = useMemo(() => ({ openUpgradeModal }), [openUpgradeModal]);
 
+  useEffect(() => {
+    function onLegacyCheckout() {
+      void startCheckout("pro");
+    }
+    window.addEventListener("aiscoutx:start-pro-checkout", onLegacyCheckout);
+    return () =>
+      window.removeEventListener("aiscoutx:start-pro-checkout", onLegacyCheckout);
+  }, [startCheckout]);
+
   function handleUpgrade() {
-    setRedirecting(true);
-    startProCheckout();
+    void startCheckout("pro");
   }
 
   return (
@@ -112,7 +124,7 @@ export function UpgradeModalProvider({
 
                     <div className="mt-4 flex items-baseline gap-1">
                       <span className="text-3xl font-bold tabular-nums text-white">
-                        ${plan.price}
+                        {plan.priceLabel}
                       </span>
                       <span className="text-sm text-zinc-500">
                         {plan.period}
@@ -157,8 +169,14 @@ export function UpgradeModalProvider({
               </div>
 
               <p className="px-6 pb-6 text-center text-[11px] text-zinc-600 sm:px-8">
-                Cancel anytime. Access activates the second your payment clears
-                — no waiting, no manual steps.
+                {checkoutError ? (
+                  <span className="text-amber-400/90">{checkoutError}</span>
+                ) : (
+                  <>
+                    Cancel anytime. Access activates the second your payment clears
+                    — secured by Razorpay.
+                  </>
+                )}
               </p>
             </div>
           </DialogPrimitive.Content>

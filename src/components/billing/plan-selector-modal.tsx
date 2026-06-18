@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Check, Rocket, Sparkles, Zap } from "lucide-react";
 
-import { BILLING_PLANS, startProCheckout } from "@/lib/billing/plans";
+import { BILLING_PLANS } from "@/lib/billing/plans";
+import { useRazorpayCheckout } from "@/lib/billing/use-razorpay-checkout";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -16,14 +17,23 @@ type PlanSelectorModalProps = {
 /**
  * Post-onboarding plan selector — blocks dashboard entry until a choice
  * is made. "Start for Free" continues on the free tier; "Unlock Pro"
- * redirects to Stripe checkout.
+ * redirects to Razorpay checkout.
  */
 export function PlanSelectorModal({ open, onSelectFree }: PlanSelectorModalProps) {
-  const [redirecting, setRedirecting] = useState(false);
+  const { startCheckout, loading: redirecting, error: checkoutError } =
+    useRazorpayCheckout();
+
+  useEffect(() => {
+    function onLegacyCheckout() {
+      void startCheckout("pro");
+    }
+    window.addEventListener("aiscoutx:start-pro-checkout", onLegacyCheckout);
+    return () =>
+      window.removeEventListener("aiscoutx:start-pro-checkout", onLegacyCheckout);
+  }, [startCheckout]);
 
   function handleUnlockPro() {
-    setRedirecting(true);
-    startProCheckout();
+    void startCheckout("pro");
   }
 
   return (
@@ -82,7 +92,7 @@ export function PlanSelectorModal({ open, onSelectFree }: PlanSelectorModalProps
 
                   <div className="mt-4 flex items-baseline gap-1">
                     <span className="text-3xl font-bold tabular-nums text-white">
-                      ${plan.price}
+                      {plan.priceLabel}
                     </span>
                     <span className="text-sm text-zinc-500">{plan.period}</span>
                   </div>
@@ -132,7 +142,11 @@ export function PlanSelectorModal({ open, onSelectFree }: PlanSelectorModalProps
             </div>
 
             <p className="px-6 pb-6 text-center text-[11px] text-zinc-600 sm:px-8">
-              Pro activates instantly after payment. Switch or cancel anytime.
+              {checkoutError ? (
+                <span className="text-amber-400/90">{checkoutError}</span>
+              ) : (
+                <>Pro activates instantly after payment via Razorpay. Switch or cancel anytime.</>
+              )}
             </p>
           </div>
         </DialogPrimitive.Content>
