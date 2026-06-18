@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js"; // Direct library se import, local file ka jhanjhat khatam!
-
+// trigger fresh production build for supabase
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
