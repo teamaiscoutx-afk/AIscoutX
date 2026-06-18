@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Check, Rocket, Sparkles, Zap } from "lucide-react";
 
 import { BILLING_PLANS } from "@/lib/billing/plans";
-import { useRazorpayCheckout } from "@/lib/billing/use-razorpay-checkout";
+// Naya direct checkout helper function import kiya
+import { initializePayment } from "@/lib/billing/razorpay";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -17,24 +18,43 @@ type PlanSelectorModalProps = {
 /**
  * Post-onboarding plan selector — blocks dashboard entry until a choice
  * is made. "Start for Free" continues on the free tier; "Unlock Pro"
- * redirects to Razorpay checkout.
+ * triggers the premium USD Razorpay checkout modal.
  */
 export function PlanSelectorModal({ open, onSelectFree }: PlanSelectorModalProps) {
-  const { startCheckout, loading: redirecting, error: checkoutError } =
-    useRazorpayCheckout();
+  // Direct loading state handle karne ke liye variable
+  const [redirecting, setRedirecting] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
+  // Jab user 'Unlock Pro' button par click karega
+  async function handleUnlockPro() {
+    try {
+      setRedirecting(true);
+      setCheckoutError(null);
+
+      const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "";
+      if (!keyId) {
+        throw new Error("Frontend public key missing in .env.local!");
+      }
+
+      // Hamara naya direct USD payment trigger
+      await initializePayment(keyId);
+    } catch (err: any) {
+      console.error("Checkout Trigger Error:", err);
+      setCheckoutError(err.message || "Something went wrong while initiating the checkout.");
+    } finally {
+      setRedirecting(false);
+    }
+  }
+
+  // Purane legacy custom triggers ke liye support barkarar rakha
   useEffect(() => {
     function onLegacyCheckout() {
-      void startCheckout("pro");
+      void handleUnlockPro();
     }
     window.addEventListener("aiscoutx:start-pro-checkout", onLegacyCheckout);
     return () =>
       window.removeEventListener("aiscoutx:start-pro-checkout", onLegacyCheckout);
-  }, [startCheckout]);
-
-  function handleUnlockPro() {
-    void startCheckout("pro");
-  }
+  }, []);
 
   return (
     <DialogPrimitive.Root open={open}>
