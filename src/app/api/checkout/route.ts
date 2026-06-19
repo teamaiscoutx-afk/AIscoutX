@@ -9,11 +9,12 @@ const razorpay = new Razorpay({
 
 export async function POST(req: NextRequest) {
   try {
-    // Standard One-Time Order flow for $19 USD
-    // 19 * 100 = 1900 cents
+    // INR ke liye amount paise mein hota hai (1899 * 100)
+    const amountInPaise = 189900; 
+
     const options = {
-      amount: 1900, 
-      currency: "USD",
+      amount: amountInPaise, 
+      currency: "INR",
       receipt: `receipt_order_${Date.now()}`,
     };
 
