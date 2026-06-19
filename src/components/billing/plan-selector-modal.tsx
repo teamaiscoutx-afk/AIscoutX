@@ -143,7 +143,7 @@ export function PlanSelectorModal({ open, onSelectFree }: PlanSelectorModalProps
                       className="btn-glow-lime mt-6 w-full bg-[#deff9a] font-semibold text-[#030308] hover:bg-[#deff9a]/90"
                     >
                       <Sparkles className="mr-2 h-4 w-4" />
-                      {redirecting ? "Opening checkout…" : "Unlock Pro ($19)"}
+                      {redirecting ? "Opening checkout…" : "Unlock Pro (₹1899)"}
                     </Button>
                   ) : (
                     <Button

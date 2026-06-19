@@ -78,7 +78,7 @@ function buildMockAnalyze(query: string): AnalyzePack {
       {
         name: "Solo Founder / Indie Hacker",
         pain: `Wastes 10+ hours a week on manual ${query} research and still ships on gut feel.`,
-        willingnessToPay: "$19–$49/mo for a tool that saves one working day per week",
+        willingnessToPay: "₹1899–$49/mo for a tool that saves one working day per week",
       },
       {
         name: "Early-Stage Product Lead",
@@ -88,7 +88,7 @@ function buildMockAnalyze(query: string): AnalyzePack {
       {
         name: "Agency Operator",
         pain: `Repeats the same ${topic} groundwork for every client engagement from scratch.`,
-        willingnessToPay: "$199/mo if white-label reports are included",
+        willingnessToPay: "₹18999/mo if white-label reports are included",
       },
     ],
     competitors: [
@@ -141,7 +141,7 @@ function buildMockBlueprint(query: string): BlueprintPack {
       },
       {
         name: "Pro",
-        price: "$19/mo",
+        price: "₹1899/mo",
         features: [
           "Unlimited analyses and blueprints",
           "Unlimited projects + 30-day trash recovery",

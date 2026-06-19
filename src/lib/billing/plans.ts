@@ -32,7 +32,7 @@ export const BILLING_PLANS: BillingPlan[] = [
     id: "pro",
     name: "Pro",
     price: 19,
-    priceLabel: "$19",
+    priceLabel: "₹1899",
     period: "/month",
     description: "Unlimited runs, exports, and founder ops.",
     popular: true,

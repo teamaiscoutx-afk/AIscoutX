@@ -55,7 +55,7 @@ export function UpgradeToProCta({ className }: { className?: string }) {
             Upgrade to Pro
           </span>
           <span className="block truncate text-[11px] text-zinc-500">
-            Blueprints · Deep Dives · GPS — $19/mo
+            Blueprints · Deep Dives · GPS — ₹1899/mo
           </span>
         </span>
         <Sparkles
