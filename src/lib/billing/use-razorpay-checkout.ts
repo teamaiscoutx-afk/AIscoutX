@@ -1,4 +1,7 @@
-// --- Yahan Types ko define kar rahe hain taaki error na aaye ---
+"use client";
+
+import { useCallback, useState } from "react";
+
 type RazorpayHandlerResponse = {
   razorpay_payment_id: string;
   razorpay_order_id?: string;
@@ -6,15 +9,13 @@ type RazorpayHandlerResponse = {
   razorpay_signature: string;
 };
 
-// --- Function ka Sahi Definition ---
-function buildRazorpayOptions(
-  session: any, // 'any' isliye taaki session structure se conflict na ho
+export function buildRazorpayOptions(
+  session: any,
   onSuccess: () => void,
   onDismiss: () => void,
   onError: (message: string) => void
 ): Record<string, any> {
-  
-  const base: Record<string, any> = {
+  return {
     key: session.keyId,
     name: session.name,
     description: session.description,
@@ -40,12 +41,57 @@ function buildRazorpayOptions(
         onError(err.message ?? "Payment verification failed.");
       }
     },
-  };
-
-  return {
-    ...base,
     order_id: session.orderId,
     amount: 189900,
     currency: "INR",
   };
+}
+
+export function useRazorpayCheckout() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const startCheckout = useCallback(async (plan: "pro" = "pro") => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok || !data.checkout) {
+        throw new Error(data.error ?? "Could not start checkout.");
+      }
+
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.async = true;
+      document.body.appendChild(script);
+
+      script.onload = () => {
+        const rzp = new (window as any).Razorpay(
+          buildRazorpayOptions(
+            data.checkout,
+            () => { 
+              setLoading(false); 
+              window.location.href = "/dashboard/discover?billing=success"; 
+            },
+            () => { setLoading(false); },
+            (msg: string) => { setLoading(false); setError(msg); }
+          )
+        );
+        rzp.open();
+      };
+    } catch (err: any) {
+      setLoading(false);
+      setError(err.message);
+    }
+  }, []);
+
+  return { startCheckout, loading, error, clearError: () => setError(null) };
 }
