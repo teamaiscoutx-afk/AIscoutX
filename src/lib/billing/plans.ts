@@ -1,3 +1,10 @@
+import {
+  PRO_MODAL_FEATURES,
+  PRO_PRICE_DISPLAY,
+  PRO_PRICE_INR,
+  PRO_PRICE_LABEL,
+} from "@/lib/billing/constants";
+
 export type BillingPlanId = "free" | "pro";
 
 export type BillingPlan = {
@@ -31,21 +38,17 @@ export const BILLING_PLANS: BillingPlan[] = [
   {
     id: "pro",
     name: "Pro",
-    price: 19,
-    priceLabel: "₹1899",
+    price: PRO_PRICE_INR,
+    priceLabel: PRO_PRICE_LABEL,
     period: "/month",
-    description: "Unlimited runs, exports, and founder ops.",
+    description: "AI Founder OS — workspaces, GPS, and unlimited mentor chat.",
     popular: true,
-    cta: "Upgrade to Pro",
-    features: [
-      "Unlimited blueprint generation",
-      "1-Click PDF export",
-      "Founder GPS progress engine",
-      "Unlimited projects + Trash recovery",
-      "Unlimited AI Founder Chat",
-    ],
+    cta: "Proceed to Payment",
+    features: [...PRO_MODAL_FEATURES],
   },
 ];
+
+export { PRO_PRICE_DISPLAY };
 
 export function getProPlan(): BillingPlan {
   return BILLING_PLANS.find((p) => p.id === "pro")!;

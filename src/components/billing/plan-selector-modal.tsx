@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Check, Rocket, Sparkles, Zap } from "lucide-react";
 
+import { PRO_PRICE_DISPLAY } from "@/lib/billing/constants";
 import { BILLING_PLANS } from "@/lib/billing/plans";
-// Naya direct checkout helper function import kiya
-import { initializePayment } from "@/lib/billing/razorpay";
+import { useRazorpayCheckout } from "@/lib/billing/use-razorpay-checkout";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -16,45 +16,25 @@ type PlanSelectorModalProps = {
 };
 
 /**
- * Post-onboarding plan selector — blocks dashboard entry until a choice
- * is made. "Start for Free" continues on the free tier; "Unlock Pro"
- * triggers the premium USD Razorpay checkout modal.
+ * Post-onboarding plan selector — "Unlock Pro" opens Razorpay checkout (₹799 INR).
  */
 export function PlanSelectorModal({ open, onSelectFree }: PlanSelectorModalProps) {
-  // Direct loading state handle karne ke liye variable
-  const [redirecting, setRedirecting] = useState(false);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const { startCheckout, loading: redirecting, error: checkoutError, clearError } =
+    useRazorpayCheckout();
 
-  // Jab user 'Unlock Pro' button par click karega
-  async function handleUnlockPro() {
-    try {
-      setRedirecting(true);
-      setCheckoutError(null);
-
-      const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "";
-      if (!keyId) {
-        throw new Error("Frontend public key missing in .env.local!");
-      }
-
-      // Hamara naya direct USD payment trigger
-      await initializePayment(keyId);
-    } catch (err: any) {
-      console.error("Checkout Trigger Error:", err);
-      setCheckoutError(err.message || "Something went wrong while initiating the checkout.");
-    } finally {
-      setRedirecting(false);
-    }
-  }
-
-  // Purane legacy custom triggers ke liye support barkarar rakha
   useEffect(() => {
     function onLegacyCheckout() {
-      void handleUnlockPro();
+      void startCheckout();
     }
     window.addEventListener("aiscoutx:start-pro-checkout", onLegacyCheckout);
     return () =>
       window.removeEventListener("aiscoutx:start-pro-checkout", onLegacyCheckout);
-  }, []);
+  }, [startCheckout]);
+
+  function handleUnlockPro() {
+    clearError();
+    void startCheckout();
+  }
 
   return (
     <DialogPrimitive.Root open={open}>
@@ -67,15 +47,15 @@ export function PlanSelectorModal({ open, onSelectFree }: PlanSelectorModalProps
           onInteractOutside={(e) => e.preventDefault()}
           className={cn(
             "fixed inset-0 z-[231] m-auto grid h-auto max-h-[92vh] w-[min(94vw,54rem)] grid-rows-[auto_1fr] overflow-hidden",
-            "rounded-2xl border border-white/[0.12] bg-[#06060f]/98 shadow-[0_0_100px_rgba(222,255,154,0.08)] backdrop-blur-xl outline-none"
+            "rounded-2xl border border-white/[0.12] bg-[#06060f]/98 shadow-[0_0_100px_rgba(0,255,102,0.08)] backdrop-blur-xl outline-none"
           )}
         >
           <div className="relative shrink-0 border-b border-white/[0.06] px-6 py-6 text-center sm:px-8">
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_100%_at_50%_0%,rgba(222,255,154,0.08),transparent_70%)]"
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_100%_at_50%_0%,rgba(0,255,102,0.08),transparent_70%)]"
             />
-            <p className="relative text-[10px] font-semibold uppercase tracking-[0.25em] text-[#deff9a]/80">
+            <p className="relative text-[10px] font-semibold uppercase tracking-[0.25em] text-[#00FF66]/80">
               One last step
             </p>
             <DialogPrimitive.Title className="relative mt-2 text-2xl font-semibold text-white">
@@ -94,12 +74,12 @@ export function PlanSelectorModal({ open, onSelectFree }: PlanSelectorModalProps
                   className={cn(
                     "relative flex min-w-0 flex-col rounded-2xl border p-5",
                     plan.popular
-                      ? "border-[#deff9a]/35 bg-[#deff9a]/[0.05] shadow-[0_0_48px_rgba(222,255,154,0.14)]"
+                      ? "border-[#00FF66]/35 bg-[#00FF66]/[0.05] shadow-[0_0_48px_rgba(0,255,102,0.14)]"
                       : "border-white/[0.08] bg-white/[0.02]"
                   )}
                 >
                   {plan.popular && (
-                    <span className="mb-2.5 inline-flex w-fit items-center gap-1 rounded-full border border-[#deff9a]/30 bg-[#deff9a]/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#deff9a]">
+                    <span className="mb-2.5 inline-flex w-fit items-center gap-1 rounded-full border border-[#00FF66]/30 bg-[#00FF66]/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#00FF66]">
                       <Zap className="h-3 w-3" />
                       Best value
                     </span>
@@ -126,7 +106,7 @@ export function PlanSelectorModal({ open, onSelectFree }: PlanSelectorModalProps
                         <Check
                           className={cn(
                             "mt-0.5 h-3.5 w-3.5 shrink-0",
-                            plan.popular ? "text-[#deff9a]" : "text-zinc-600"
+                            plan.popular ? "text-[#00FF66]" : "text-zinc-600"
                           )}
                           strokeWidth={2}
                         />
@@ -140,10 +120,10 @@ export function PlanSelectorModal({ open, onSelectFree }: PlanSelectorModalProps
                       type="button"
                       disabled={redirecting}
                       onClick={handleUnlockPro}
-                      className="btn-glow-lime mt-6 w-full bg-[#deff9a] font-semibold text-[#030308] hover:bg-[#deff9a]/90"
+                      className="btn-glow-lime mt-6 w-full bg-[#00FF66] font-semibold text-[#030308] hover:bg-[#00FF66]/90"
                     >
                       <Sparkles className="mr-2 h-4 w-4" />
-                      {redirecting ? "Opening checkout…" : "Unlock Pro (₹1899)"}
+                      {redirecting ? "Opening checkout…" : `Proceed to Payment (${PRO_PRICE_DISPLAY})`}
                     </Button>
                   ) : (
                     <Button
@@ -165,7 +145,7 @@ export function PlanSelectorModal({ open, onSelectFree }: PlanSelectorModalProps
               {checkoutError ? (
                 <span className="text-amber-400/90">{checkoutError}</span>
               ) : (
-                <>Pro activates instantly after payment via Razorpay. Switch or cancel anytime.</>
+                <>Pro activates instantly after payment via Razorpay ({PRO_PRICE_DISPLAY}).</>
               )}
             </p>
           </div>

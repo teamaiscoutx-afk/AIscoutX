@@ -2,57 +2,13 @@
 
 import { useCallback, useState } from "react";
 
-// --- Razorpay Helper Types ---
-type RazorpayHandlerResponse = {
-  razorpay_payment_id: string;
-  razorpay_order_id?: string;
-  razorpay_subscription_id?: string;
-  razorpay_signature: string;
-};
+import { openRazorpayCheckout } from "@/lib/billing/razorpay";
 
-// --- Helper function to build options ---
-export function buildRazorpayOptions(
-  session: any,
-  onSuccess: () => void,
-  onDismiss: () => void,
-  onError: (message: string) => void
-): Record<string, any> {
-  return {
-    key: session.keyId,
-    name: session.name,
-    description: session.description,
-    prefill: session.prefill,
-    notes: session.notes,
-    theme: { color: "#deff9a" },
-    modal: { ondismiss: onDismiss },
-    handler: async (response: RazorpayHandlerResponse) => {
-      try {
-        const verifyRes = await fetch("/api/checkout/verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(response),
-        });
-        const verifyData = await verifyRes.json();
-        if (!verifyRes.ok || !verifyData.ok) {
-          throw new Error(verifyData.error ?? "Payment verification failed.");
-        }
-        onSuccess();
-      } catch (err: any) {
-        onError(err.message ?? "Payment verification failed.");
-      }
-    },
-    order_id: session.orderId,
-    amount: 189900,
-    currency: "INR",
-  };
-}
-
-// --- Main Hook ---
 export function useRazorpayCheckout() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const startCheckout = useCallback(async (plan: "pro" = "pro") => {
+  const startCheckout = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -60,38 +16,47 @@ export function useRazorpayCheckout() {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan }),
+        credentials: "include",
+        body: JSON.stringify({ plan: "pro" }),
       });
 
-      const data = await res.json();
+      const data = (await res.json()) as {
+        success?: boolean;
+        error?: string;
+        code?: string;
+        orderId?: string;
+        prefill?: { email?: string; name?: string };
+      };
 
-      if (!res.ok || !data.ok || !data.checkout) {
+      if (res.status === 401 || data.code === "AUTH_REQUIRED") {
+        window.location.href = "/login?next=/dashboard/discover";
+        return;
+      }
+
+      if (!res.ok || !data.success || !data.orderId) {
         throw new Error(data.error ?? "Could not start checkout.");
       }
 
-      // Load Razorpay Script
-      const script = document.createElement("script");
-      script.src = "https://checkout.razorpay.com/v1/checkout.js";
-      script.async = true;
-      document.body.appendChild(script);
-
-      script.onload = () => {
-        const rzp = new (window as any).Razorpay(
-          buildRazorpayOptions(
-            data.checkout,
-            () => { setLoading(false); window.location.href = "/dashboard/discover?billing=success"; },
-            () => { setLoading(false); },
-            (msg: string) => { setLoading(false); setError(msg); }
-          )
-        );
-        rzp.open();
-      };
-    } catch (err: any) {
+      await openRazorpayCheckout({
+        orderId: data.orderId,
+        prefill: data.prefill,
+        onSuccess: () => window.location.reload(),
+        onDismiss: () => setLoading(false),
+        onError: (message) => {
+          setLoading(false);
+          setError(message);
+        },
+      });
+    } catch (err) {
       setLoading(false);
-      setError(err.message);
-      alert("Error: " + err.message); // Temporary alert for debugging
+      setError(err instanceof Error ? err.message : "Checkout failed.");
     }
   }, []);
 
-  return { startCheckout, loading, error };
+  return {
+    startCheckout,
+    loading,
+    error,
+    clearError: () => setError(null),
+  };
 }
