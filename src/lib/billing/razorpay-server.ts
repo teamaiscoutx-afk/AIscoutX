@@ -1,5 +1,7 @@
 import crypto from "crypto";
 
+import { nextRenewalDate } from "@/lib/billing/subscription-alerts";
+import { PRO_PRICE_DISPLAY } from "@/lib/billing/constants";
 import { sendSubscriptionSuccessEmail } from "@/lib/email";
 import { logServerError } from "@/lib/server/safe-action";
 import { createServiceRoleSupabaseClient } from "@/lib/supabase";
@@ -69,6 +71,7 @@ export async function provisionProSubscription(input: {
       plan: "pro",
       subscription_status: "active",
       stripe_customer_id: input.razorpayOrderId ?? undefined,
+      subscription_renewal_at: nextRenewalDate(),
       updated_at: new Date().toISOString(),
     })
     .eq("id", input.userId);
@@ -79,7 +82,10 @@ export async function provisionProSubscription(input: {
   }
 
   if (input.email) {
-    await sendSubscriptionSuccessEmail(input.email);
+    await sendSubscriptionSuccessEmail(input.email, {
+      amountLabel: PRO_PRICE_DISPLAY,
+      orderId: input.razorpayOrderId,
+    });
   }
 
   return true;
@@ -94,6 +100,7 @@ export async function cancelProSubscription(userId: string): Promise<void> {
     .update({
       plan: "free",
       subscription_status: "canceled",
+      subscription_renewal_at: null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", userId);

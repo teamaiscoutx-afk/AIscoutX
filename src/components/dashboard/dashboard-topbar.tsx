@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 
-import { NotificationHub } from "@/components/dashboard/notification-hub";
+import { FounderWatchtower } from "@/components/dashboard/founder-watchtower";
 import { UpgradeToPro } from "@/components/dashboard/upgrade-to-pro";
 import { WorkspaceModeToggle } from "@/components/dashboard/workspace-mode-toggle";
 import { UserAvatarMenu } from "@/components/layout/user-avatar-menu";
@@ -202,7 +202,7 @@ export function DashboardTopbar({
       {/* Mobile owns this cluster in the sidebar header — avoid duplicates */}
       <div className="hidden shrink-0 items-center gap-2 lg:flex">
         <UpgradeToPro compact />
-        <NotificationHub initialNotifications={initialNotifications} />
+        <FounderWatchtower initialNotifications={initialNotifications} />
         <UserAvatarMenu menu={menu} compact />
       </div>
     </header>

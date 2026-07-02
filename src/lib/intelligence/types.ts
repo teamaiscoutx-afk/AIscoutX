@@ -106,6 +106,8 @@ export type PlatformNotificationPayload = {
   emoji: string;
   signalType: "pain_point" | "momentum" | "competition" | "system";
   workspaceId?: string;
+  sourceLink: string;
+  nicheFocus?: string;
   metadata?: Record<string, unknown>;
 };
 

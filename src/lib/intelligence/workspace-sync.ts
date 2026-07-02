@@ -79,11 +79,14 @@ export async function scanWorkspaceForSignals(
     emoji: "🔔",
     signalType: "pain_point",
     workspaceId: workspace.id,
+    sourceLink: topGap.url,
+    nicheFocus: workspace.nicheFocus,
     metadata: {
       demand,
       competition,
       disruption,
       evidenceUrl: topGap.url,
+      source: topGap.source,
     },
   };
 

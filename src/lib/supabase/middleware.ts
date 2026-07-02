@@ -11,6 +11,13 @@ function applyCookies(source: NextResponse, target: NextResponse) {
   });
 }
 
+function safeRedirectPath(value: string | null, fallback = "/dashboard"): string {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return fallback;
+  }
+  return value;
+}
+
 export async function updateSession(request: NextRequest) {
   const env = getSupabaseEnv();
   if (!env) {
@@ -41,13 +48,18 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  const isProtected = pathname === "/dashboard" || pathname.startsWith("/dashboard/");
-  const isLogin = pathname === "/login";
+  const isProtected =
+    pathname === "/dashboard" || pathname.startsWith("/dashboard/");
+  const isLogin =
+    pathname === "/login" ||
+    pathname === "/sign-in" ||
+    pathname === "/log-in";
   const isAuthCallback = pathname.startsWith("/auth/");
 
   if (!user && isProtected) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = "/";
+    url.searchParams.set("signin", "1");
     url.searchParams.set("redirect", pathname);
     const redirectResponse = NextResponse.redirect(url);
     applyCookies(supabaseResponse, redirectResponse);
@@ -55,12 +67,37 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user && isLogin) {
+    const redirectTo = safeRedirectPath(
+      request.nextUrl.searchParams.get("redirect")
+    );
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = redirectTo;
     url.search = "";
     const redirectResponse = NextResponse.redirect(url);
     applyCookies(supabaseResponse, redirectResponse);
     return redirectResponse;
+  }
+
+  if (user && pathname === "/") {
+    const redirectTo = request.nextUrl.searchParams.get("redirect");
+    if (redirectTo) {
+      const url = request.nextUrl.clone();
+      url.pathname = safeRedirectPath(redirectTo);
+      url.search = "";
+      const redirectResponse = NextResponse.redirect(url);
+      applyCookies(supabaseResponse, redirectResponse);
+      return redirectResponse;
+    }
+
+    const wantsSignIn = request.nextUrl.searchParams.get("signin") === "1";
+    if (!wantsSignIn) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      url.search = "";
+      const redirectResponse = NextResponse.redirect(url);
+      applyCookies(supabaseResponse, redirectResponse);
+      return redirectResponse;
+    }
   }
 
   if (isAuthCallback) {

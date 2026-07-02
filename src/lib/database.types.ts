@@ -77,6 +77,8 @@ export type ProfileRow = {
   plan: PlanTier;
   subscription_status: "active" | "canceled";
   stripe_customer_id: string | null;
+  subscription_renewal_at: string | null;
+  last_renewal_warning_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -132,6 +134,8 @@ export type PlatformNotificationRow = {
   emoji: string;
   signal_type: "pain_point" | "momentum" | "competition" | "system";
   is_read: boolean;
+  source_link: string | null;
+  niche_focus: string | null;
   metadata: Record<string, unknown>;
   created_at: string;
 };
@@ -203,6 +207,8 @@ export type Database = {
           plan?: PlanTier;
           subscription_status?: "active" | "canceled";
           stripe_customer_id?: string | null;
+          subscription_renewal_at?: string | null;
+          last_renewal_warning_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -217,6 +223,8 @@ export type Database = {
           plan?: PlanTier;
           subscription_status?: "active" | "canceled";
           stripe_customer_id?: string | null;
+          subscription_renewal_at?: string | null;
+          last_renewal_warning_at?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -299,6 +307,8 @@ export type Database = {
           emoji?: string;
           signal_type: PlatformNotificationRow["signal_type"];
           is_read?: boolean;
+          source_link?: string | null;
+          niche_focus?: string | null;
           metadata?: Record<string, unknown>;
           created_at?: string;
         };

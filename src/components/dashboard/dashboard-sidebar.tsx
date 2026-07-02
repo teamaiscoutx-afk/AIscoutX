@@ -14,7 +14,7 @@ import {
   Trash2,
 } from "lucide-react";
 
-import { NotificationHub } from "@/components/dashboard/notification-hub";
+import { FounderWatchtower } from "@/components/dashboard/founder-watchtower";
 import {
   ProjectSwitcher,
   type SidebarProject,
@@ -63,7 +63,7 @@ export function DashboardSidebar({ projects = [] }: DashboardSidebarProps) {
 
         <div className="flex shrink-0 items-center gap-2 lg:hidden">
           <UpgradeToPro compact />
-          <NotificationHub />
+          <FounderWatchtower />
           <UserAvatarMenu menu={menu} compact />
         </div>
       </div>

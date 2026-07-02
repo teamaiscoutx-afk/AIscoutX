@@ -204,13 +204,14 @@ export async function signInWithGoogleAction(
   await signInWithGoogle(formData);
 }
 
-export async function signOut(): Promise<void> {
+export async function signOut(): Promise<{ ok: true }> {
   if (!isSupabaseConfigured()) {
-    redirect("/");
+    return { ok: true };
   }
 
   const supabase = createServerSupabaseClient();
   await supabase.auth.signOut();
   revalidatePath("/dashboard");
-  redirect("/");
+  revalidatePath("/");
+  return { ok: true };
 }
