@@ -110,7 +110,7 @@ const pricingPlans = [
   },
   {
     name: "Pro",
-    price: "₹1899",
+    price: "₹799",
     period: "/month",
     description: "For founders who move fast. Everything unlocked.",
     features: [
