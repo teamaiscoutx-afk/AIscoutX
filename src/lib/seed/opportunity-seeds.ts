@@ -373,7 +373,7 @@ function buildDeepDive(
     ],
     solutionBlueprint: {
       overview: `${name} wins by shipping a narrow workflow in under 30 days with clear ROI metrics.`,
-      businessModel: "Freemium discovery → Pro at ₹1899–$49/mo → team tier for agencies.",
+      businessModel: "Freemium discovery → Pro at ₹799–$49/mo → team tier for agencies.",
       goToMarket: [
         "Post build-in-public breakdown in 2 niche subreddits",
         "Offer 10 free teardown calls to ideal ICP profiles",
