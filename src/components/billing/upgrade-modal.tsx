@@ -137,7 +137,7 @@ export function UpgradeModalProvider({
                 {checkoutError ? (
                   <span className="text-amber-400/90">{checkoutError}</span>
                 ) : (
-                  <>Secured by Razorpay · INR billing only · Cancel anytime</>
+                  <>Secured by Razorpay • Global USD billing • Cancel anytime</>
                 )}
               </p>
             </div>
