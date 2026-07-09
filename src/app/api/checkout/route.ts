@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Razorpay from "razorpay";
 
 import {
-  PRO_AMOUNT_PAISE,
+  PRO_PRICE_AMOUNT_CENTS,
   PRO_CURRENCY,
 } from "@/lib/billing/constants";
 import { logServerError } from "@/lib/server/safe-action";
@@ -23,7 +23,7 @@ function getRazorpayClient(): Razorpay {
 }
 
 /**
- * POST /api/checkout — creates a Razorpay order for Pro (₹799 INR / 79900 paise).
+ * POST /api/checkout — creates a Razorpay order for Pro ($12 USD / 1200 cents).
  */
 export async function POST(req: NextRequest) {
   try {
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
 
     const razorpay = getRazorpayClient();
     const order = await razorpay.orders.create({
-      amount: PRO_AMOUNT_PAISE,
+      amount: PRO_PRICE_AMOUNT_CENTS,
       currency: PRO_CURRENCY,
       receipt: `pro_${user.id.slice(0, 8)}_${Date.now()}`,
       notes: {
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       orderId: order.id,
-      amount: PRO_AMOUNT_PAISE,
+      amount: PRO_PRICE_AMOUNT_CENTS,
       currency: PRO_CURRENCY,
       prefill: {
         email: user.email ?? undefined,

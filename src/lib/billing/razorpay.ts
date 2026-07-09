@@ -62,7 +62,7 @@ type OpenCheckoutInput = {
   onError?: (message: string) => void;
 };
 
-/** Opens Razorpay Checkout for the Pro subscription order (INR ₹799). */
+/** Opens Razorpay Checkout for the Pro subscription order (USD $12). */
 export async function openRazorpayCheckout(input: OpenCheckoutInput): Promise<void> {
   const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.trim();
   if (!keyId) {

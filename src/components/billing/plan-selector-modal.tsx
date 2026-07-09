@@ -16,7 +16,7 @@ type PlanSelectorModalProps = {
 };
 
 /**
- * Post-onboarding plan selector — "Unlock Pro" opens Razorpay checkout (₹799 INR).
+ * Post-onboarding plan selector — "Unlock Pro" opens Razorpay checkout ($12 USD).
  */
 export function PlanSelectorModal({ open, onSelectFree }: PlanSelectorModalProps) {
   const { startCheckout, loading: redirecting, error: checkoutError, clearError } =

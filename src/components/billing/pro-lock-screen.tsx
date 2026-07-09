@@ -53,7 +53,7 @@ export function ProLockScreen({
         Upgrade to Pro
       </Button>
       <p className="mt-3 text-xs text-zinc-600">
-        ₹799/mo · cancel anytime · activates instantly
+        $12/mo · cancel anytime · activates instantly
       </p>
     </div>
   );

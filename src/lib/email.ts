@@ -97,7 +97,7 @@ export async function sendSubscriptionSuccessEmail(
   to: string,
   input?: { amountLabel?: string; orderId?: string | null }
 ): Promise<boolean> {
-  const amount = input?.amountLabel ?? "₹799 / month";
+  const amount = input?.amountLabel ?? "$12 / month";
   const receipt = input?.orderId
     ? `<p style="color:#71717a;font-size:13px;">Receipt reference: <strong>${input.orderId}</strong></p>`
     : "";
