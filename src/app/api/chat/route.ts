@@ -33,9 +33,9 @@ type WorkspaceContext = {
   tagline: string;
   problem: string;
   solution: string;
+  isLocked: boolean;
 } | null;
 
-// Premium Mock Response content for Stripe approval simulation
 const MOCK_RESPONSE = `### 🚀 Premium Strategy Breakdown
 
 Based on your active project configuration and architectural constraints, we need to scale the validation pipeline aggressively before focusing on deep refactoring. 
@@ -82,6 +82,7 @@ async function loadActiveWorkspaceContext(): Promise<WorkspaceContext> {
       tagline: data.summary_json?.overview?.tagline ?? "",
       problem: data.summary_json?.overview?.problem ?? "",
       solution: data.summary_json?.overview?.solution ?? "",
+      isLocked: data.is_locked ?? false,
     };
   } catch {
     return null;
@@ -96,11 +97,12 @@ async function buildSystemPrompt(): Promise<string> {
 
   const sections: string[] = [
     HUMAN_COPY_SYSTEM_PROMPT,
-    `You are the Lead AI Strategy Co-Founder for AIscoutX — an elite Silicon Valley startup mentor.
+    `You are the Lead AI Strategy Co-Founder and Vision Technical Mentor for AIscoutX.
 - Do not ask the user to re-explain their startup idea. You already know it from the context below.
 - Give precise, non-generic, highly tactical execution advice tied to their actual project.
 - Answer in short paragraphs or tight bullets. Always end with one clear next action they can take today.
-- Format responses in clean Markdown: headers, bold highlights, lists, and fenced code blocks where useful.`,
+- Format responses in clean Markdown: headers, bold highlights, lists, and fenced code blocks where useful.
+- PHASE 4 VISION CRITICAL RULE: If the user provides/uploads an image or a screenshot showing a terminal error or bug, analyze the image instantly. Pinpoint exactly which file or line is broken, tell them why it happened, and provide the clean code solution in bullet points using friendly Hinglish.`,
   ];
 
   if (workspace) {
@@ -112,6 +114,14 @@ async function buildSystemPrompt(): Promise<string> {
 ${workspace.tagline ? `- Tagline: ${workspace.tagline}` : ""}
 ${workspace.problem ? `- Problem: ${workspace.problem}` : ""}
 ${workspace.solution ? `- Solution: ${workspace.solution}` : ""}`);
+
+    if (workspace.isLocked) {
+      sections.push(`⚠️ CRITICAL LOCK RULE (THE IRON CAGE):
+- The user has finalized and LOCKED their direction into the workspace build stream.
+- Do NOT brainstorm new ideas or allow them to pivot in this thread.
+- Force all discussions to focus exclusively on executing: "${workspace.projectName}" aiming to solve "${workspace.problem}". 
+- If the user attempts to ask about unrelated ideas, gently bring them back: "Bhai, humne tumhara idea lock kar diya hai, abhi poora focus execution aur building par rakhte hain!"`);
+    }
   }
 
   if (pack) {
@@ -148,7 +158,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // Strict guardrail — free tier is capped before any tokens are spent.
     const gate = await checkChatMessage();
     if (!gate.allowed) {
       return NextResponse.json(
@@ -157,25 +166,22 @@ export async function POST(request: Request) {
       );
     }
 
-    // Count the message up-front so the cap can't be bypassed by aborting the stream.
     await incrementChatMessage().catch(() => undefined);
 
     const provider = getLlmProvider();
 
     if (!provider) {
-      // Create a beautifully simulated streaming response that mimics the real AI SDK chunks
       const encoder = new TextEncoder();
       const customStream = new ReadableStream({
         async start(controller) {
           const words = MOCK_RESPONSE.split(" ");
           for (const word of words) {
-            // Stream the text chunk by chunk with an ultra-realistic 45ms pacing
             controller.enqueue(encoder.encode(`0:${JSON.stringify(word + " ")}\n`));
             await new Promise((resolve) => setTimeout(resolve, 45));
           }
           controller.close();
-          },
-        });
+        },
+      });
 
       return new Response(customStream, {
         headers: {
@@ -185,19 +191,21 @@ export async function POST(request: Request) {
       });
     }
 
-    // --- REAL AI ENGINE FLOW (Runs automatically when valid keys are supplied) ---
     const { messages }: { messages: UIMessage[] } = await request.json();
     const system = await buildSystemPrompt();
 
+    const providerModel = readServerEnv("OPENAI_MODEL") || readServerEnv("ANTHROPIC_MODEL");
+    
+    // Multi-modal models configuration check
     const model =
       provider === "openai"
-        ? openai(readServerEnv("OPENAI_MODEL") ?? "gpt-4o-mini")
-        : anthropic(readServerEnv("ANTHROPIC_MODEL") ?? "claude-sonnet-4-20250514");
+        ? openai(providerModel ?? "gpt-4o-mini")
+        : anthropic(providerModel ?? "claude-sonnet-4-20250514");
 
     const result = streamText({
       model,
       system,
-      temperature: 0.4,
+      temperature: 0.3, // Lower temperature for accurate bug solving
       messages: await convertToModelMessages(messages.slice(-12)),
       experimental_transform: smoothStream({ delayInMs: 12 }),
     });
