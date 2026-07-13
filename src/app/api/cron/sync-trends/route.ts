@@ -31,8 +31,12 @@ export async function GET(request: Request) {
     const data = await response.json();
     const posts = data?.data?.children || [];
 
-    let activeMarketPainPoints: Array<{ title: string; content: string; link: string; category: string; vector: number[] }> = [];
-    const apiKey = process.env.OPENAI_API_KEY || process.env.TAVILY_API_KEY || ''; 
+    let activeMarketPainPoints: Array<{ title: string; content: string; link: string; category: string }> = [];
+    const openAiKey = process.env.OPENAI_API_KEY;
+
+    if (!openAiKey) {
+      return NextResponse.json({ success: false, error: "Missing OPENAI_API_KEY in cloud environment variables" }, { status: 500 });
+    }
 
     for (const post of posts) {
       const title = post.data.title || '';
@@ -44,62 +48,56 @@ export async function GET(request: Request) {
       if (hasPainPoint) {
         const rawContent = `Title: ${title}\nContent: ${selftext}`;
 
-        const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        // Switching to valid OpenAI endpoint that honors your sk-proj key safely
+        const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openAiKey}`
+          },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: `Extract the core user software problem in under 2 sentences and map it to a clear category. Return ONLY this raw JSON format: {"isRealPain": true, "cleanProblem": "problem details", "category": "AI"}. Text: "${rawContent.replace(/"/g, '\\"')}"` }] }]
+            model: 'gpt-4o-mini',
+            response_format: { type: "json_object" },
+            messages: [
+              {
+                role: 'system',
+                content: 'You are a market analysis bot. Extract structural SaaS software vulnerabilities. Respond only with a flat JSON object: {"isRealPain": boolean, "cleanProblem": "Under 2 sentences detail", "category": "AI/SaaS/Finance/etc"}'
+              },
+              {
+                role: 'user',
+                content: rawContent
+              }
+            ]
           })
         });
 
-        const aiResult = await aiResponse.json();
-        let aiText = aiResult?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-        
-        // Advanced HTML block filter to instantly fix '<body class' error
-        if (aiText.includes('<body') || aiText.includes('<!DOCTYPE') || aiText.includes('<html')) {
-          continue; 
-        }
+        if (!aiResponse.ok) continue; // Skip if single fetch limits out
 
-        const jsonMatch = aiText.match(/\{[\s\S]*?\}/);
-        if (!jsonMatch) continue;
+        const aiResult = await aiResponse.json();
+        const aiText = aiResult?.choices?.[0]?.message?.content?.trim() || '{}';
         
         let parsedAnalysis;
         try {
-          parsedAnalysis = JSON.parse(jsonMatch[0]);
+          parsedAnalysis = JSON.parse(aiText);
         } catch {
           continue;
         }
 
         if (parsedAnalysis?.isRealPain && parsedAnalysis.cleanProblem) {
-          const embeddingResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              model: "models/text-embedding-004",
-              content: { parts: [{ text: parsedAnalysis.cleanProblem }] }
-            })
+          activeMarketPainPoints.push({
+            title: "🔥 Real-Time Market Pain Point Captured",
+            content: parsedAnalysis.cleanProblem,
+            link: post.data.url || `https://reddit.com${post.data.permalink}`,
+            category: parsedAnalysis.category || 'General'
           });
 
-          const embeddingResult = await embeddingResponse.json();
-          const vectorArray = embeddingResult?.embedding?.values;
-
-          if (vectorArray) {
-            activeMarketPainPoints.push({
-              title: "🔥 Real-Time Market Pain Point Captured",
-              content: parsedAnalysis.cleanProblem,
-              link: post.data.url || `https://reddit.com${post.data.permalink}`,
-              category: parsedAnalysis.category || 'General',
-              vector: vectorArray
-            });
-
-            await supabase.from('market_pain_points').insert({
-              source: 'reddit',
-              original_text: rawContent,
-              clean_problem: parsedAnalysis.cleanProblem,
-              category: parsedAnalysis.category || 'General',
-              embedding: vectorArray
-            });
-          }
+          // Insert directly to Supabase with clean structure
+          await supabase.from('market_pain_points').insert({
+            source: 'reddit',
+            original_text: rawContent,
+            clean_problem: parsedAnalysis.cleanProblem,
+            category: parsedAnalysis.category || 'General'
+          });
         }
       }
     }
