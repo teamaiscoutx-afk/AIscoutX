@@ -26,7 +26,8 @@ export async function GET(request: Request) {
 
     if (profileError) throw profileError;
 
-    const redditFeedUrl = '[https://www.reddit.com/r/saas/new.json?limit=10](https://www.reddit.com/r/saas/new.json?limit=10)';
+    // FIX: Clean, standard URL without brackets for native Vercel fetch compatibility
+    const redditFeedUrl = 'https://www.reddit.com/r/saas/new.json?limit=10';
     const response = await fetch(redditFeedUrl, { headers: { 'User-Agent': 'AIscoutX-Crawler/2.0' } });
     const data = await response.json();
     const posts = data?.data?.children || [];
@@ -56,7 +57,6 @@ export async function GET(request: Request) {
         const aiResult = await aiResponse.json();
         let aiText = aiResult?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '{}';
         
-        // BULLET-PROOF JSON CLEANUP PATTERN
         if (aiText.includes('```')) {
           aiText = aiText.replace(/```json/g, '').replace(/```/g, '').trim();
         }
@@ -65,7 +65,6 @@ export async function GET(request: Request) {
         try {
           parsedAnalysis = JSON.parse(aiText);
         } catch (jsonErr) {
-          // Fallback if parsing fails due to raw characters
           continue;
         }
 
