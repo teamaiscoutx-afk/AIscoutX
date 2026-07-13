@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
-import { Bot, Send, Sparkles } from "lucide-react";
+import { Bot, Send, Sparkles, Camera } from "lucide-react"; // Added Camera icon for UI upload trigger
 
 import type { UsageSnapshot } from "@/app/actions/usage";
 import { useUpgradeModal } from "@/components/billing/upgrade-modal";
@@ -44,9 +44,11 @@ export function FounderChat({ usage }: FounderChatProps) {
   const [input, setInput] = useState("");
   const [limitHit, setLimitHit] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
+  const [visionLoading, setVisionLoading] = useState(false); // Vision loader handle
+  const [visionMessages, setVisionMessages] = useState<any[]>([]); // Dynamic repository for screenshot answers
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const { messages, sendMessage, status } = useChat({
+  const { messages: sdkMessages, sendMessage, status } = useChat({
     onError: (err) => {
       const raw = err?.message ?? "";
       if (raw.includes("UPGRADE_REQUIRED")) {
@@ -62,11 +64,25 @@ export function FounderChat({ usage }: FounderChatProps) {
     },
   });
 
-  const isBusy = status === "submitted" || status === "streaming";
+  // Intertwine and sort basic SDK text elements smoothly with multi-lingual image solver array
+  const combinedMessages = useMemo(() => {
+    // Process default messages to match standard payload format
+    const formattedSdk = sdkMessages.map((msg) => {
+      const text = msg.parts
+        .filter((part): part is { type: "text"; text: string } => part.type === "text")
+        .map((part) => part.text)
+        .join("");
+      return { id: msg.id, role: msg.role, text, createdAt: new Date() };
+    });
+
+    return [...formattedSdk, ...visionMessages];
+  }, [sdkMessages, visionMessages]);
+
+  const isBusy = status === "submitted" || status === "streaming" || visionLoading;
 
   const sentThisSession = useMemo(
-    () => messages.filter((m) => m.role === "user").length,
-    [messages]
+    () => combinedMessages.filter((m) => m.role === "user").length,
+    [combinedMessages]
   );
   const freeMessagesUsed = usage.chatMessagesThisMonth + sentThisSession;
   const limitReached =
@@ -75,7 +91,73 @@ export function FounderChat({ usage }: FounderChatProps) {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, status, limitReached]);
+  }, [combinedMessages, status, limitReached, visionLoading]);
+
+  // Handler for Multi-Lingual Vision Screenshot Processing
+  const handleImageUploadAndAnalyze = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || limitReached || isBusy) return;
+
+    setErrorText(null);
+    setVisionLoading(true);
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = async () => {
+      const base64String = reader.result as string;
+      const userTempId = `vision-u-${Date.now()}`;
+      const botTempId = `vision-b-${Date.now()}`;
+
+      // Push initial preview context locally
+      setVisionMessages((prev) => [
+        ...prev,
+        { id: userTempId, role: "user", text: "📸 Sent an active dashboard error snapshot for localization analysis." }
+      ]);
+
+      try {
+        // Trigger verification limits query
+        const checkFup = await fetch('/api/payments/verify-usage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: 'current-active-session-id' })
+        });
+        const fupRes = await checkFup.json();
+        
+        if (fupRes.allowed === false) {
+          setLimitHit(true);
+          setErrorText(fupRes.message);
+          return;
+        }
+
+        // Fire request to our Sharp-optimized vision microservice
+        const res = await fetch('/api/vision-solver', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            base64Image: base64String,
+            currentStep: 1,
+            techStack: "Bubble/Next.js",
+            userMessage: input.trim() || "Analyze bounds constraint breakdown."
+          })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          setVisionMessages((prev) => [
+            ...prev,
+            { id: botTempId, role: "assistant", text: data.solution }
+          ]);
+          setInput("");
+        } else {
+          setErrorText(data.error || "Vision analytics failed.");
+        }
+      } catch (err) {
+        setErrorText("Could not sync with the vision node infrastructure.");
+      } finally {
+        setVisionLoading(false);
+      }
+    };
+  };
 
   function handleSend() {
     const trimmed = input.trim();
@@ -116,22 +198,14 @@ export function FounderChat({ usage }: FounderChatProps) {
             </div>
           </div>
 
-          {messages.map((message) => {
-            const text = message.parts
-              .filter(
-                (part): part is { type: "text"; text: string } =>
-                  part.type === "text"
-              )
-              .map((part) => part.text)
-              .join("");
-
-            if (!text) return null;
+          {combinedMessages.map((message) => {
+            if (!message.text) return null;
 
             if (message.role === "user") {
               return (
                 <div key={message.id} className="flex justify-end">
                   <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl bg-[#deff9a]/15 px-4 py-3 text-sm text-[#deff9a]">
-                    {text}
+                    {message.text}
                   </div>
                 </div>
               );
@@ -141,13 +215,13 @@ export function FounderChat({ usage }: FounderChatProps) {
               <div key={message.id} className="flex justify-start">
                 <div className="max-w-[85%] rounded-2xl border border-white/[0.08] bg-black/30 px-4 py-3">
                   <Bot className="mb-2 h-4 w-4 text-[#deff9a]" />
-                  <ChatMarkdown content={text} />
+                  <ChatMarkdown content={message.text} />
                 </div>
               </div>
             );
           })}
 
-          {status === "submitted" && <TypingIndicator />}
+          {(status === "submitted" || visionLoading) && <TypingIndicator />}
 
           {limitReached && (
             <div className="flex justify-center">
@@ -177,6 +251,18 @@ export function FounderChat({ usage }: FounderChatProps) {
             </p>
           )}
           <div className="flex gap-2">
+            {/* Added Native Image Trigger Selector Button matching theme layout perfectly */}
+            <label className={`flex items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 transition-colors text-zinc-400 hover:text-[#deff9a] hover:bg-white/[0.06] ${limitReached ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
+              <Camera className="h-4 w-4" />
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={handleImageUploadAndAnalyze} 
+                disabled={limitReached || isBusy} 
+              />
+            </label>
+
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -189,7 +275,7 @@ export function FounderChat({ usage }: FounderChatProps) {
               placeholder={
                 limitReached
                   ? "Free credits exhausted — upgrade to keep going"
-                  : "Ask your strategy co-founder…"
+                  : "Ask your strategy co-founder or drop layout screenshot..."
               }
               disabled={limitReached}
               className="border-white/[0.08] bg-white/[0.03]"
