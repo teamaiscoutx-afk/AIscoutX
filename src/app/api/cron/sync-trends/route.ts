@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { XMLParser } from 'fast-xml-parser';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -31,40 +32,44 @@ export async function GET(request: Request) {
 
     if (profileError) throw profileError;
 
-    const redditFeedUrl = 'https://www.reddit.com/r/saas/new.json?limit=10';
-    
-    // Changing User-Agent to act as a standard browser request to bypass Reddit block
-    const response = await fetch(redditFeedUrl, { 
+    // SWITCHING TO RSS STREAM DATA PIPELINE: Extremely resilient against Vercel IP blocks
+    const redditRssUrl = 'https://www.reddit.com/r/saas/new/.rss';
+    const response = await fetch(redditRssUrl, { 
       headers: { 
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' 
       } 
     });
 
-    // CRITICAL FIX: If Reddit blocks or returns HTML, capture it cleanly without crashing
-    const contentType = response.headers.get("content-type") || "";
-    if (!contentType.includes("application/json")) {
-      const rawText = await response.text();
+    if (!response.ok) {
       return NextResponse.json({ 
         success: false, 
-        error: `Reddit API blocked the request or returned HTML instead of JSON. Status: ${response.status}`,
-        preview: rawText.substring(0, 200)
+        error: `Reddit RSS Gateway failed with server response code status: ${response.status}`
       }, { status: 502 });
     }
 
-    const data = await response.json();
-    const posts = data?.data?.children || [];
+    const xmlData = await response.text();
+    const parser = new XMLParser();
+    const jsonObj = parser.parse(xmlData);
+    
+    // Extract feed items safely
+    const entries = jsonObj?.feed?.entry || [];
+    const posts = Array.isArray(entries) ? entries : [entries];
 
     let activeMarketPainPoints: Array<{ title: string; content: string; link: string; category: string }> = [];
 
     for (const post of posts) {
-      const title = post.data.title || '';
-      const selftext = post.data.selftext || '';
-      const fullText = `${title} ${selftext}`.toLowerCase();
+      if (!post) continue;
+      
+      const title = post.title || '';
+      // RSS content is inside parsed text content structure
+      const content = typeof post.content === 'object' ? post.content['#text'] || '' : post.content || '';
+      const fullText = `${title} ${content}`.toLowerCase();
 
       const hasPainPoint = PAIN_KEYWORDS.some(keyword => fullText.includes(keyword));
 
       if (hasPainPoint) {
-        const rawContent = `Title: ${title}\nContent: ${selftext}`;
+        const rawContent = `Title: ${title}\nContentPreview: ${content.substring(0, 400)}`;
+        const link = post.link?.['@_href'] || post.id || 'https://reddit.com/r/saas';
 
         try {
           const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -93,27 +98,25 @@ export async function GET(request: Request) {
 
           const aiResult = await aiResponse.json();
           const aiText = aiResult?.choices?.[0]?.message?.content?.trim() || '{}';
-          
           const parsedAnalysis = JSON.parse(aiText);
 
           if (parsedAnalysis?.isRealPain && parsedAnalysis.cleanProblem) {
             activeMarketPainPoints.push({
               title: "🔥 Real-Time Market Pain Point Captured",
               content: parsedAnalysis.cleanProblem,
-              link: post.data.url || `https://reddit.com${post.data.permalink}`,
+              link: link,
               category: parsedAnalysis.category || 'General'
             });
 
             await supabase.from('market_pain_points').insert({
-              source: 'reddit',
-              original_text: rawContent,
+              source: 'reddit_rss',
+              original_text: title + " " + content.substring(0, 1000),
               clean_problem: parsedAnalysis.cleanProblem,
               category: parsedAnalysis.category || 'General'
             });
           }
-        } catch (aiErr) {
-          // Individual item safety fallback
-          continue;
+        } catch {
+          continue; 
         }
       }
     }
