@@ -16,3 +16,6 @@ export const PRO_MODAL_FEATURES = [
   "Daily Actionable Steps (Founder GPS Tracker)",
   "AI Mentor Chat",
 ] as const;
+// Compatibility Bridges for Razorpay USD Multi-Currency engine matching $12 config
+export const PRO_PRICE_INR = PRO_PRICE_USD;        // Aliasing the $12 core price directly
+export const PRO_AMOUNT_PAISE = PRO_PRICE_AMOUNT_CENTS; // 1200
