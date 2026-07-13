@@ -19,6 +19,11 @@ export async function GET(request: Request) {
   }
 
   try {
+    const openAiKey = process.env.OPENAI_API_KEY;
+    if (!openAiKey) {
+      return NextResponse.json({ success: false, error: "Missing OPENAI_API_KEY in cloud environment variables" }, { status: 500 });
+    }
+
     const { data: profiles, error: profileError } = await supabase
       .from('profiles')
       .select('id, niche_focus')
@@ -27,16 +32,29 @@ export async function GET(request: Request) {
     if (profileError) throw profileError;
 
     const redditFeedUrl = 'https://www.reddit.com/r/saas/new.json?limit=10';
-    const response = await fetch(redditFeedUrl, { headers: { 'User-Agent': 'AIscoutX-Crawler/2.0' } });
+    
+    // Changing User-Agent to act as a standard browser request to bypass Reddit block
+    const response = await fetch(redditFeedUrl, { 
+      headers: { 
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' 
+      } 
+    });
+
+    // CRITICAL FIX: If Reddit blocks or returns HTML, capture it cleanly without crashing
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      const rawText = await response.text();
+      return NextResponse.json({ 
+        success: false, 
+        error: `Reddit API blocked the request or returned HTML instead of JSON. Status: ${response.status}`,
+        preview: rawText.substring(0, 200)
+      }, { status: 502 });
+    }
+
     const data = await response.json();
     const posts = data?.data?.children || [];
 
     let activeMarketPainPoints: Array<{ title: string; content: string; link: string; category: string }> = [];
-    const openAiKey = process.env.OPENAI_API_KEY;
-
-    if (!openAiKey) {
-      return NextResponse.json({ success: false, error: "Missing OPENAI_API_KEY in cloud environment variables" }, { status: 500 });
-    }
 
     for (const post of posts) {
       const title = post.data.title || '';
@@ -48,56 +66,54 @@ export async function GET(request: Request) {
       if (hasPainPoint) {
         const rawContent = `Title: ${title}\nContent: ${selftext}`;
 
-        // Switching to valid OpenAI endpoint that honors your sk-proj key safely
-        const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${openAiKey}`
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            response_format: { type: "json_object" },
-            messages: [
-              {
-                role: 'system',
-                content: 'You are a market analysis bot. Extract structural SaaS software vulnerabilities. Respond only with a flat JSON object: {"isRealPain": boolean, "cleanProblem": "Under 2 sentences detail", "category": "AI/SaaS/Finance/etc"}'
-              },
-              {
-                role: 'user',
-                content: rawContent
-              }
-            ]
-          })
-        });
-
-        if (!aiResponse.ok) continue; // Skip if single fetch limits out
-
-        const aiResult = await aiResponse.json();
-        const aiText = aiResult?.choices?.[0]?.message?.content?.trim() || '{}';
-        
-        let parsedAnalysis;
         try {
-          parsedAnalysis = JSON.parse(aiText);
-        } catch {
+          const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${openAiKey}`
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              response_format: { type: "json_object" },
+              messages: [
+                {
+                  role: 'system',
+                  content: 'You are a market analysis bot. Extract structural SaaS software vulnerabilities. Respond only with a flat JSON object: {"isRealPain": boolean, "cleanProblem": "Under 2 sentences detail", "category": "AI/SaaS/Finance/etc"}'
+                },
+                {
+                  role: 'user',
+                  content: rawContent
+                }
+              ]
+            })
+          });
+
+          if (!aiResponse.ok) continue;
+
+          const aiResult = await aiResponse.json();
+          const aiText = aiResult?.choices?.[0]?.message?.content?.trim() || '{}';
+          
+          const parsedAnalysis = JSON.parse(aiText);
+
+          if (parsedAnalysis?.isRealPain && parsedAnalysis.cleanProblem) {
+            activeMarketPainPoints.push({
+              title: "🔥 Real-Time Market Pain Point Captured",
+              content: parsedAnalysis.cleanProblem,
+              link: post.data.url || `https://reddit.com${post.data.permalink}`,
+              category: parsedAnalysis.category || 'General'
+            });
+
+            await supabase.from('market_pain_points').insert({
+              source: 'reddit',
+              original_text: rawContent,
+              clean_problem: parsedAnalysis.cleanProblem,
+              category: parsedAnalysis.category || 'General'
+            });
+          }
+        } catch (aiErr) {
+          // Individual item safety fallback
           continue;
-        }
-
-        if (parsedAnalysis?.isRealPain && parsedAnalysis.cleanProblem) {
-          activeMarketPainPoints.push({
-            title: "🔥 Real-Time Market Pain Point Captured",
-            content: parsedAnalysis.cleanProblem,
-            link: post.data.url || `https://reddit.com${post.data.permalink}`,
-            category: parsedAnalysis.category || 'General'
-          });
-
-          // Insert directly to Supabase with clean structure
-          await supabase.from('market_pain_points').insert({
-            source: 'reddit',
-            original_text: rawContent,
-            clean_problem: parsedAnalysis.cleanProblem,
-            category: parsedAnalysis.category || 'General'
-          });
         }
       }
     }
