@@ -1,221 +1,141 @@
-import { anthropic } from "@ai-sdk/anthropic";
-import { openai } from "@ai-sdk/openai";
-import {
-  convertToModelMessages,
-  smoothStream,
-  streamText,
-  type UIMessage,
-} from "ai";
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
-import { getLatestVenturePack } from "@/app/actions/generation";
-import { checkChatMessage, incrementChatMessage } from "@/app/actions/usage";
-import { CHAT_LIMIT_MESSAGE } from "@/lib/billing/tier-limits";
-import { HUMAN_COPY_SYSTEM_PROMPT } from "@/lib/intelligence/copy-engine";
-import { getLlmProvider } from "@/lib/intelligence/llm-router";
-import { readServerEnv } from "@/lib/env";
-import { logServerError } from "@/lib/server/safe-action";
-import {
-  createServerSupabaseClient,
-  isSupabaseConfigured,
-} from "@/lib/supabase";
-
-export const dynamic = "force-dynamic";
-export const maxDuration = 60;
-
-type WorkspaceContext = {
-  projectName: string;
-  niche: string;
-  stage: string;
-  validationScore: number;
-  mvpScore: number;
-  launchScore: number;
-  tagline: string;
-  problem: string;
-  solution: string;
-  isLocked: boolean;
-} | null;
-
-const MOCK_RESPONSE = `### 🚀 Premium Strategy Breakdown
-
-Based on your active project configuration and architectural constraints, we need to scale the validation pipeline aggressively before focusing on deep refactoring. 
-
-Here is your highly tactical **3-Step Execution Plan** for today:
-
-1. **Tighten the Core Value Proposition:** Ensure your landing page focuses on the *100x speed-to-value* matrix rather than generic operational metrics. Founders pay for immediate pain-relievers, not long-term vitamins.
-2. **Optimize the Technical Layer:** Leverage Next.js dynamic streaming routes along with your active Supabase configuration to lock down the transaction workflows. Ensure Row Level Security (RLS) is fully active across all tenant tables.
-3. **Global Monetization Setup:** Activate your international billing gateways (such as Stripe) immediately to run cross-border micro-conversions. Capturing early global revenue signals from markets like the US and Europe is the absolute fastest way to validate market liquidity.
-
----
-
-🎯 **Your Immediate Next Action:** Open your environment configuration file, double-check your production deployment keys, and execute a live test transaction to verify that your subscription webhook correctly triggers the database tier upgrades. Let me know once the webhook returns a clean \`200 OK\` status!`;
-
-async function loadActiveWorkspaceContext(): Promise<WorkspaceContext> {
-  if (!isSupabaseConfigured()) return null;
-
-  try {
-    const supabase = createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return null;
-
-    const { data } = await supabase
-      .from("workspaces")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("is_deleted", false)
-      .order("is_active", { ascending: false })
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (!data) return null;
-
-    return {
-      projectName: data.opportunity_name,
-      niche: data.niche_focus ?? data.opportunity_name,
-      stage: data.current_stage,
-      validationScore: data.validation_score,
-      mvpScore: data.mvp_score,
-      launchScore: data.launch_score,
-      tagline: data.summary_json?.overview?.tagline ?? "",
-      problem: data.summary_json?.overview?.problem ?? "",
-      solution: data.summary_json?.overview?.solution ?? "",
-      isLocked: data.is_locked ?? false,
-    };
-  } catch {
-    return null;
-  }
-}
-
-async function buildSystemPrompt(): Promise<string> {
-  const [workspace, pack] = await Promise.all([
-    loadActiveWorkspaceContext(),
-    getLatestVenturePack().catch(() => null),
-  ]);
-
-  const sections: string[] = [
-    HUMAN_COPY_SYSTEM_PROMPT,
-    `You are the Lead AI Strategy Co-Founder and Vision Technical Mentor for AIscoutX.
-- Do not ask the user to re-explain their startup idea. You already know it from the context below.
-- Give precise, non-generic, highly tactical execution advice tied to their actual project.
-- Answer in short paragraphs or tight bullets. Always end with one clear next action they can take today.
-- Format responses in clean Markdown: headers, bold highlights, lists, and fenced code blocks where useful.
-- PHASE 4 VISION CRITICAL RULE: If the user provides/uploads an image or a screenshot showing a terminal error or bug, analyze the image instantly. Pinpoint exactly which file or line is broken, tell them why it happened, and provide the clean code solution in bullet points using friendly Hinglish.`,
-  ];
-
-  if (workspace) {
-    sections.push(`ACTIVE PROJECT CONTEXT (from the user's workspace):
-- Project: ${workspace.projectName}
-- Niche: ${workspace.niche}
-- Current stage: ${workspace.stage}
-- Scores — Validation: ${workspace.validationScore}/100, MVP: ${workspace.mvpScore}/100, Launch: ${workspace.launchScore}/100
-${workspace.tagline ? `- Tagline: ${workspace.tagline}` : ""}
-${workspace.problem ? `- Problem: ${workspace.problem}` : ""}
-${workspace.solution ? `- Solution: ${workspace.solution}` : ""}`);
-
-    if (workspace.isLocked) {
-      sections.push(`⚠️ CRITICAL LOCK RULE (THE IRON CAGE):
-- The user has finalized and LOCKED their direction into the workspace build stream.
-- Do NOT brainstorm new ideas or allow them to pivot in this thread.
-- Force all discussions to focus exclusively on executing: "${workspace.projectName}" aiming to solve "${workspace.problem}". 
-- If the user attempts to ask about unrelated ideas, gently bring them back: "Bhai, humne tumhara idea lock kar diya hai, abhi poora focus execution aur building par rakhte hain!"`);
-    }
-  }
-
-  if (pack) {
-    const stack = pack.blueprint.techStack
-      .map((row) => `${row.layer}: ${row.recommendation}`)
-      .join("; ");
-    sections.push(`BLUEPRINT CONSTRAINTS (already generated for this user):
-- Build query: "${pack.query}"
-- Tech stack: ${stack}
-Respect this stack in technical advice unless the user asks to change it.`);
-  }
-
-  if (!workspace && !pack) {
-    sections.push(
-      "The user has not created a project workspace yet. Help them pick and validate a direction fast — push them toward generating a blueprint."
-    );
-  }
-
-  return sections.filter(Boolean).join("\n\n");
-}
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export async function POST(request: Request) {
   try {
-    if (isSupabaseConfigured()) {
-      const supabase = createServerSupabaseClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        return NextResponse.json(
-          { error: "Sign in to use the mentor chat." },
-          { status: 401 }
-        );
-      }
+    const { userId, userMessage } = await processPayload(request);
+    if (!userId || !userMessage) {
+      return NextResponse.json({ success: false, error: "Missing required query parameters" }, { status: 400 });
     }
 
-    const gate = await checkChatMessage();
-    if (!gate.allowed) {
-      return NextResponse.json(
-        { error: CHAT_LIMIT_MESSAGE, code: "UPGRADE_REQUIRED" },
-        { status: 403 }
-      );
+    const openAiKey = process.env.OPENAI_API_KEY;
+    if (!openAiKey) {
+      return NextResponse.json({ success: false, error: "Missing API authorization key infrastructure" }, { status: 500 });
     }
 
-    await incrementChatMessage().catch(() => undefined);
+    // 1. Pull user state matrix parameters securely
+    let { data: profile, error: profileErr } = await supabase
+      .from('profiles')
+      .select('is_locked, locked_idea, tech_stack, current_step')
+      .eq('id', userId)
+      .single();
 
-    const provider = getLlmProvider();
-
-    if (!provider) {
-      const encoder = new TextEncoder();
-      const customStream = new ReadableStream({
-        async start(controller) {
-          const words = MOCK_RESPONSE.split(" ");
-          for (const word of words) {
-            controller.enqueue(encoder.encode(`0:${JSON.stringify(word + " ")}\n`));
-            await new Promise((resolve) => setTimeout(resolve, 45));
-          }
-          controller.close();
-        },
-      });
-
-      return new Response(customStream, {
-        headers: {
-          "Content-Type": "text/plain; charset=utf-8",
-          "Transfer-Encoding": "chunked",
-        },
-      });
+    if (profileErr || !profile) {
+      return NextResponse.json({ success: false, error: "User state initialization failed" }, { status: 404 });
     }
 
-    const { messages }: { messages: UIMessage[] } = await request.json();
-    const system = await buildSystemPrompt();
+    // 2. Manage or Initialize Context Cache to keep token billing ultra low
+    let { data: chatHistory } = await supabase
+      .from('context_cached_chats')
+      .select('messages, summary_override')
+      .eq('user_id', userId)
+      .maybeSingle();
 
-    const providerModel = readServerEnv("OPENAI_MODEL") || readServerEnv("ANTHROPIC_MODEL");
-    
-    // Multi-modal models configuration check
-    const model =
-      provider === "openai"
-        ? openai(providerModel ?? "gpt-4o-mini")
-        : anthropic(providerModel ?? "claude-sonnet-4-20250514");
+    let historicalMessages = chatHistory?.messages ? (Array.isArray(chatHistory.messages) ? chatHistory.messages : []) : [];
+    let summaryOverride = chatHistory?.summary_override || "";
 
-    const result = streamText({
-      model,
-      system,
-      temperature: 0.3, // Lower temperature for accurate bug solving
-      messages: await convertToModelMessages(messages.slice(-12)),
-      experimental_transform: smoothStream({ delayInMs: 12 }),
+    // Append raw entry to operational stream array
+    historicalMessages.push({ role: 'user', content: userMessage });
+
+    // 3. Dynamic Optimization: Automatic Context Cache Override if chain > 12 messages
+    if (historicalMessages.length > 12) {
+      summaryOverride = await generateContextSummary(historicalMessages, summaryOverride, openAiKey);
+      historicalMessages = historicalMessages.slice(-4); // Retain only tactical tailing context entries safely
+    }
+
+    // 4. Heavy Master System Prompt - Enforcing Sequential Progression Rules
+    const systemPrompt = `
+      You are the elite empathetic Lead Tech Co-Founder for AIscoutX. Your objective is to permanently anchor and guide the user through their product incubation timeline.
+      
+      CURRENT WORKSPACE LOGISTICAL STATE:
+      - Locked Idea Status: ${profile.locked_idea || 'Not selected yet'}
+      - Assigned Framework Engine: ${profile.tech_stack}
+      - Strict Incremental Phase Marker: Step ${profile.current_step} of 5
+      
+      STEP MAP PROTOCOLS:
+      Step 1: Core Problem Validation Validation (Ensure target audience feels this pain).
+      Step 2: Database Schema Architecture (Design fields simply like a standard spreadsheet).
+      Step 3: Minimum Viable Logic Flows (Wire up basic actions/buttons).
+      Step 4: Stripe/Razorpay Ledger Systems Integration.
+      Step 5: Product-Led Traffic Blastoff Campaign.
+      
+      OPERATIONAL LAWS:
+      - Reply like a world-class No-Code mentor using conversational, highly accessible Hinglish (mix of clean Hindi and English). Keep answers structural but simple.
+      - ENFORCE SEQUENCE RULES: If the user tries to jump or ask about structural things in future steps (e.g., asking about step 4 billing while currently checked on Step ${profile.current_step}), gently refuse, block progression, and pull their focus back to completing the active step.
+      - When they successfully validate/complete the current step, explicitly state: "[STEP_COMPLETED_CONFIRMATION]" so the system can upgrade their access profile.
+    `;
+
+    // 5. Build dynamic payload parameters
+    const apiMessages = [
+      { role: 'system', content: systemPrompt },
+      ...(summaryOverride ? [{ role: 'system', content: `Historical conversation condensed overview matrix: ${summaryOverride}` }] : []),
+      ...historicalMessages
+    ];
+
+    // 6. Execute core LLM process cycle
+    const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openAiKey}` },
+      body: JSON.stringify({ model: 'gpt-4o-mini', messages: apiMessages, temperature: 0.7 })
     });
 
-    return result.toUIMessageStreamResponse();
-  } catch (err) {
-    logServerError("chat.stream", err);
-    return NextResponse.json(
-      { error: "The mentor hit a snag. Try again." },
-      { status: 500 }
-    );
+    const aiResult = await aiResponse.json();
+    const assistantReply = aiResult?.choices?.[0]?.message?.content || "Server context bottlenecked. Try again.";
+
+    historicalMessages.push({ role: 'assistant', content: assistantReply });
+
+    // 7. Check if active sequence step threshold has been successfully verified
+    let nextCalculatedStep = profile.current_step;
+    if (assistantReply.includes("[STEP_COMPLETED_CONFIRMATION]") && nextCalculatedStep < 5) {
+      nextCalculatedStep += 1;
+      await supabase.from('profiles').update({ current_step: nextCalculatedStep }).eq('id', userId);
+    }
+
+    // 8. Sync state context updates back into database ledger cache storage
+    await supabase.from('context_cached_chats').upsert({
+      user_id: userId,
+      messages: historicalMessages,
+      summary_override: summaryOverride
+    }, { onConflict: 'user_id' });
+
+    return NextResponse.json({
+      success: true,
+      reply: assistantReply.replace("[STEP_COMPLETED_CONFIRMATION]", ""),
+      metaState: { currentStep: nextCalculatedStep, techStack: profile.tech_stack }
+    });
+
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
+
+async function processPayload(req: Request) {
+  try {
+    return await req.json();
+  } catch {
+    return {};
+  }
+}
+
+// Highly efficient caching utility function to squeeze token overhead costs to bare minimums
+async function generateContextSummary(msgs: any[], oldSummary: string, key: string): Promise<string> {
+  try {
+    const rawDataString = msgs.map(m => `${m.role}: ${m.content}`).join('\n');
+    const summaryResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'system', content: `Summarize the crucial startup progression data points below. Merge with previous state map: ${oldSummary}` }, { role: 'user', content: rawDataString }]
+      })
+    });
+    const resJson = await summaryResponse.json();
+    return resJson?.choices?.[0]?.message?.content || oldSummary;
+  } catch {
+    return oldSummary;
   }
 }
