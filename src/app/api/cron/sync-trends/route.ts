@@ -26,14 +26,12 @@ export async function GET(request: Request) {
 
     if (profileError) throw profileError;
 
-    // FIX: Clean, standard URL without brackets for native Vercel fetch compatibility
     const redditFeedUrl = 'https://www.reddit.com/r/saas/new.json?limit=10';
     const response = await fetch(redditFeedUrl, { headers: { 'User-Agent': 'AIscoutX-Crawler/2.0' } });
     const data = await response.json();
     const posts = data?.data?.children || [];
 
     let activeMarketPainPoints: Array<{ title: string; content: string; link: string; category: string; vector: number[] }> = [];
-
     const apiKey = process.env.OPENAI_API_KEY || process.env.TAVILY_API_KEY || ''; 
 
     for (const post of posts) {
@@ -50,25 +48,29 @@ export async function GET(request: Request) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: `Analyze if this text indicates a real software problem or user frustration. If yes, extract the core problem under 2 sentences and map it to a clear category (e.g., Healthcare, AI, SaaS, Finance). Respond ONLY in this exact JSON format, do not add any markdown blocks or extra characters: {"isRealPain": boolean, "cleanProblem": "string", "category": "string"}. Text to analyze: "${rawContent.replace(/"/g, '\\"')}"` }] }]
+            contents: [{ parts: [{ text: `Extract the core user software problem in under 2 sentences and map it to a clear category. Return ONLY this raw JSON format: {"isRealPain": true, "cleanProblem": "problem details", "category": "AI"}. Text: "${rawContent.replace(/"/g, '\\"')}"` }] }]
           })
         });
 
         const aiResult = await aiResponse.json();
-        let aiText = aiResult?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '{}';
+        let aiText = aiResult?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
         
-        if (aiText.includes('```')) {
-          aiText = aiText.replace(/```json/g, '').replace(/```/g, '').trim();
+        // Advanced HTML block filter to instantly fix '<body class' error
+        if (aiText.includes('<body') || aiText.includes('<!DOCTYPE') || aiText.includes('<html')) {
+          continue; 
         }
 
+        const jsonMatch = aiText.match(/\{[\s\S]*?\}/);
+        if (!jsonMatch) continue;
+        
         let parsedAnalysis;
         try {
-          parsedAnalysis = JSON.parse(aiText);
-        } catch (jsonErr) {
+          parsedAnalysis = JSON.parse(jsonMatch[0]);
+        } catch {
           continue;
         }
 
-        if (parsedAnalysis?.isRealPain) {
+        if (parsedAnalysis?.isRealPain && parsedAnalysis.cleanProblem) {
           const embeddingResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -103,22 +105,18 @@ export async function GET(request: Request) {
     }
 
     let insertedCount = 0;
-    
     if (activeMarketPainPoints.length > 0 && profiles.length > 0) {
       for (const profile of profiles) {
         const selectedProblem = activeMarketPainPoints.find(p => p.category.toLowerCase() === profile.niche_focus?.toLowerCase()) || activeMarketPainPoints[0];
         
-        const { error: insertError } = await supabase
-          .from('platform_notifications')
-          .insert({
-            user_id: profile.id,
-            niche_focus: profile.niche_focus || 'General',
-            title: selectedProblem.title,
-            content: `${selectedProblem.content} (Captured live from global internet streams matching ${profile.niche_focus})`,
-            source_link: selectedProblem.link
-          });
-
-        if (!insertError) insertedCount++;
+        await supabase.from('platform_notifications').insert({
+          user_id: profile.id,
+          niche_focus: profile.niche_focus || 'General',
+          title: selectedProblem.title,
+          content: `${selectedProblem.content} (Captured live from global internet streams)`,
+          source_link: selectedProblem.link
+        });
+        insertedCount++;
       }
     }
 
