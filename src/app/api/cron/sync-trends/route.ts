@@ -6,7 +6,30 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-const PAIN_KEYWORDS = ['expensive', 'sucks', 'difficult', 'lacks', 'error', 'how to', 'alternative', 'annoying', 'hate'];
+const PAIN_KEYWORDS = ['expensive', 'sucks', 'difficult', 'lacks', 'error', 'how to', 'alternative', 'annoying', 'hate', 'problem', 'broken', 'issue', 'waste', 'frustrated'];
+const TARGET_SUBREDDITS = ['saas', 'entrepreneur', 'sideproject'];
+
+// Isolated function to generate 1536 dimensions vector embedding array using OpenAI
+async function generateEmbedding(text: string, apiKey: string): Promise<number[]> {
+  const response = await fetch('https://api.openai.com/v1/embeddings', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: 'text-embedding-3-small',
+      input: text
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenAI Embedding Generation failed with status code: ${response.status}`);
+  }
+
+  const result = await response.json();
+  return result?.data?.[0]?.embedding || [];
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -22,133 +45,77 @@ export async function GET(request: Request) {
   try {
     const openAiKey = process.env.OPENAI_API_KEY;
     if (!openAiKey) {
-      return NextResponse.json({ success: false, error: "Missing OPENAI_API_KEY in cloud environment variables" }, { status: 500 });
+      return NextResponse.json({ success: false, error: "Missing OPENAI_API_KEY in cloud variables" }, { status: 500 });
     }
 
-    const { data: profiles, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, niche_focus')
-      .not('niche_focus', 'is', null);
+    let globalInsertedCount = 0;
+    const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_" });
 
-    if (profileError) throw profileError;
-
-    const targetUrl = 'https://www.reddit.com/r/saas/new/.rss';
-    
-    // Using a dynamic anonymous processing proxy gate to alter the cloud hosting IP signature
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
-    
-    let xmlData = "";
-    
-    try {
-      const response = await fetch(proxyUrl, { cache: 'no-store' });
-      if (!response.ok) throw new Error("Proxy layer blocked");
-      const wrapper = await response.json();
-      xmlData = wrapper.contents; // Extract the raw targeted content securely bypassed
-    } catch (proxyError) {
-      // Emergency fall-back simulator if all proxy relays hit traffic limitations
-      xmlData = `
-        <feed xmlns="http://www.w3.org/2005/Atom">
-          <entry>
-            <title>Struggling with high expensive alternatives for subscription billing engines. Salesforce sucks.</title>
-            <content type="html">Building a new AI platform but integrations are too difficult, lacks documentation.</content>
-            <link href="https://www.reddit.com/r/saas/fallback" />
-            <id>fallback-1</id>
-          </entry>
-        </feed>
-      `;
-    }
-
-    const parser = new XMLParser({
-      ignoreAttributes: false,
-      attributeNamePrefix: "@_"
-    });
-    const jsonObj = parser.parse(xmlData);
-    
-    const entries = jsonObj?.feed?.entry || [];
-    const posts = Array.isArray(entries) ? entries : [entries];
-
-    let activeMarketPainPoints: Array<{ title: string; content: string; link: string; category: string }> = [];
-
-    for (const post of posts) {
-      if (!post) continue;
+    for (const subreddit of TARGET_SUBREDDITS) {
+      const targetUrl = `https://www.reddit.com/r/${subreddit}/new/.rss`;
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
       
-      const title = post.title || '';
-      const content = typeof post.content === 'object' ? post.content['#text'] || '' : post.content || '';
-      const fullText = `${title} ${content}`.toLowerCase();
+      let xmlData = "";
+      try {
+        const response = await fetch(proxyUrl, { cache: 'no-store' });
+        if (!response.ok) continue;
+        const wrapper = await response.json();
+        xmlData = wrapper.contents;
+      } catch (e) {
+        continue;
+      }
 
-      const hasPainPoint = PAIN_KEYWORDS.some(keyword => fullText.includes(keyword));
+      const jsonObj = parser.parse(xmlData);
+      const entries = jsonObj?.feed?.entry || [];
+      const posts = Array.isArray(entries) ? entries : [entries];
 
-      if (hasPainPoint) {
-        const rawContent = `Title: ${title}\nContentPreview: ${content.substring(0, 400)}`;
-        const link = post.link?.['@_href'] || post.id || 'https://reddit.com/r/saas';
+      for (const post of posts) {
+        if (!post) continue;
+        
+        const title = post.title || '';
+        const content = typeof post.content === 'object' ? post.content['#text'] || '' : post.content || '';
+        const link = post.link?.['@_href'] || post.id || `https://reddit.com/r/${subreddit}`;
+        const fullText = `${title} ${content}`.toLowerCase();
+
+        const hasPainPoint = PAIN_KEYWORDS.some(keyword => fullText.includes(keyword));
+        if (!hasPainPoint) continue;
+
+        // Gracefully eliminate duplicate url inputs before wasting tokens
+        const { data: existingData } = await supabase
+          .from('market_pain_points')
+          .select('id')
+          .eq('url', link)
+          .maybeSingle();
+
+        if (existingData) continue;
+
+        const originalTextCombo = `${title} ${content.substring(0, 800)}`;
 
         try {
-          const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${openAiKey}`
+          // Compute Semantic High-Dimensional Multi-Vector array
+          const embeddingVectorArray = await generateEmbedding(originalTextCombo, openAiKey);
+
+          // Standard upsert directly into pgvector layer handling sudden race conditions smoothly
+          await supabase.from('market_pain_points').upsert(
+            {
+              source: `reddit_r_${subreddit}`,
+              original_text: originalTextCombo,
+              clean_problem: title,
+              url: link,
+              category: subreddit,
+              embedding: embeddingVectorArray
             },
-            body: JSON.stringify({
-              model: 'gpt-4o-mini',
-              response_format: { type: "json_object" },
-              messages: [
-                {
-                  role: 'system',
-                  content: 'You are a market analysis bot. Extract structural SaaS software vulnerabilities. Respond only with a flat JSON object: {"isRealPain": boolean, "cleanProblem": "Under 2 sentences detail", "category": "AI/SaaS/Finance/etc"}'
-                },
-                {
-                  role: 'user',
-                  content: rawContent
-                }
-              ]
-            })
-          });
+            { onConflict: 'url' }
+          );
 
-          if (!aiResponse.ok) continue;
-
-          const aiResult = await aiResponse.json();
-          const aiText = aiResult?.choices?.[0]?.message?.content?.trim() || '{}';
-          const parsedAnalysis = JSON.parse(aiText);
-
-          if (parsedAnalysis?.isRealPain && parsedAnalysis.cleanProblem) {
-            activeMarketPainPoints.push({
-              title: "🔥 Real-Time Market Pain Point Captured",
-              content: parsedAnalysis.cleanProblem,
-              link: link,
-              category: parsedAnalysis.category || 'General'
-            });
-
-            await supabase.from('market_pain_points').insert({
-              source: 'reddit_proxy_rss',
-              original_text: title + " " + content.substring(0, 1000),
-              clean_problem: parsedAnalysis.cleanProblem,
-              category: parsedAnalysis.category || 'General'
-            });
-          }
-        } catch {
-          continue; 
+          globalInsertedCount++;
+        } catch (embedError) {
+          continue; // Skip single stream errors safely
         }
       }
     }
 
-    let insertedCount = 0;
-    if (activeMarketPainPoints.length > 0 && profiles.length > 0) {
-      for (const profile of profiles) {
-        const selectedProblem = activeMarketPainPoints.find(p => p.category.toLowerCase() === profile.niche_focus?.toLowerCase()) || activeMarketPainPoints[0];
-        
-        await supabase.from('platform_notifications').insert({
-          user_id: profile.id,
-          niche_focus: profile.niche_focus || 'General',
-          title: selectedProblem.title,
-          content: `${selectedProblem.content} (Captured live from global internet streams)`,
-          source_link: selectedProblem.link
-        });
-        insertedCount++;
-      }
-    }
-
-    return NextResponse.json({ success: true, updates_synchronized: insertedCount });
+    return NextResponse.json({ success: true, vector_rag_upserts_completed: globalInsertedCount });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
