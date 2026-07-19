@@ -6,7 +6,7 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const PAIN_KEYWORDS = ['expensive', 'sucks', 'difficult', 'lacks', 'error', 'how to', 'alternative', 'annoying', 'hate', 'problem', 'broken', 'issue', 'waste', 'frustrated'];
-// SAFE FIX: Keep subreddits clean for JSON template integration
+// 🌐 SOURCE TUNING: Subreddits list intact
 const TARGET_SUBREDDITS = ['saas', 'entrepreneur', 'sideproject'];
 
 // Isolated function to generate 1536 dimensions vector embedding array using OpenAI
@@ -35,7 +35,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const authHeader = request.headers.get('authorization');
   
-  // 🛡️ CRITICAL SECURITY CHECK (Kept completely intact)
+  // 🛡️ CRITICAL SECURITY CHECK
   if (
     searchParams.get('secret') !== process.env.CRON_SECRET && 
     authHeader !== `Bearer ${process.env.CRON_SECRET}`
@@ -50,11 +50,12 @@ export async function GET(request: Request) {
     }
 
     let globalInsertedCount = 0;
-    console.log("🔥 AIscoutX Global Data Pipeline Triggered via JSON Fetcher!");
+    console.log("🔥 AIscoutX Autopilot Multi-Source Pipeline Active!");
 
-    // Pure JSON Input pipeline execution replacing legacy XML parser completely
+    // ==========================================
+    // BRANCH 1: HIGH-SPEED REDDIT JSON FETCHER
+    // ==========================================
     for (const subreddit of TARGET_SUBREDDITS) {
-      // Direct dynamic slash template structure mapping to prevent URL malformation
       const targetUrl = `https://reddit.com/r/${subreddit}/new.json?limit=15`;
       
       try {
@@ -63,10 +64,7 @@ export async function GET(request: Request) {
           cache: 'no-store'
         });
         
-        if (!res.ok) {
-          console.warn(`⚠️ Reddit JSON endpoint failed for /r/${subreddit}`);
-          continue;
-        }
+        if (!res.ok) continue;
         
         const json = await res.json();
         const posts = json.data?.children || [];
@@ -79,11 +77,9 @@ export async function GET(request: Request) {
           const link = `https://reddit.com${post.data.permalink}` || post.data.url;
           const combinedText = `${title} ${text}`.toLowerCase();
 
-          // 1. Pain Point Match Check using strict file constants
           const hasPainPoint = PAIN_KEYWORDS.some(keyword => combinedText.includes(keyword));
           if (!hasPainPoint) continue;
 
-          // 2. Gracefully eliminate duplicate url inputs before wasting openai tokens
           const { data: existingData } = await supabase
             .from('market_pain_points')
             .select('id')
@@ -95,10 +91,8 @@ export async function GET(request: Request) {
           const originalTextCombo = `${title} ${text.substring(0, 800)}`;
 
           try {
-            // 3. Compute Semantic High-Dimensional Multi-Vector array
             const embeddingVectorArray = await generateEmbedding(originalTextCombo, openAiKey);
 
-            // 4. Standard upsert directly into pgvector row matching your structural layout
             await supabase.from('market_pain_points').upsert(
               {
                 source: `reddit_r_${subreddit}`,
@@ -113,14 +107,72 @@ export async function GET(request: Request) {
 
             globalInsertedCount++;
           } catch (embedError) {
-            console.error("⚠️ Token generation or single row storage skip:", embedError);
             continue; 
           }
         }
       } catch (subError) {
-        console.error(`❌ Network error context skipped for /r/${subreddit}:`, subError);
         continue;
       }
+    }
+
+    // ==========================================
+    // BRANCH 2: LIVE GLOBAL GOOGLE TRENDS STREAM
+    // ==========================================
+    try {
+      const googleTrendsUrl = `https://trends.google.com/trends/trendingsearches/daily/rss?geo=US`;
+      const googleRes = await fetch(googleTrendsUrl, { cache: 'no-store' });
+      
+      if (googleRes.ok) {
+        const textData = await googleRes.text();
+        const items = textData.match(/<item>[\s\S]*?<\/item>/g) || [];
+        
+        for (const item of items) {
+          const titleMatch = item.match(/<title>([\s\S]*?)<\/title>/);
+          const trafficMatch = item.match(/<ht:approx_traffic>([\s\S]*?)<\/ht:approx_traffic>/);
+          
+          if (!titleMatch) continue;
+          
+          const rawTitle = titleMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim();
+          const dynamicTraffic = trafficMatch ? trafficMatch[1].trim() : 'High Volume';
+          
+          const title = `Global Market Spike: ${rawTitle}`;
+          const contentText = `Massive consumer search movement caught on Google. Traffic velocity index: ${dynamicTraffic}. Evaluating software optimization setups and monetization gaps.`;
+          
+          // 🔥 FIXED: Removed dynamic timestamp to prevent continuous duplicate billing entries
+          const customGoogleLink = `https://google.com/search?q=${encodeURIComponent(rawTitle)}+issue+problem`;
+          
+          const { data: existingGoogle } = await supabase
+            .from('market_pain_points')
+            .select('id')
+            .eq('url', customGoogleLink)
+            .maybeSingle();
+
+          if (existingGoogle) continue;
+
+          const finalGoogleString = `${title} ${contentText}`;
+          
+          try {
+            const googleEmbedding = await generateEmbedding(finalGoogleString, openAiKey);
+
+            await supabase.from('market_pain_points').upsert(
+              {
+                source: 'google_trends_global',
+                original_text: finalGoogleString,
+                clean_problem: title,
+                url: customGoogleLink,
+                category: 'global_trends',
+                embedding: googleEmbedding
+              },
+              { onConflict: 'url' }
+            );
+            globalInsertedCount++;
+          } catch (e) {
+            continue;
+          }
+        }
+      }
+    } catch (googleErr) {
+      console.error("⚠️ Google Stream gracefully bypassed:", googleErr);
     }
 
     return NextResponse.json({ success: true, vector_rag_upserts_completed: globalInsertedCount });
