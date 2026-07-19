@@ -9,6 +9,12 @@ const PAIN_KEYWORDS = ['expensive', 'sucks', 'difficult', 'lacks', 'error', 'how
 // 🌐 SOURCE TUNING: Subreddits list intact
 const TARGET_SUBREDDITS = ['saas', 'entrepreneur', 'sideproject'];
 
+// 📰 TECH BLOGS TUNING: High authority tech blogs for catching real market gaps
+const TECH_FEED_SOURCES = [
+  { name: 'techcrunch', url: 'https://techcrunch.com/feed/' },
+  { name: 'hackernews', url: 'https://news.ycombinator.com/rss' }
+];
+
 // Isolated function to generate 1536 dimensions vector embedding array using OpenAI
 async function generateEmbedding(text: string, apiKey: string): Promise<number[]> {
   const response = await fetch('https://api.openai.com/v1/embeddings', {
@@ -138,7 +144,6 @@ export async function GET(request: Request) {
           const title = `Global Market Spike: ${rawTitle}`;
           const contentText = `Massive consumer search movement caught on Google. Traffic velocity index: ${dynamicTraffic}. Evaluating software optimization setups and monetization gaps.`;
           
-          // 🔥 FIXED: Removed dynamic timestamp to prevent continuous duplicate billing entries
           const customGoogleLink = `https://google.com/search?q=${encodeURIComponent(rawTitle)}+issue+problem`;
           
           const { data: existingGoogle } = await supabase
@@ -173,6 +178,68 @@ export async function GET(request: Request) {
       }
     } catch (googleErr) {
       console.error("⚠️ Google Stream gracefully bypassed:", googleErr);
+    }
+
+    // ==========================================
+    // BRANCH 3: TECH BLOGS & HN RSS RADAR
+    // ==========================================
+    for (const source of TECH_FEED_SOURCES) {
+      try {
+        const blogRes = await fetch(source.url, { cache: 'no-store' });
+        if (!blogRes.ok) continue;
+
+        const xmlText = await blogRes.text();
+        const items = xmlText.match(/<item>[\s\S]*?<\/item>/g) || [];
+
+        for (const item of items) {
+          const titleMatch = item.match(/<title>([\s\S]*?)<\/title>/);
+          const linkMatch = item.match(/<link>([\s\S]*?)<\/link>/);
+          const descMatch = item.match(/<description>([\s\S]*?)<\/description>/) || item.match(/<content:encoded>([\s\S]*?)<\/content:encoded>/);
+
+          if (!titleMatch || !linkMatch) continue;
+
+          const rawTitle = titleMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim();
+          const rawLink = linkMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim();
+          const rawDesc = descMatch ? descMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').replace(/<[^>]*>/g, '').substring(0, 500).trim() : '';
+
+          const combinedText = `${rawTitle} ${rawDesc}`.toLowerCase();
+          
+          // Filter out general news, target industry problem tags
+          const hasPainPoint = PAIN_KEYWORDS.some(keyword => combinedText.includes(keyword));
+          if (!hasPainPoint) continue;
+
+          const { data: existingBlogDoc } = await supabase
+            .from('market_pain_points')
+            .select('id')
+            .eq('url', rawLink)
+            .maybeSingle();
+
+          if (existingBlogDoc) continue;
+
+          const finalBlogString = `[${source.name.toUpperCase()} SIGNAL] ${rawTitle} - ${rawDesc}`;
+
+          try {
+            const blogEmbedding = await generateEmbedding(finalBlogString, openAiKey);
+
+            await supabase.from('market_pain_points').upsert(
+              {
+                source: `blog_${source.name}`,
+                original_text: finalBlogString,
+                clean_problem: rawTitle,
+                url: rawLink,
+                category: 'tech_news_signals',
+                embedding: blogEmbedding
+              },
+              { onConflict: 'url' }
+            );
+            globalInsertedCount++;
+          } catch (e) {
+            continue;
+          }
+        }
+      } catch (blogErr) {
+        console.error(`⚠️ Blog Stream failed for ${source.name}:`, blogErr);
+      }
     }
 
     return NextResponse.json({ success: true, vector_rag_upserts_completed: globalInsertedCount });
