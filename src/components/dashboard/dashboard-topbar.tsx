@@ -60,6 +60,10 @@ export function DashboardTopbar({
   const [draftQuery, setDraftQuery] = useState(searchQuery);
   const [isMac, setIsMac] = useState(true);
 
+  // 🎯 CRITICAL FIX: Check if user is on Pro Plan
+  const plan = menu?.profile?.plan || menu?.user?.user_metadata?.plan;
+  const isPro = plan?.toString().toLowerCase() === "pro";
+
   useEffect(() => {
     setDraftQuery(searchQuery);
   }, [searchQuery]);
@@ -201,7 +205,8 @@ export function DashboardTopbar({
 
       {/* Mobile owns this cluster in the sidebar header — avoid duplicates */}
       <div className="hidden shrink-0 items-center gap-2 lg:flex">
-        <UpgradeToPro compact />
+        {/* Hide Upgrade button if user is Pro */}
+        {!isPro && <UpgradeToPro compact />}
         <FounderWatchtower initialNotifications={initialNotifications} />
         <UserAvatarMenu menu={menu} compact />
       </div>
