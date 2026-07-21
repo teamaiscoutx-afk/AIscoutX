@@ -10,6 +10,7 @@ import { SubscriptionRenewalBanner } from "@/components/dashboard/subscription-r
 import { UserMenuProvider } from "@/components/layout/user-menu-provider";
 import { getUserMenuContext } from "@/lib/auth/user-menu";
 import { syncActiveWorkspaceSignals } from "@/app/actions/notifications";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +52,37 @@ export default async function DashboardLayout({
       fetchNotifications(),
       getSubscriptionRenewalAlert(),
     ]);
+
+    // Fetch live profile directly from Supabase server client
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("plan")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      const planValue = profile?.plan || user.user_metadata?.plan || "free";
+
+      menu = {
+        ...menu,
+        profile: {
+          ...(menu as Record<string, unknown>).profile,
+          plan: planValue,
+        },
+        user: {
+          ...(menu as Record<string, unknown>).user,
+          user_metadata: {
+            ...((menu as Record<string, unknown>).user as Record<string, unknown>)?.user_metadata,
+            plan: planValue,
+          },
+        },
+      } as typeof menu;
+    }
 
     void syncActiveWorkspaceSignals().catch(() => undefined);
   } catch {
