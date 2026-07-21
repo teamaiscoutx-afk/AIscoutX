@@ -45,6 +45,10 @@ export function DashboardSidebar({ projects = [] }: DashboardSidebarProps) {
   const menu = useUserMenu();
   const pathname = usePathname();
 
+  // 🎯 CRITICAL FIX: Check if user is on Pro Plan
+  const plan = menu?.profile?.plan || menu?.user?.user_metadata?.plan;
+  const isPro = plan?.toString().toLowerCase() === "pro";
+
   return (
     <aside className="flex w-full shrink-0 flex-col border-b border-white/[0.06] bg-[#030308]/95 backdrop-blur-xl lg:h-screen lg:w-64 lg:border-b-0 lg:border-r lg:sticky lg:top-0">
       {/* Brand row — on mobile also hosts Upgrade + bell + avatar */}
@@ -62,7 +66,8 @@ export function DashboardSidebar({ projects = [] }: DashboardSidebarProps) {
         </Link>
 
         <div className="flex shrink-0 items-center gap-2 lg:hidden">
-          <UpgradeToPro compact />
+          {/* Hide Upgrade Button if Pro */}
+          {!isPro && <UpgradeToPro compact />}
           <FounderWatchtower />
           <UserAvatarMenu menu={menu} compact />
         </div>
@@ -104,7 +109,8 @@ export function DashboardSidebar({ projects = [] }: DashboardSidebarProps) {
 
       {/* Desktop footer — premium Upgrade CTA above account + pitch card */}
       <div className="hidden shrink-0 space-y-3 border-t border-white/[0.06] p-4 lg:block">
-        <UpgradeToProCta />
+        {/* Hide Upgrade CTA if Pro */}
+        {!isPro && <UpgradeToProCta />}
 
         <div className="flex justify-center">
           <UserAvatarMenu menu={menu} />
