@@ -20,6 +20,15 @@ export type UserMenuContext = {
   goal: string | null;
   nicheFocus: string | null;
   activeVenture: string;
+  plan?: string | null;
+  profile?: {
+    plan?: string | null;
+  } | null;
+  user?: {
+    user_metadata?: {
+      plan?: string | null;
+    };
+  } | null;
 };
 
 function labelForPersona(id: WorkspaceIdentity | null | undefined): string | null {
@@ -61,6 +70,8 @@ export async function getUserMenuContext(): Promise<UserMenuContext> {
       goal: null,
       nicheFocus: null,
       activeVenture: "Exploring Opportunities",
+      plan: "free",
+      profile: { plan: "free" },
     };
   }
 
@@ -79,6 +90,8 @@ export async function getUserMenuContext(): Promise<UserMenuContext> {
       goal: null,
       nicheFocus: null,
       activeVenture: "Exploring Opportunities",
+      plan: "free",
+      profile: { plan: "free" },
     };
   }
 
@@ -103,6 +116,9 @@ export async function getUserMenuContext(): Promise<UserMenuContext> {
   const goalId = profile?.goal ?? null;
   const nicheId = profile?.niche_focus ?? null;
 
+  // 🎯 CRITICAL FIX: Extract user plan from profile OR user metadata
+  const userPlan = (profile as any)?.plan || user.user_metadata?.plan || "free";
+
   return {
     isAuthenticated: true,
     name,
@@ -113,5 +129,14 @@ export async function getUserMenuContext(): Promise<UserMenuContext> {
     goal: labelForGoal(goalId),
     nicheFocus: labelForNicheFocus(nicheId),
     activeVenture: activeWorkspace?.opportunityName ?? "Exploring Opportunities",
+    plan: userPlan,
+    profile: {
+      plan: userPlan,
+    },
+    user: {
+      user_metadata: {
+        plan: userPlan,
+      },
+    },
   };
 }
