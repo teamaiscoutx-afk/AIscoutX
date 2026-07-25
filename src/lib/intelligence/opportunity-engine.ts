@@ -68,7 +68,7 @@ FORMAT (STRICT JSON ONLY):
   "name": "Distinct, catchy brand/product name",
   "category": "Specific market sub-niche",
   "keywords": ["3-6 high-intent search tags"],
-  "revenuePotential": "$2,500 - $12,000 / mo (Realistic 100-client MRR target)",
+  "revenuePotential": "$29 - $49/mo",
   "intelligence": {
     "founder": { "problem": "Exact core customer pain point", "solution": "Engineered technical solution", "mvp": "3-day build scope", "launchTime": "7-14 days" },
     "creator": { "videoTitles": ["Title 1", "Title 2", "Title 3"], "hooks": ["Hook 1", "Hook 2"], "platform": "Primary channel" },
