@@ -127,8 +127,22 @@ export async function createWorkspaceFromOpportunity(
     } = await supabase.auth.getUser();
     if (!user) return { ok: false, error: "Not authenticated" };
 
-    // Free tier: 1 active project. Pro: unlimited.
-    const pro = await isProUser();
+    // 🎯 BULLETPROOF PRO CHECK: 3-Way verification
+    const isPaywallPro = await isProUser().catch(() => false);
+    
+    // Check Profile table directly
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("plan, niche_focus")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const isProfilePro = profile?.plan?.toString().toLowerCase() === "pro";
+    const isMetadataPro = user?.user_metadata?.plan?.toString().toLowerCase() === "pro";
+
+    const pro = isPaywallPro || isProfilePro || isMetadataPro;
+
+    // Free tier: 1 active project limit. Pro tier: Unlimited.
     if (!pro) {
       const { count } = await supabase
         .from("workspaces")
@@ -147,12 +161,6 @@ export async function createWorkspaceFromOpportunity(
 
     const summary = buildWorkspaceSummaryFromOpportunity(opportunity);
     const opportunityId = toNullableOpportunityId(opportunity.id);
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("niche_focus")
-      .eq("id", user.id)
-      .maybeSingle();
 
     const nextAction = deriveNextAction({
       id: "",
