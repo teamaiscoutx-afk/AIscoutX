@@ -3,16 +3,38 @@
 import { Crown, Sparkles } from "lucide-react";
 
 import { useUpgradeModal } from "@/components/billing/upgrade-modal";
+import { useUserMenu } from "@/components/layout/user-menu-provider";
 import { cn } from "@/lib/utils";
 
 type UpgradeToProProps = {
   compact?: boolean;
 };
 
-/** Topbar trigger — opens the global two-tier upgrade modal. */
+/** Topbar trigger — opens the global two-tier upgrade modal OR shows Pro badge if active. */
 export function UpgradeToPro({ compact }: UpgradeToProProps) {
   const { openUpgradeModal } = useUpgradeModal();
+  const menu = useUserMenu();
 
+  // Check if user is Pro
+  const plan = menu?.plan || menu?.profile?.plan || menu?.user?.user_metadata?.plan;
+  const isPro = plan?.toString().toLowerCase() === "pro";
+
+  // 👑 If PRO: Show active Pro badge instead of Upgrade button
+  if (isPro) {
+    return (
+      <div
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-lg border border-[#deff9a]/40 bg-[#deff9a]/15 font-semibold text-[#deff9a] shadow-[0_0_20px_rgba(222,255,154,0.15)]",
+          compact ? "h-9 px-3 text-xs" : "h-10 px-4 text-sm"
+        )}
+      >
+        <Crown className="h-4 w-4 fill-[#deff9a] text-[#deff9a]" strokeWidth={1.5} />
+        <span>PRO</span>
+      </div>
+    );
+  }
+
+  // ⚡ If FREE: Show exact original Upgrade Button
   return (
     <button
       type="button"
@@ -32,7 +54,34 @@ export function UpgradeToPro({ compact }: UpgradeToProProps) {
 /** Full-width premium CTA — sidebar footer / promo placements. */
 export function UpgradeToProCta({ className }: { className?: string }) {
   const { openUpgradeModal } = useUpgradeModal();
+  const menu = useUserMenu();
 
+  // Check if user is Pro
+  const plan = menu?.plan || menu?.profile?.plan || menu?.user?.user_metadata?.plan;
+  const isPro = plan?.toString().toLowerCase() === "pro";
+
+  // 👑 If PRO: Show Active Plan Status Card
+  if (isPro) {
+    return (
+      <div className={cn("rounded-xl border border-[#deff9a]/30 bg-[#0a0a12] p-3 text-left", className)}>
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#deff9a]/15 shadow-[0_0_18px_rgba(222,255,154,0.25)]">
+            <Crown className="h-5 w-5 fill-[#deff9a] text-[#deff9a]" strokeWidth={1.5} />
+          </span>
+          <div className="min-w-0">
+            <span className="block text-sm font-semibold text-white">
+              Pro Plan Active
+            </span>
+            <span className="block truncate text-[11px] text-[#deff9a]">
+              All Pro features unlocked
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ⚡ If FREE: Show exact original Full-width Upgrade CTA
   return (
     <button
       type="button"

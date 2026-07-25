@@ -6,12 +6,14 @@ import {
   Bot,
   FileStack,
   LineChart,
+  Lock,
   Map,
   Megaphone,
   Navigation,
   Search,
   Sparkles,
   Trash2,
+  Unlock,
 } from "lucide-react";
 
 import { FounderWatchtower } from "@/components/dashboard/founder-watchtower";
@@ -27,14 +29,15 @@ import { UserAvatarMenu } from "@/components/layout/user-avatar-menu";
 import { useUserMenu } from "@/components/layout/user-menu-provider";
 import { cn } from "@/lib/utils";
 
+// Pro feature configuration for Navigation Items
 const navItems = [
-  { label: "Discover", href: "/dashboard/discover", icon: Search },
-  { label: "Analyze", href: "/dashboard/analyze", icon: LineChart },
-  { label: "Blueprints", href: "/dashboard/blueprints", icon: FileStack },
-  { label: "Launch Plan", href: "/dashboard/launch", icon: Megaphone },
-  { label: "Founder GPS", href: "/dashboard/gps", icon: Navigation },
-  { label: "AI Founder Chat", href: "/dashboard/chat", icon: Bot },
-  { label: "Trash / Bin", href: "/dashboard/trash", icon: Trash2 },
+  { label: "Discover", href: "/dashboard/discover", icon: Search, isProFeature: false },
+  { label: "Analyze", href: "/dashboard/analyze", icon: LineChart, isProFeature: false },
+  { label: "Blueprints", href: "/dashboard/blueprints", icon: FileStack, isProFeature: true },
+  { label: "Launch Plan", href: "/dashboard/launch", icon: Megaphone, isProFeature: false },
+  { label: "Founder GPS", href: "/dashboard/gps", icon: Navigation, isProFeature: true },
+  { label: "AI Founder Chat", href: "/dashboard/chat", icon: Bot, isProFeature: true },
+  { label: "Trash / Bin", href: "/dashboard/trash", icon: Trash2, isProFeature: false },
 ];
 
 type DashboardSidebarProps = {
@@ -45,8 +48,11 @@ export function DashboardSidebar({ projects = [] }: DashboardSidebarProps) {
   const menu = useUserMenu();
   const pathname = usePathname();
 
-  // 🎯 CRITICAL FIX: Check if user is on Pro Plan
-  const plan = menu?.profile?.plan || menu?.user?.user_metadata?.plan;
+  // 🎯 CRITICAL FIX: Robust check for Pro Plan
+  const plan =
+    menu?.plan ||
+    menu?.profile?.plan ||
+    menu?.user?.user_metadata?.plan;
   const isPro = plan?.toString().toLowerCase() === "pro";
 
   return (
@@ -66,8 +72,7 @@ export function DashboardSidebar({ projects = [] }: DashboardSidebarProps) {
         </Link>
 
         <div className="flex shrink-0 items-center gap-2 lg:hidden">
-          {/* Hide Upgrade Button if Pro */}
-          {!isPro && <UpgradeToPro compact />}
+          <UpgradeToPro compact />
           <FounderWatchtower />
           <UserAvatarMenu menu={menu} compact />
         </div>
@@ -94,23 +99,47 @@ export function DashboardSidebar({ projects = [] }: DashboardSidebarProps) {
               key={item.label}
               href={item.href}
               className={cn(
-                "flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-xs font-medium transition-all duration-200 lg:gap-3 lg:py-2.5 lg:text-sm",
+                "group relative flex shrink-0 items-center justify-between gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-xs font-medium transition-all duration-200 lg:gap-3 lg:py-2.5 lg:text-sm",
                 isActive
                   ? "border border-[#deff9a]/20 bg-[#deff9a]/10 text-[#deff9a]"
                   : "border border-transparent text-zinc-500 hover:border-white/[0.06] hover:bg-white/[0.03] hover:text-white"
               )}
             >
-              <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.5} />
-              <span className="truncate">{item.label}</span>
+              <div className="flex min-w-0 items-center gap-2 lg:gap-3">
+                <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.5} />
+                <span className="truncate">{item.label}</span>
+              </div>
+
+              {/* Lock / Unlock Status Badge for Pro Features */}
+              {item.isProFeature && (
+                <span className="ml-auto flex items-center">
+                  {isPro ? (
+                    <span
+                      title="Pro Unlocked"
+                      className="inline-flex items-center gap-0.5 rounded bg-[#deff9a]/10 px-1.5 py-0.5 text-[9px] font-semibold text-[#deff9a]"
+                    >
+                      <Unlock className="h-2.5 w-2.5" />
+                      <span className="hidden lg:inline">UNLOCKED</span>
+                    </span>
+                  ) : (
+                    <span
+                      title="Pro Feature"
+                      className="inline-flex items-center gap-0.5 rounded bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-amber-400"
+                    >
+                      <Lock className="h-2.5 w-2.5" />
+                      <span className="hidden lg:inline">PRO</span>
+                    </span>
+                  )}
+                </span>
+              )}
             </Link>
           );
         })}
       </nav>
 
-      {/* Desktop footer — premium Upgrade CTA above account + pitch card */}
+      {/* Desktop footer — premium Upgrade CTA / Active Pro status card */}
       <div className="hidden shrink-0 space-y-3 border-t border-white/[0.06] p-4 lg:block">
-        {/* Hide Upgrade CTA if Pro */}
-        {!isPro && <UpgradeToProCta />}
+        <UpgradeToProCta />
 
         <div className="flex justify-center">
           <UserAvatarMenu menu={menu} />
