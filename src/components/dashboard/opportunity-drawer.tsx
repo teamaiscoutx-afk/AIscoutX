@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Loader2, Rocket, X } from "lucide-react";
+import { Bookmark, Check, Loader2, Rocket, X } from "lucide-react";
 
 import { fetchOpportunityDeepDive } from "@/app/actions/intelligence";
 import { saveOpportunity } from "@/app/actions/opportunities";
@@ -30,10 +30,10 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between text-xs">
-        <span className="text-zinc-500">{label}</span>
-        <span className="tabular-nums text-zinc-300">{value}/100</span>
+        <span className="text-zinc-400 font-medium">{label}</span>
+        <span className="tabular-nums font-semibold text-[#deff9a]">{value}/100</span>
       </div>
-      <div className="h-1 overflow-hidden rounded-full bg-white/[0.06]">
+      <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${value}%` }}
@@ -77,7 +77,6 @@ export function OpportunityDrawer({
       return;
     }
 
-    // Expansion gating happens before the drawer opens (CommandCenter)
     setEnrichedOpportunity(selectedOpportunity);
 
     setDeepDiveLocked(false);
@@ -148,7 +147,7 @@ export function OpportunityDrawer({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.22 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-black/60 backdrop-blur-[3px]"
           />
 
           <motion.aside
@@ -159,9 +158,10 @@ export function OpportunityDrawer({
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 34, stiffness: 340 }}
-            className="fixed right-0 top-0 z-[101] flex h-full w-full max-w-[460px] flex-col border-l border-white/10 bg-[#08080c]/90 shadow-[-32px_0_100px_rgba(0,0,0,0.55)] backdrop-blur-xl"
+            className="fixed right-0 top-0 z-[101] flex h-full w-full max-w-[480px] flex-col border-l border-white/10 bg-[#08080c] shadow-[-32px_0_100px_rgba(0,0,0,0.8)] backdrop-blur-2xl"
           >
-            <div className="flex items-start justify-between border-b border-white/[0.06] px-5 py-4 sm:px-6">
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-white/[0.08] bg-[#08080c]/80 px-5 py-4 sm:px-6 backdrop-blur-md">
               <div className="min-w-0 flex-1 pr-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge
@@ -185,7 +185,7 @@ export function OpportunityDrawer({
                 >
                   {selectedOpportunity.name}
                 </h2>
-                <p className="mt-1 text-sm text-zinc-500">
+                <p className="mt-1 text-xs text-zinc-400">
                   {selectedOpportunity.category}
                 </p>
               </div>
@@ -193,42 +193,47 @@ export function OpportunityDrawer({
                 variant="outline"
                 size="icon"
                 onClick={onClose}
-                className="shrink-0 border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
+                className="shrink-0 border-white/10 bg-white/[0.03] text-zinc-400 hover:bg-white/[0.08] hover:text-white"
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
 
-            <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6">
-              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                Technical scores
-              </p>
-              <div className="mt-4 space-y-4">
+            {/* Scrollable Body */}
+            <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6 pb-24">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                  Technical scores
+                </p>
+                <span className="text-[10px] text-zinc-500">Live signals engine</span>
+              </div>
+
+              <div className="mt-3 space-y-3.5 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
                 <ScoreBar
-                  label="Demand"
+                  label="Demand Score"
                   value={selectedOpportunity.scores.demand}
                 />
                 <ScoreBar
-                  label="Competition"
+                  label="Competition Density"
                   value={selectedOpportunity.scores.competition}
                 />
                 <ScoreBar
-                  label="Virality"
+                  label="Virality Potential"
                   value={selectedOpportunity.scores.virality}
                 />
                 <ScoreBar
-                  label="Monetization"
+                  label="Monetization Velocity"
                   value={selectedOpportunity.scores.monetization}
                 />
                 {selectedOpportunity.scores.disruption != null && (
                   <ScoreBar
-                    label="AI Disruption"
+                    label="AI Disruption Risk"
                     value={selectedOpportunity.scores.disruption}
                   />
                 )}
               </div>
 
-              <div className="mt-8">
+              <div className="mt-6">
                 <OpportunityDrawerDetail
                   key={`${selectedOpportunity.id}-${activeWorkspace}`}
                   opportunity={enrichedOpportunity ?? selectedOpportunity}
@@ -244,7 +249,7 @@ export function OpportunityDrawer({
                       "Deep Dive specs are a Pro feature. Upgrade to see cited market gaps and MVP anatomy."
                     )
                   }
-                  className="mt-8 w-full rounded-xl border border-[#deff9a]/25 bg-[#deff9a]/[0.05] p-5 text-left transition-colors hover:bg-[#deff9a]/[0.08]"
+                  className="mt-6 w-full rounded-xl border border-[#deff9a]/25 bg-[#deff9a]/[0.05] p-5 text-left transition-colors hover:bg-[#deff9a]/[0.08]"
                 >
                   <p className="text-sm font-semibold text-[#deff9a]">
                     🔒 Deep Dive locked
@@ -261,8 +266,8 @@ export function OpportunityDrawer({
                 />
               )}
 
-              <div className="mt-6 rounded-xl border border-white/[0.08] bg-[#deff9a]/[0.04] p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+              <div className="mt-6 rounded-xl border border-[#deff9a]/20 bg-[#deff9a]/[0.04] p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
                   Revenue potential estimate
                 </p>
                 <p className="mt-1 text-lg font-semibold text-[#deff9a]">
@@ -271,14 +276,14 @@ export function OpportunityDrawer({
               </div>
 
               <div className="mt-6">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
                   Verified sources
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {selectedOpportunity.sources.map((source) => (
                     <span
                       key={source}
-                      className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] text-zinc-400"
+                      className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-zinc-300"
                     >
                       {source}
                     </span>
@@ -287,17 +292,20 @@ export function OpportunityDrawer({
               </div>
             </div>
 
-            <div className="shrink-0 space-y-2 border-t border-white/[0.06] p-4 sm:p-5">
+            {/* Solid Sticky Action Bar (No Overlap) */}
+            <div className="shrink-0 space-y-2.5 border-t border-white/10 bg-[#08080c]/95 p-4 sm:p-5 backdrop-blur-md shadow-[0_-12px_32px_rgba(0,0,0,0.8)] z-10">
               {buildError && (
-                <p className="text-center text-[11px] text-red-400">{buildError}</p>
+                <p className="text-center text-[11px] font-medium text-red-400">{buildError}</p>
               )}
               {saveError && (
-                <p className="text-center text-[11px] text-red-400">{saveError}</p>
+                <p className="text-center text-[11px] font-medium text-red-400">{saveError}</p>
               )}
+              
+              {/* Primary Build CTA */}
               <Button
                 onClick={handleBuildStartup}
                 disabled={isBuilding}
-                className="btn-glow-lime w-full bg-[#deff9a] font-semibold text-black hover:bg-[#d8f992]"
+                className="w-full bg-[#deff9a] text-black font-semibold hover:bg-[#c9f578] shadow-[0_0_20px_rgba(222,255,154,0.3)] transition-all h-11"
               >
                 {isBuilding ? (
                   <>
@@ -306,15 +314,18 @@ export function OpportunityDrawer({
                   </>
                 ) : (
                   <>
-                    <Rocket className="mr-2 h-4 w-4" />
-                    🚀 Build This Startup
+                    <Rocket className="mr-2 h-4 w-4 fill-black" />
+                    Build This Startup
                   </>
                 )}
               </Button>
+
+              {/* Secondary Save Signal CTA */}
               <Button
                 onClick={handleSave}
                 disabled={isPending || saved}
-                className="btn-glow-lime w-full bg-[#deff9a] font-semibold text-black hover:bg-[#d8f992] disabled:opacity-70"
+                variant="outline"
+                className="w-full border-white/15 bg-white/[0.03] text-white hover:bg-white/[0.08] hover:border-white/25 disabled:opacity-60 h-10"
               >
                 {isPending ? (
                   <>
@@ -323,11 +334,14 @@ export function OpportunityDrawer({
                   </>
                 ) : saved ? (
                   <>
-                    <Check className="mr-2 h-4 w-4" />
+                    <Check className="mr-2 h-4 w-4 text-[#deff9a]" />
                     Signal saved
                   </>
                 ) : (
-                  "Save signal"
+                  <>
+                    <Bookmark className="mr-2 h-3.5 w-3.5 text-zinc-400" />
+                    Save signal
+                  </>
                 )}
               </Button>
             </div>
