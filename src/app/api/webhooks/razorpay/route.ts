@@ -13,7 +13,6 @@ export async function POST(req: Request) {
     const signature = req.headers.get('x-razorpay-signature');
 
     // 🛡️ SECURITY MATCH: Webhook Secret Validation
-    // Razorpay Webhook settings mein jo secret tum daaloge, wahi environment variables mein hona chahiye
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
     
     if (!webhookSecret) {
@@ -39,14 +38,23 @@ export async function POST(req: Request) {
     const eventData = JSON.parse(rawBody);
     console.log(`🔔 Verified Razorpay Webhook Event Received: ${eventData.event}`);
 
-    // Process payment success event hook
-    if (eventData.event === 'order.paid' || eventData.event === 'payment.captured') {
-      const paymentPayload = eventData.payload.payment.entity;
+    // 🟢 1. PAYMENT SUCCESS / SUBSCRIPTION ACTIVATED EVENT
+    if (
+      eventData.event === 'order.paid' || 
+      eventData.event === 'payment.captured' ||
+      eventData.event === 'subscription.charged' ||
+      eventData.event === 'subscription.activated'
+    ) {
+      const paymentPayload = eventData.payload.payment?.entity || eventData.payload.subscription?.entity;
       
-      // Extract vital identifiers
-      const userEmail = paymentPayload.email;
-      const orderId = paymentPayload.order_id || paymentPayload.id;
-      const amountInPaise = paymentPayload.amount; // Razorpay sends amount in paise (e.g. 99900 for 999 INR)
+      // Extract email from payment or notes
+      const userEmail = 
+        paymentPayload?.email || 
+        paymentPayload?.notes?.email ||
+        paymentPayload?.customer_email;
+
+      const orderId = paymentPayload?.order_id || paymentPayload?.id || "ORDER_SUCCESS";
+      const amountInPaise = paymentPayload?.amount || 1200;
       const amountFormatted = `₹${(amountInPaise / 100).toFixed(2)}`;
 
       if (!userEmail) {
@@ -54,41 +62,90 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, error: "Missing Email" });
       }
 
-      // 🗄️ DATABASE UPDATE: Target user record by email lookup
-      const { data: user, error: userFindError } = await supabase
-        .from('users') // Agar tumhare table ka naam profile ya users hai toh adapt automatic ho jayega
+      // Calculate 30-Day Pro Expiry Timestamp
+      const periodEnd = new Date();
+      periodEnd.setDate(periodEnd.getDate() + 30);
+
+      // 🗄️ DATABASE UPDATE: Sync across 'profiles' table
+      const { data: profile, error: profileFindError } = await supabase
+        .from('profiles')
         .select('id')
-        .eq('email', userEmail)
+        .ilike('email', userEmail)
         .maybeSingle();
 
-      if (userFindError || !user) {
-        console.error(`⚠️ Payment processed for email ${userEmail} but user not registered in DB yet.`);
-        // Return 200 so razorpay stops retrying, but log error
-      } else {
-        // Upgrade the plan flag to 'pro' inside user row
+      if (profileFindError) {
+        console.error(`⚠️ Profile lookup error for email ${userEmail}:`, profileFindError.message);
+      }
+
+      if (profile) {
+        // Upgrade plan in profiles table
         const { error: updateError } = await supabase
-          .from('users')
+          .from('profiles')
           .update({
             plan: 'pro',
             updated_at: new Date().toISOString()
           })
-          .eq('id', user.id);
+          .eq('id', profile.id);
 
         if (updateError) {
-          console.error("❌ Failed to update user plan flag in Supabase:", updateError.message);
+          console.error("❌ Failed to update profile plan in Supabase:", updateError.message);
         } else {
-          console.log(`🎉 Account successfully upgraded to Pro for user: ${userEmail}`);
-          
-          // 📧 FIRE EMAIL TRIGGER: Trigger premium success transactional mail out
-          try {
-            await sendSubscriptionSuccessEmail(userEmail, {
-              amountLabel: `${amountFormatted} / Pro Plan`,
-              orderId: orderId
-            });
-            console.log(`📧 Resend Confirmation email sent to: ${userEmail}`);
-          } catch (mailErr) {
-            console.error("⚠️ Webhook user upgraded but transaction mail failed to send:", mailErr);
-          }
+          console.log(`🎉 Account successfully upgraded to Pro in profiles for user: ${userEmail}`);
+        }
+
+        // Sync with Auth User Metadata
+        try {
+          await supabase.auth.admin.updateUserById(profile.id, {
+            user_metadata: { plan: 'pro' }
+          });
+          console.log(`🔑 Auth user metadata set to Pro for ID: ${profile.id}`);
+        } catch (authErr) {
+          console.error("⚠️ Auth metadata sync error:", authErr);
+        }
+      } else {
+        console.warn(`⚠️ User email ${userEmail} paid but not found in 'profiles' table yet.`);
+      }
+
+      // 📧 FIRE EMAIL TRIGGER
+      try {
+        await sendSubscriptionSuccessEmail(userEmail, {
+          amountLabel: `${amountFormatted} / Pro Plan`,
+          orderId: orderId
+        });
+        console.log(`📧 Confirmation email sent to: ${userEmail}`);
+      } catch (mailErr) {
+        console.error("⚠️ Email send error:", mailErr);
+      }
+    }
+
+    // 🔴 2. AUTO EXPIRY / SUBSCRIPTION CANCELLED EVENT (30 Days Complete / Failed Renewal)
+    if (
+      eventData.event === 'subscription.cancelled' ||
+      eventData.event === 'subscription.halted' ||
+      eventData.event === 'subscription.completed'
+    ) {
+      const subPayload = eventData.payload.subscription?.entity;
+      const userEmail = subPayload?.email || subPayload?.notes?.email;
+
+      if (userEmail) {
+        console.log(`⏳ Subscription expired/cancelled for ${userEmail}. Reverting to Free Plan.`);
+        
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .ilike('email', userEmail)
+          .maybeSingle();
+
+        if (profile) {
+          await supabase
+            .from('profiles')
+            .update({ plan: 'free', updated_at: new Date().toISOString() })
+            .eq('id', profile.id);
+
+          await supabase.auth.admin.updateUserById(profile.id, {
+            user_metadata: { plan: 'free' }
+          });
+          console.log(`🔒 Account successfully reverted to Free for: ${userEmail}`);
         }
       }
     }
