@@ -50,37 +50,67 @@ type LlmOpportunityCard = {
   };
 };
 
-const OPPORTUNITY_TASK = `From the web evidence and computed metrics, produce ONE startup opportunity card as JSON.
-CRITICAL: Use the computed demand/competition/disruption metrics provided — do NOT invent round placeholder numbers.
-Each card must reflect the specific seed query and evidence snippets (unique name, category, keywords).
+const OPPORTUNITY_TASK = `You are a Principal Product Architect and Senior SaaS Strategist.
+From the web evidence and computed market metrics, generate a hyper-realistic, high-value, production-ready startup execution blueprint as JSON.
+
+STRICT GUIDELINES:
+1. DO NOT give generic advice like "React", "Node.js", or "User account management".
+2. TECH STACK MUST BE PRODUCTION-READY & SPECIFIC:
+   - Frontend: Modern framework (e.g., Next.js 15 App Router, Tailwind CSS, Shadcn UI)
+   - Backend: Modern API/Serverless (e.g., Next.js Server Actions, Supabase Edge Functions, Fastify)
+   - Database: Real DB (e.g., Supabase Postgres, Prisma ORM, Redis for caching)
+   - Specialized APIs: Exact domain APIs (e.g., ElevenLabs API for Voice Cloning, Whisper AI, OpenAI GPT-4o, Stripe/Razorpay SDK)
+3. REVENUE & PRICING: Provide exact realistic SaaS tiers (e.g. Starter: $29/mo - 50 mins voice; Agency: $99/mo - Unlimited) instead of vague "$1k-$5k".
+4. MVP FEATURES: Detail specific technical capabilities (e.g. "Instant 5-sec voice sample noise reduction & cloning pipeline" instead of "voice cloning").
+
+FORMAT (STRICT JSON ONLY):
 {
-  "name": "short product category name",
-  "category": "market segment",
-  "keywords": ["3-6 search tags"],
-  "revenuePotential": "honest range like $1k-$5k/mo based on category norms",
+  "name": "Distinct, catchy brand/product name",
+  "category": "Specific market sub-niche",
+  "keywords": ["3-6 high-intent search tags"],
+  "revenuePotential": "$2,500 - $12,000 / mo (Realistic 100-client MRR target)",
   "intelligence": {
-    "founder": { "problem": "", "solution": "", "mvp": "", "launchTime": "days count" },
-    "creator": { "videoTitles": ["", "", ""], "hooks": ["", ""], "platform": "" },
-    "agency": { "serviceOffer": "", "icp": "", "retainer": "" }
+    "founder": { "problem": "Exact core customer pain point", "solution": "Engineered technical solution", "mvp": "3-day build scope", "launchTime": "7-14 days" },
+    "creator": { "videoTitles": ["Title 1", "Title 2", "Title 3"], "hooks": ["Hook 1", "Hook 2"], "platform": "Primary channel" },
+    "agency": { "serviceOffer": "Done-For-You Retainer package", "icp": "Target business profile", "retainer": "$499/mo per client" }
   },
-  "marketGaps": [{ "competitor": "", "complaint": "from reviews/posts", "source": "Reddit|X|etc", "url": "" }],
+  "marketGaps": [{ "competitor": "Existing Market Player", "complaint": "Specific verified flaw/user complaint", "source": "Reddit|X|ProductHunt", "url": "verified url" }],
   "solutionBlueprint": {
-    "overview": "production-grade solution summary",
-    "businessModel": "pricing + who pays",
-    "goToMarket": ["3-5 concrete channels"],
-    "technicalArchitecture": ["3-6 stack decisions"],
-    "risks": ["2-4 real risks"]
+    "overview": "In-depth architecture and value proposition overview",
+    "businessModel": "Freemium + Usage-based Tiered Subscription ($29/$99 per month)",
+    "goToMarket": ["Specific GTM Channels & Outreach Strategy"],
+    "technicalArchitecture": ["Production Cloud & API Infrastructure Specs"],
+    "risks": ["Specific technical or market adoption risks & mitigation"]
   },
   "mvpAnatomy": {
-    "coreFlow": ["Step 1", "Step 2", "Step 3", "Step 4"],
-    "techStack": [{ "layer": "", "tool": "open-source or API name", "rationale": "" }],
-    "mustHave": ["core workflow items only"],
-    "niceToHave": ["secondary extensions"]
+    "coreFlow": [
+      "User uploads audio sample & selects target campaign template",
+      "AI engine executes voice cloning synthesis & noise removal",
+      "Dynamic ad transcript generated & synchronized with cloned audio",
+      "Export high-bitrate MP3/WAV with 1-click publishing hook"
+    ],
+    "techStack": [
+      { "layer": "Frontend", "tool": "Next.js 15 (App Router) + Tailwind + Shadcn UI", "rationale": "High SEO, instant server-rendering, and sleek dark UI" },
+      { "layer": "Backend & Auth", "tool": "Supabase Postgres + Auth + Row Level Security", "rationale": "Instant real-time database, auth, and secure tenant data isolation" },
+      { "layer": "AI Voice Engine", "tool": "ElevenLabs API + OpenAI GPT-4o", "rationale": "Industry standard low-latency voice cloning and script generation" },
+      { "layer": "Payments & Subscriptions", "tool": "Stripe / Razorpay SDK + Webhooks", "rationale": "Automated recurring billing, invoice management, and plan gating" }
+    ],
+    "mustHave": [
+      "Secure Auth & User Workspace Isolation",
+      "Instant 5-second Audio Voice Sampling & Cloning Pipeline",
+      "Dynamic Ad Script Generator with Niche Templates",
+      "Export Studio with High-Quality Audio Rendering"
+    ],
+    "niceToHave": [
+      "Multi-lingual Voice Translation & Accent Matching",
+      "Direct Integration with Meta & TikTok Ad Managers",
+      "Team Collaboration & Shared Brand Workspaces"
+    ]
   }
 }
-Ground every gap in a cited URL from evidence. No invented competitors.`;
+Ground every gap in a cited URL from evidence. No invented generic competitors.`;
 
-const DEEP_DIVE_TASK = `Produce a deep-dive JSON update for this opportunity. Same schema fields as opportunity card but more granular execution detail for marketGaps, solutionBlueprint, and mvpAnatomy.`;
+const DEEP_DIVE_TASK = `Produce an expert, deep-dive JSON update for this opportunity. Use the same schema fields but expand with high-granularity technical specs, precise API recommendations, and actionable step-by-step launch vectors.`;
 
 function sourcesFromSnippets(snippets: { source: string }[]): string[] {
   return Array.from(new Set(snippets.map((s) => s.source)));
@@ -88,7 +118,7 @@ function sourcesFromSnippets(snippets: { source: string }[]): string[] {
 
 function normalizeCoreFlow(flow: string[]): [string, string, string, string] {
   const padded = [...flow];
-  while (padded.length < 4) padded.push(`Step ${padded.length + 1}: define workflow`);
+  while (padded.length < 4) padded.push(`Step ${padded.length + 1}: Define execution workflow`);
   return padded.slice(0, 4) as [string, string, string, string];
 }
 
