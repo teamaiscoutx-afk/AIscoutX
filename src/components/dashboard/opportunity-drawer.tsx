@@ -5,15 +5,19 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  AlertCircle,
-  Check,
+  AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
   CheckCircle2,
-  Clock,
   Coins,
+  Cpu,
+  Layers,
   Loader2,
   Rocket,
+  ShieldAlert,
   Sparkles,
   Target,
+  TrendingUp,
   Users,
   X,
   Zap,
@@ -127,269 +131,347 @@ export function OpportunityDrawer({
   return createPortal(
     <AnimatePresence>
       {selectedOpportunity && (
-        <div className="fixed inset-0 z-[100] overflow-hidden">
-          <motion.button
-            type="button"
-            aria-label="Close panel"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.22 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/70 backdrop-blur-[4px]"
-          />
-
-          <motion.aside
+        <div className="fixed inset-0 z-[100] overflow-hidden bg-[#040406]">
+          <motion.div
             role="dialog"
             aria-modal="true"
-            aria-labelledby="drawer-title"
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 34, stiffness: 340 }}
-            className="fixed right-0 top-0 z-[101] flex h-full w-full max-w-[540px] flex-col border-l border-white/10 bg-[#08080c] shadow-[-32px_0_100px_rgba(0,0,0,0.9)] backdrop-blur-2xl"
+            aria-labelledby="blueprint-title"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="flex h-full w-full flex-col bg-[#08080d] text-white overflow-hidden"
           >
-            {/* Top Bar Header */}
-            <div className="flex items-start justify-between border-b border-white/[0.08] bg-[#08080c]/90 px-5 py-4 sm:px-6 backdrop-blur-md">
-              <div className="min-w-0 flex-1 pr-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge
-                    variant="outline"
-                    className={getTrendStageColor(
-                      selectedOpportunity.trendStage
-                    )}
-                  >
-                    {selectedOpportunity.trendStage}
-                  </Badge>
-                  <Badge
-                    variant="outline"
-                    className="border-[#deff9a]/30 bg-[#deff9a]/10 text-[#deff9a]"
-                  >
-                    <Sparkles className="mr-1 h-3 w-3" />
-                    Demand Confidence {selectedOpportunity.aiConfidence}%
-                  </Badge>
-                </div>
-                <h2
-                  id="drawer-title"
-                  className="mt-2 text-xl font-bold leading-snug text-white"
+            {/* Top Navigation Bar */}
+            <header className="sticky top-0 z-20 flex items-center justify-between border-b border-white/10 bg-[#08080d]/90 px-6 py-4 backdrop-blur-xl sm:px-10">
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onClose}
+                  className="border-white/10 bg-white/[0.04] text-zinc-300 hover:bg-white/10 hover:text-white"
                 >
-                  {selectedOpportunity.name}
-                </h2>
-                <p className="mt-1 text-xs font-medium text-zinc-400">
-                  Category: {selectedOpportunity.category}
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={onClose}
-                className="shrink-0 border-white/10 bg-white/[0.03] text-zinc-400 hover:bg-white/[0.08] hover:text-white"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {/* Scrollable Content Body (100% Simplified Daily English Breakdown) */}
-            <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-6 sm:px-6 space-y-6 pb-28">
-              {/* Beginner Guidance Alert */}
-              <div className="rounded-xl border border-[#deff9a]/20 bg-[#deff9a]/[0.03] p-4">
-                <p className="text-xs font-semibold text-[#deff9a] flex items-center gap-1.5">
-                  <Zap className="h-3.5 w-3.5" /> Beginner Founder Clarity Card
-                </p>
-                <p className="mt-1 text-xs text-zinc-300 leading-relaxed">
-                  Here is the simple, real-world breakdown of what this startup idea actually is, who needs it, and how it makes money.
-                </p>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Discover
+                </Button>
+                <div className="hidden sm:flex items-center gap-2 text-xs text-zinc-500">
+                  <span>/</span>
+                  <span className="text-zinc-300 font-medium">Full Founder Blueprint</span>
+                </div>
               </div>
 
-              {deepDiveLoading && (
-                <div className="flex items-center justify-center py-6 gap-2 text-xs text-zinc-400">
-                  <Loader2 className="h-4 w-4 animate-spin text-[#deff9a]" />
-                  Loading simple startup breakdown...
-                </div>
-              )}
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={handleSave}
+                  disabled={isPending || saved}
+                  variant="outline"
+                  size="sm"
+                  className="border-white/10 bg-white/[0.04] text-zinc-300 hover:bg-white/10 hover:text-white"
+                >
+                  {isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : saved ? (
+                    <span className="text-[#deff9a] flex items-center gap-1">
+                      <CheckCircle2 className="h-4 w-4" /> Saved
+                    </span>
+                  ) : (
+                    "Save Signal"
+                  )}
+                </Button>
 
-              {/* 🔴 CARD 1: THE PAINFUL PROBLEM */}
-              <div className="rounded-2xl border border-red-500/20 bg-red-500/[0.03] p-5">
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-red-400">
-                  <AlertCircle className="h-4 w-4" />
-                  1. The Painful Problem (Problem Kya Hai?)
-                </div>
-                <p className="mt-2 text-sm font-semibold text-white">
-                  {selectedOpportunity.description}
-                </p>
+                <Button
+                  onClick={handleBuildStartup}
+                  disabled={isBuilding}
+                  size="sm"
+                  className="bg-[#deff9a] text-black font-bold hover:bg-[#c9f578] shadow-[0_0_20px_rgba(222,255,154,0.3)] transition-all px-5"
+                >
+                  {isBuilding ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Launching...
+                    </>
+                  ) : (
+                    <>
+                      <Rocket className="mr-2 h-4 w-4 fill-black" />
+                      Build This Startup
+                    </>
+                  )}
+                </Button>
 
-                <div className="mt-4 space-y-2.5">
-                  <p className="text-xs font-medium text-zinc-400">
-                    Why users are struggling today:
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onClose}
+                  className="text-zinc-400 hover:text-white hover:bg-white/10"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+            </header>
+
+            {/* Scrollable Main Content */}
+            <main className="flex-1 overflow-y-auto px-6 py-8 sm:px-12 md:px-16 lg:px-24 pb-32">
+              <div className="mx-auto max-w-5xl space-y-10">
+                
+                {/* Header Title & Pitch */}
+                <div className="rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.01] p-8 md:p-10 shadow-2xl relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                    <Sparkles className="w-64 h-64 text-[#deff9a]" />
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3 mb-4">
+                    <Badge variant="outline" className={getTrendStageColor(selectedOpportunity.trendStage)}>
+                      {selectedOpportunity.trendStage} Stage
+                    </Badge>
+                    <Badge variant="outline" className="border-[#deff9a]/30 bg-[#deff9a]/10 text-[#deff9a] font-semibold">
+                      🔥 AI Confidence {selectedOpportunity.aiConfidence}%
+                    </Badge>
+                    <Badge variant="outline" className="border-sky-500/30 bg-sky-500/10 text-sky-400">
+                      Category: {selectedOpportunity.category}
+                    </Badge>
+                  </div>
+
+                  <h1 id="blueprint-title" className="text-3xl md:text-5xl font-black text-white tracking-tight leading-tight">
+                    {selectedOpportunity.name}
+                  </h1>
+
+                  <p className="mt-4 text-base md:text-lg text-zinc-300 font-normal leading-relaxed max-w-3xl">
+                    {selectedOpportunity.description}
                   </p>
-                  {deepDive?.painPoints?.length ? (
-                    deepDive.painPoints.map((pain, i) => (
-                      <div
-                        key={i}
-                        className="flex items-start gap-2 text-xs text-zinc-300 leading-relaxed"
-                      >
-                        <span className="text-red-400 font-bold">•</span>
-                        <span>{pain}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <>
-                      <div className="flex items-start gap-2 text-xs text-zinc-300">
-                        <span className="text-red-400 font-bold">•</span>
-                        <span>Existing tools are too manual, complex, or expensive for normal people.</span>
-                      </div>
-                      <div className="flex items-start gap-2 text-xs text-zinc-300">
-                        <span className="text-red-400 font-bold">•</span>
-                        <span>People waste hours every week trying to do this manually.</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
 
-              {/* 🟢 CARD 2: HOW THIS STARTUP SOLVES IT */}
-              <div className="rounded-2xl border border-[#deff9a]/25 bg-[#deff9a]/[0.03] p-5">
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#deff9a]">
-                  <CheckCircle2 className="h-4 w-4" />
-                  2. How This Startup Solves It (Simple Solution)
-                </div>
-
-                <p className="mt-2 text-sm font-semibold text-white">
-                  {deepDive?.valueProp || `An easy automated tool designed specifically for ${selectedOpportunity.category.toLowerCase()} users.`}
-                </p>
-
-                <div className="mt-4 space-y-2.5">
-                  <p className="text-xs font-medium text-zinc-400">How it works step-by-step:</p>
-                  {deepDive?.solutionFeatures?.length ? (
-                    deepDive.solutionFeatures.map((feat, i) => (
-                      <div
-                        key={i}
-                        className="flex items-start gap-2 text-xs text-zinc-300 leading-relaxed"
-                      >
-                        <span className="text-[#deff9a] font-bold">✓</span>
-                        <span>{feat}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <>
-                      <div className="flex items-start gap-2 text-xs text-zinc-300">
-                        <span className="text-[#deff9a] font-bold">✓</span>
-                        <span>Connect or input requirements in a simple 1-click dashboard.</span>
-                      </div>
-                      <div className="flex items-start gap-2 text-xs text-zinc-300">
-                        <span className="text-[#deff9a] font-bold">✓</span>
-                        <span>Automated engine processes the task instantly without technical setup.</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* 🎯 CARD 3: TARGET AUDIENCE */}
-              <div className="rounded-2xl border border-sky-500/20 bg-sky-500/[0.03] p-5">
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-sky-400">
-                  <Users className="h-4 w-4" />
-                  3. Target Audience (Ye Kiske Kaam Aayega?)
-                </div>
-
-                <div className="mt-3 space-y-2">
-                  {deepDive?.targetAudience?.length ? (
-                    deepDive.targetAudience.map((aud, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-xs text-zinc-200"
-                      >
-                        <Target className="h-3.5 w-3.5 text-sky-400 shrink-0" />
-                        <span>{aud}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-xs text-zinc-200">
-                      <Target className="h-3.5 w-3.5 text-sky-400 shrink-0" />
-                      <span>Small Business Owners, Creators & Online Agencies</span>
+                  <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4 border-t border-white/10 pt-6">
+                    <div>
+                      <p className="text-xs text-zinc-500 uppercase font-semibold">Demand Score</p>
+                      <p className="text-xl font-bold text-[#deff9a] mt-1">{selectedOpportunity.scores.demand}/100</p>
                     </div>
+                    <div>
+                      <p className="text-xs text-zinc-500 uppercase font-semibold">Competition Density</p>
+                      <p className="text-xl font-bold text-sky-400 mt-1">{selectedOpportunity.scores.competition}/100</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-zinc-500 uppercase font-semibold">Est. Monthly Revenue</p>
+                      <p className="text-xl font-bold text-emerald-400 mt-1">{selectedOpportunity.revenuePotential}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-zinc-500 uppercase font-semibold">Time To Build MVP</p>
+                      <p className="text-xl font-bold text-amber-400 mt-1">2–3 Weeks</p>
+                    </div>
+                  </div>
+                </div>
+
+                {deepDiveLoading && (
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center text-zinc-400 space-y-3">
+                    <Loader2 className="h-8 w-8 animate-spin text-[#deff9a] mx-auto" />
+                    <p className="text-sm font-medium">Generating deep-dive beginner clarity points...</p>
+                  </div>
+                )}
+
+                {/* 🔴 SECTION 1: THE REAL-WORLD PAINFUL PROBLEM */}
+                <div className="rounded-3xl border border-red-500/20 bg-gradient-to-b from-red-500/[0.06] to-transparent p-8 space-y-6">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/20 text-red-400">
+                      <ShieldAlert className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-white">1. The Painful Problem (Problem Kya Hai?)</h2>
+                      <p className="text-xs text-zinc-400">What is broken right now and why users are desperately searching for a solution.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                    {deepDive?.painPoints?.length ? (
+                      deepDive.painPoints.map((pain, idx) => (
+                        <div key={idx} className="rounded-2xl border border-red-500/15 bg-black/40 p-5 space-y-2">
+                          <div className="text-xs font-bold text-red-400">Pain Point #{idx + 1}</div>
+                          <p className="text-sm text-zinc-200 leading-relaxed">{pain}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <>
+                        <div className="rounded-2xl border border-red-500/15 bg-black/40 p-5 space-y-2">
+                          <div className="text-xs font-bold text-red-400">Pain Point #1</div>
+                          <p className="text-sm text-zinc-200 leading-relaxed">Current manual processes take 5+ hours per task, wasting critical founder time.</p>
+                        </div>
+                        <div className="rounded-2xl border border-red-500/15 bg-black/40 p-5 space-y-2">
+                          <div className="text-xs font-bold text-red-400">Pain Point #2</div>
+                          <p className="text-sm text-zinc-200 leading-relaxed">Hiring agencies or specialists is expensive ($500–$2,000 per month).</p>
+                        </div>
+                        <div className="rounded-2xl border border-red-500/15 bg-black/40 p-5 space-y-2">
+                          <div className="text-xs font-bold text-red-400">Pain Point #3</div>
+                          <p className="text-sm text-zinc-200 leading-relaxed">Existing software alternatives are too robotic, hard to setup, and lack quality.</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* 🟢 SECTION 2: HOW YOUR STARTUP SOLVES IT */}
+                <div className="rounded-3xl border border-[#deff9a]/25 bg-gradient-to-b from-[#deff9a]/[0.05] to-transparent p-8 space-y-6">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#deff9a]/20 text-[#deff9a]">
+                      <Zap className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-white">2. How Your Startup Solves It (The Product)</h2>
+                      <p className="text-xs text-zinc-400">Simple 3-step product workflow that turns this problem into an easy 1-click software.</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-black/50 p-6">
+                    <p className="text-sm font-medium text-[#deff9a]">
+                      Core Value Proposition: {deepDive?.valueProp || `${selectedOpportunity.name} makes automated high-quality output accessible in seconds.`}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                    {deepDive?.solutionFeatures?.length ? (
+                      deepDive.solutionFeatures.map((feat, idx) => (
+                        <div key={idx} className="rounded-2xl border border-[#deff9a]/15 bg-black/40 p-5 space-y-2">
+                          <div className="flex items-center gap-2 text-xs font-bold text-[#deff9a]">
+                            <CheckCircle2 className="h-4 w-4" /> Feature #{idx + 1}
+                          </div>
+                          <p className="text-sm text-zinc-200 leading-relaxed">{feat}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <>
+                        <div className="rounded-2xl border border-[#deff9a]/15 bg-black/40 p-5 space-y-2">
+                          <div className="flex items-center gap-2 text-xs font-bold text-[#deff9a]">
+                            <CheckCircle2 className="h-4 w-4" /> Step 1: Input
+                          </div>
+                          <p className="text-sm text-zinc-200 leading-relaxed">User inputs raw script or data into a clean, simple web dashboard.</p>
+                        </div>
+                        <div className="rounded-2xl border border-[#deff9a]/15 bg-black/40 p-5 space-y-2">
+                          <div className="flex items-center gap-2 text-xs font-bold text-[#deff9a]">
+                            <CheckCircle2 className="h-4 w-4" /> Step 2: Processing
+                          </div>
+                          <p className="text-sm text-zinc-200 leading-relaxed">AI engine automatically processes, edits, and optimizes output in real-time.</p>
+                        </div>
+                        <div className="rounded-2xl border border-[#deff9a]/15 bg-black/40 p-5 space-y-2">
+                          <div className="flex items-center gap-2 text-xs font-bold text-[#deff9a]">
+                            <CheckCircle2 className="h-4 w-4" /> Step 3: Export
+                          </div>
+                          <p className="text-sm text-zinc-200 leading-relaxed">One-click instant download or direct integration with user tools.</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* 👥 SECTION 3: TARGET AUDIENCE & CUSTOMERS */}
+                <div className="rounded-3xl border border-sky-500/20 bg-gradient-to-b from-sky-500/[0.05] to-transparent p-8 space-y-6">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/20 text-sky-400">
+                      <Users className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-white">3. Target Audience (Ye Kiske Kaam Aayega?)</h2>
+                      <p className="text-xs text-zinc-400">Exact people and businesses facing this exact pain point right now.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {deepDive?.targetAudience?.length ? (
+                      deepDive.targetAudience.map((aud, idx) => (
+                        <div key={idx} className="flex items-start gap-3 rounded-2xl border border-sky-500/15 bg-black/40 p-5">
+                          <Target className="h-5 w-5 text-sky-400 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-semibold text-white">User Persona #{idx + 1}</p>
+                            <p className="text-xs text-zinc-300 mt-1 leading-relaxed">{aud}</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <>
+                        <div className="flex items-start gap-3 rounded-2xl border border-sky-500/15 bg-black/40 p-5">
+                          <Target className="h-5 w-5 text-sky-400 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-semibold text-white">Creators & Solo Founders</p>
+                            <p className="text-xs text-zinc-300 mt-1 leading-relaxed">People who need fast execution without spending huge budgets on freelancers.</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3 rounded-2xl border border-sky-500/15 bg-black/40 p-5">
+                          <Target className="h-5 w-5 text-sky-400 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-semibold text-white">Digital Agencies & Marketers</p>
+                            <p className="text-xs text-zinc-300 mt-1 leading-relaxed">Agencies scaling client work that need automated, consistent delivery.</p>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* 📊 SECTION 4: TECHNICAL FEASIBILITY & MONETIZATION */}
+                <div className="rounded-3xl border border-amber-500/20 bg-gradient-to-b from-amber-500/[0.05] to-transparent p-8 space-y-6">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
+                      <Cpu className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-white">4. Tech Stack & Monetization Strategy</h2>
+                      <p className="text-xs text-zinc-400">How to build this MVP fast and charge your first users.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="rounded-2xl border border-white/10 bg-black/40 p-5 space-y-2">
+                      <div className="flex items-center gap-2 text-xs font-bold text-amber-400">
+                        <Layers className="h-4 w-4" /> Recommended Stack
+                      </div>
+                      <p className="text-xs text-zinc-300 leading-relaxed">Next.js + Tailwind CSS + OpenAI / ElevenLabs APIs + Supabase</p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-black/40 p-5 space-y-2">
+                      <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
+                        <Coins className="h-4 w-4" /> Pricing Model
+                      </div>
+                      <p className="text-xs text-zinc-300 leading-relaxed">$29/mo (Starter Plan) & $79/mo (Pro/Unlimited Plan)</p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-black/40 p-5 space-y-2">
+                      <div className="flex items-center gap-2 text-xs font-bold text-sky-400">
+                        <TrendingUp className="h-4 w-4" /> Go-To-Market
+                      </div>
+                      <p className="text-xs text-zinc-300 leading-relaxed">Launch on ProductHunt, Reddit (r/SaaS), and Twitter cold outreach</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sticky Bottom Call-To-Action Box */}
+                <div className="rounded-3xl border border-[#deff9a]/30 bg-[#deff9a]/[0.05] p-8 text-center space-y-4 shadow-[0_0_50px_rgba(222,255,154,0.15)]">
+                  <h3 className="text-2xl font-extrabold text-white">Ready to Turn This Idea Into Reality?</h3>
+                  <p className="text-xs text-zinc-300 max-w-xl mx-auto leading-relaxed">
+                    Clicking below will set up your personalized Founder Workspace with custom execution modules, GTM launchkits, and MVP specs.
+                  </p>
+
+                  {buildError && (
+                    <p className="text-xs font-medium text-red-400">{buildError}</p>
                   )}
+
+                  <Button
+                    onClick={handleBuildStartup}
+                    disabled={isBuilding}
+                    size="lg"
+                    className="bg-[#deff9a] text-black font-extrabold hover:bg-[#c9f578] shadow-[0_0_30px_rgba(222,255,154,0.4)] transition-all px-8 h-14 text-base cursor-pointer"
+                  >
+                    {isBuilding ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Generating Workspace...
+                      </>
+                    ) : (
+                      <>
+                        <Rocket className="mr-2 h-5 w-5 fill-black" />
+                        🚀 Build Your Startup (Launch Workspace)
+                      </>
+                    )}
+                  </Button>
                 </div>
+
               </div>
-
-              {/* 📊 CARD 4: FEASIBILITY & REVENUE SCORE */}
-              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-400">
-                    <Coins className="h-4 w-4 text-[#deff9a]" />
-                    4. Opportunity Feasibility & Revenue
-                  </div>
-                </div>
-
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <div className="rounded-xl border border-white/[0.06] bg-black/40 p-3">
-                    <p className="text-[10px] text-zinc-500 uppercase font-semibold">Demand Score</p>
-                    <p className="mt-1 text-lg font-bold text-[#deff9a]">
-                      {selectedOpportunity.scores.demand}/100
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-white/[0.06] bg-black/40 p-3">
-                    <p className="text-[10px] text-zinc-500 uppercase font-semibold">Est. Revenue</p>
-                    <p className="mt-1 text-xs font-bold text-white">
-                      {selectedOpportunity.revenuePotential}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Fixed Action Bar */}
-            <div className="shrink-0 space-y-2.5 border-t border-white/10 bg-[#08080c]/95 p-4 sm:p-5 backdrop-blur-md shadow-[0_-12px_32px_rgba(0,0,0,0.8)] z-10">
-              {buildError && (
-                <p className="text-center text-[11px] font-medium text-red-400">{buildError}</p>
-              )}
-              {saveError && (
-                <p className="text-center text-[11px] font-medium text-red-400">{saveError}</p>
-              )}
-
-              {/* Primary Glowing Action Button */}
-              <Button
-                onClick={handleBuildStartup}
-                disabled={isBuilding}
-                className="w-full bg-[#deff9a] text-black font-bold hover:bg-[#c9f578] shadow-[0_0_24px_rgba(222,255,154,0.35)] transition-all h-12 text-sm cursor-pointer"
-              >
-                {isBuilding ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating Startup Workspace…
-                  </>
-                ) : (
-                  <>
-                    <Rocket className="mr-2 h-4 w-4 fill-black" />
-                    🚀 Build Your Startup (Launch Workspace)
-                  </>
-                )}
-              </Button>
-
-              <Button
-                onClick={handleSave}
-                disabled={isPending || saved}
-                variant="outline"
-                className="w-full border-white/15 bg-white/[0.03] text-white hover:bg-white/[0.08] hover:border-white/25 disabled:opacity-60 h-10 text-xs"
-              >
-                {isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving…
-                  </>
-                ) : saved ? (
-                  <>
-                    <Check className="mr-2 h-4 w-4 text-[#deff9a]" />
-                    Signal Saved to Workspace
-                  </>
-                ) : (
-                  <>
-                    Save Signal for Later
-                  </>
-                )}
-              </Button>
-            </div>
-          </motion.aside>
+            </main>
+          </motion.div>
         </div>
       )}
     </AnimatePresence>,
