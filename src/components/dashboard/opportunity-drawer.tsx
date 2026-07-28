@@ -4,14 +4,25 @@ import { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bookmark, Check, Loader2, Rocket, X } from "lucide-react";
+import {
+  AlertCircle,
+  Check,
+  CheckCircle2,
+  Clock,
+  Coins,
+  Loader2,
+  Rocket,
+  Sparkles,
+  Target,
+  Users,
+  X,
+  Zap,
+} from "lucide-react";
 
 import { fetchOpportunityDeepDive } from "@/app/actions/intelligence";
 import { saveOpportunity } from "@/app/actions/opportunities";
 import { useUpgradeModal } from "@/components/billing/upgrade-modal";
-import { OpportunityDeepDivePanel } from "@/components/dashboard/opportunity-deep-dive";
 import { createWorkspaceFromOpportunity } from "@/app/actions/workspaces";
-import { OpportunityDrawerDetail } from "@/components/dashboard/opportunity-drawer-detail";
 import {
   getTrendStageColor,
   type Opportunity,
@@ -25,25 +36,6 @@ type OpportunityDrawerProps = {
   activeWorkspace: WorkspaceIdentity;
   onClose: () => void;
 };
-
-function ScoreBar({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-zinc-400 font-medium">{label}</span>
-        <span className="tabular-nums font-semibold text-[#deff9a]">{value}/100</span>
-      </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${value}%` }}
-          transition={{ duration: 0.55, ease: "easeOut", delay: 0.08 }}
-          className="h-full rounded-full bg-gradient-to-r from-[#deff9a]/60 to-[#deff9a] shadow-[0_0_12px_rgba(222,255,154,0.35)]"
-        />
-      </div>
-    </div>
-  );
-}
 
 export function OpportunityDrawer({
   selectedOpportunity,
@@ -59,7 +51,6 @@ export function OpportunityDrawer({
   const [isPending, startTransition] = useTransition();
   const [isBuilding, startBuildTransition] = useTransition();
   const [deepDiveLoading, setDeepDiveLoading] = useState(false);
-  const [deepDiveLocked, setDeepDiveLocked] = useState(false);
   const [enrichedOpportunity, setEnrichedOpportunity] =
     useState<Opportunity | null>(null);
 
@@ -79,14 +70,11 @@ export function OpportunityDrawer({
 
     setEnrichedOpportunity(selectedOpportunity);
 
-    setDeepDiveLocked(false);
     if (selectedOpportunity.deepDive) return;
 
     setDeepDiveLoading(true);
     void (async () => {
-      const seed =
-        selectedOpportunity.keywords[0] ??
-        selectedOpportunity.name;
+      const seed = selectedOpportunity.keywords[0] ?? selectedOpportunity.name;
       const result = await fetchOpportunityDeepDive(
         selectedOpportunity.id,
         seed
@@ -96,8 +84,6 @@ export function OpportunityDrawer({
           ...selectedOpportunity,
           deepDive: result.deepDive,
         });
-      } else if (result.code === "UPGRADE_REQUIRED") {
-        setDeepDiveLocked(true);
       }
       setDeepDiveLoading(false);
     })();
@@ -135,6 +121,9 @@ export function OpportunityDrawer({
 
   if (!mounted) return null;
 
+  const currentOp = enrichedOpportunity ?? selectedOpportunity;
+  const deepDive = currentOp?.deepDive;
+
   return createPortal(
     <AnimatePresence>
       {selectedOpportunity && (
@@ -147,7 +136,7 @@ export function OpportunityDrawer({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.22 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/60 backdrop-blur-[3px]"
+            className="absolute inset-0 bg-black/70 backdrop-blur-[4px]"
           />
 
           <motion.aside
@@ -158,10 +147,10 @@ export function OpportunityDrawer({
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 34, stiffness: 340 }}
-            className="fixed right-0 top-0 z-[101] flex h-full w-full max-w-[480px] flex-col border-l border-white/10 bg-[#08080c] shadow-[-32px_0_100px_rgba(0,0,0,0.8)] backdrop-blur-2xl"
+            className="fixed right-0 top-0 z-[101] flex h-full w-full max-w-[540px] flex-col border-l border-white/10 bg-[#08080c] shadow-[-32px_0_100px_rgba(0,0,0,0.9)] backdrop-blur-2xl"
           >
-            {/* Header */}
-            <div className="flex items-start justify-between border-b border-white/[0.08] bg-[#08080c]/80 px-5 py-4 sm:px-6 backdrop-blur-md">
+            {/* Top Bar Header */}
+            <div className="flex items-start justify-between border-b border-white/[0.08] bg-[#08080c]/90 px-5 py-4 sm:px-6 backdrop-blur-md">
               <div className="min-w-0 flex-1 pr-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge
@@ -176,17 +165,18 @@ export function OpportunityDrawer({
                     variant="outline"
                     className="border-[#deff9a]/30 bg-[#deff9a]/10 text-[#deff9a]"
                   >
-                    AI Confidence {selectedOpportunity.aiConfidence}%
+                    <Sparkles className="mr-1 h-3 w-3" />
+                    Demand Confidence {selectedOpportunity.aiConfidence}%
                   </Badge>
                 </div>
                 <h2
                   id="drawer-title"
-                  className="mt-2 text-lg font-semibold leading-tight text-white"
+                  className="mt-2 text-xl font-bold leading-snug text-white"
                 >
                   {selectedOpportunity.name}
                 </h2>
-                <p className="mt-1 text-xs text-zinc-400">
-                  {selectedOpportunity.category}
+                <p className="mt-1 text-xs font-medium text-zinc-400">
+                  Category: {selectedOpportunity.category}
                 </p>
               </div>
               <Button
@@ -199,100 +189,156 @@ export function OpportunityDrawer({
               </Button>
             </div>
 
-            {/* Scrollable Body */}
-            <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6 pb-24">
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-                  Technical scores
+            {/* Scrollable Content Body (100% Simplified Daily English Breakdown) */}
+            <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-6 sm:px-6 space-y-6 pb-28">
+              {/* Beginner Guidance Alert */}
+              <div className="rounded-xl border border-[#deff9a]/20 bg-[#deff9a]/[0.03] p-4">
+                <p className="text-xs font-semibold text-[#deff9a] flex items-center gap-1.5">
+                  <Zap className="h-3.5 w-3.5" /> Beginner Founder Clarity Card
                 </p>
-                <span className="text-[10px] text-zinc-500">Live signals engine</span>
+                <p className="mt-1 text-xs text-zinc-300 leading-relaxed">
+                  Here is the simple, real-world breakdown of what this startup idea actually is, who needs it, and how it makes money.
+                </p>
               </div>
 
-              <div className="mt-3 space-y-3.5 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-                <ScoreBar
-                  label="Demand Score"
-                  value={selectedOpportunity.scores.demand}
-                />
-                <ScoreBar
-                  label="Competition Density"
-                  value={selectedOpportunity.scores.competition}
-                />
-                <ScoreBar
-                  label="Virality Potential"
-                  value={selectedOpportunity.scores.virality}
-                />
-                <ScoreBar
-                  label="Monetization Velocity"
-                  value={selectedOpportunity.scores.monetization}
-                />
-                {selectedOpportunity.scores.disruption != null && (
-                  <ScoreBar
-                    label="AI Disruption Risk"
-                    value={selectedOpportunity.scores.disruption}
-                  />
-                )}
-              </div>
-
-              <div className="mt-6">
-                <OpportunityDrawerDetail
-                  key={`${selectedOpportunity.id}-${activeWorkspace}`}
-                  opportunity={enrichedOpportunity ?? selectedOpportunity}
-                  activeWorkspace={activeWorkspace}
-                />
-              </div>
-
-              {deepDiveLocked ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    openUpgradeModal(
-                      "Deep Dive specs are a Pro feature. Upgrade to see cited market gaps and MVP anatomy."
-                    )
-                  }
-                  className="mt-6 w-full rounded-xl border border-[#deff9a]/25 bg-[#deff9a]/[0.05] p-5 text-left transition-colors hover:bg-[#deff9a]/[0.08]"
-                >
-                  <p className="text-sm font-semibold text-[#deff9a]">
-                    🔒 Deep Dive locked
-                  </p>
-                  <p className="mt-1.5 text-xs leading-relaxed text-zinc-400">
-                    Real market gaps, a full solution blueprint, and the exact
-                    MVP anatomy live behind Pro. Tap to unlock.
-                  </p>
-                </button>
-              ) : (
-                <OpportunityDeepDivePanel
-                  opportunity={enrichedOpportunity ?? selectedOpportunity}
-                  loading={deepDiveLoading}
-                />
+              {deepDiveLoading && (
+                <div className="flex items-center justify-center py-6 gap-2 text-xs text-zinc-400">
+                  <Loader2 className="h-4 w-4 animate-spin text-[#deff9a]" />
+                  Loading simple startup breakdown...
+                </div>
               )}
 
-              <div className="mt-6 rounded-xl border border-[#deff9a]/20 bg-[#deff9a]/[0.04] p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-                  Revenue potential estimate
+              {/* 🔴 CARD 1: THE PAINFUL PROBLEM */}
+              <div className="rounded-2xl border border-red-500/20 bg-red-500/[0.03] p-5">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-red-400">
+                  <AlertCircle className="h-4 w-4" />
+                  1. The Painful Problem (Problem Kya Hai?)
+                </div>
+                <p className="mt-2 text-sm font-semibold text-white">
+                  {selectedOpportunity.description}
                 </p>
-                <p className="mt-1 text-lg font-semibold text-[#deff9a]">
-                  {selectedOpportunity.revenuePotential}
-                </p>
+
+                <div className="mt-4 space-y-2.5">
+                  <p className="text-xs font-medium text-zinc-400">
+                    Why users are struggling today:
+                  </p>
+                  {deepDive?.painPoints?.length ? (
+                    deepDive.painPoints.map((pain, i) => (
+                      <div
+                        key={i}
+                        className="flex items-start gap-2 text-xs text-zinc-300 leading-relaxed"
+                      >
+                        <span className="text-red-400 font-bold">•</span>
+                        <span>{pain}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      <div className="flex items-start gap-2 text-xs text-zinc-300">
+                        <span className="text-red-400 font-bold">•</span>
+                        <span>Existing tools are too manual, complex, or expensive for normal people.</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-xs text-zinc-300">
+                        <span className="text-red-400 font-bold">•</span>
+                        <span>People waste hours every week trying to do this manually.</span>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
 
-              <div className="mt-6">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-                  Verified sources
+              {/* 🟢 CARD 2: HOW THIS STARTUP SOLVES IT */}
+              <div className="rounded-2xl border border-[#deff9a]/25 bg-[#deff9a]/[0.03] p-5">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#deff9a]">
+                  <CheckCircle2 className="h-4 w-4" />
+                  2. How This Startup Solves It (Simple Solution)
+                </div>
+
+                <p className="mt-2 text-sm font-semibold text-white">
+                  {deepDive?.valueProp || `An easy automated tool designed specifically for ${selectedOpportunity.category.toLowerCase()} users.`}
                 </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {selectedOpportunity.sources.map((source) => (
-                    <span
-                      key={source}
-                      className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-zinc-300"
-                    >
-                      {source}
-                    </span>
-                  ))}
+
+                <div className="mt-4 space-y-2.5">
+                  <p className="text-xs font-medium text-zinc-400">How it works step-by-step:</p>
+                  {deepDive?.solutionFeatures?.length ? (
+                    deepDive.solutionFeatures.map((feat, i) => (
+                      <div
+                        key={i}
+                        className="flex items-start gap-2 text-xs text-zinc-300 leading-relaxed"
+                      >
+                        <span className="text-[#deff9a] font-bold">✓</span>
+                        <span>{feat}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      <div className="flex items-start gap-2 text-xs text-zinc-300">
+                        <span className="text-[#deff9a] font-bold">✓</span>
+                        <span>Connect or input requirements in a simple 1-click dashboard.</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-xs text-zinc-300">
+                        <span className="text-[#deff9a] font-bold">✓</span>
+                        <span>Automated engine processes the task instantly without technical setup.</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* 🎯 CARD 3: TARGET AUDIENCE */}
+              <div className="rounded-2xl border border-sky-500/20 bg-sky-500/[0.03] p-5">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-sky-400">
+                  <Users className="h-4 w-4" />
+                  3. Target Audience (Ye Kiske Kaam Aayega?)
+                </div>
+
+                <div className="mt-3 space-y-2">
+                  {deepDive?.targetAudience?.length ? (
+                    deepDive.targetAudience.map((aud, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-xs text-zinc-200"
+                      >
+                        <Target className="h-3.5 w-3.5 text-sky-400 shrink-0" />
+                        <span>{aud}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-xs text-zinc-200">
+                      <Target className="h-3.5 w-3.5 text-sky-400 shrink-0" />
+                      <span>Small Business Owners, Creators & Online Agencies</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 📊 CARD 4: FEASIBILITY & REVENUE SCORE */}
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-400">
+                    <Coins className="h-4 w-4 text-[#deff9a]" />
+                    4. Opportunity Feasibility & Revenue
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-white/[0.06] bg-black/40 p-3">
+                    <p className="text-[10px] text-zinc-500 uppercase font-semibold">Demand Score</p>
+                    <p className="mt-1 text-lg font-bold text-[#deff9a]">
+                      {selectedOpportunity.scores.demand}/100
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-white/[0.06] bg-black/40 p-3">
+                    <p className="text-[10px] text-zinc-500 uppercase font-semibold">Est. Revenue</p>
+                    <p className="mt-1 text-xs font-bold text-white">
+                      {selectedOpportunity.revenuePotential}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Solid Sticky Action Bar (No Overlap) */}
+            {/* Bottom Fixed Action Bar */}
             <div className="shrink-0 space-y-2.5 border-t border-white/10 bg-[#08080c]/95 p-4 sm:p-5 backdrop-blur-md shadow-[0_-12px_32px_rgba(0,0,0,0.8)] z-10">
               {buildError && (
                 <p className="text-center text-[11px] font-medium text-red-400">{buildError}</p>
@@ -300,32 +346,31 @@ export function OpportunityDrawer({
               {saveError && (
                 <p className="text-center text-[11px] font-medium text-red-400">{saveError}</p>
               )}
-              
-              {/* Primary Build CTA */}
+
+              {/* Primary Glowing Action Button */}
               <Button
                 onClick={handleBuildStartup}
                 disabled={isBuilding}
-                className="w-full bg-[#deff9a] text-black font-semibold hover:bg-[#c9f578] shadow-[0_0_20px_rgba(222,255,154,0.3)] transition-all h-11"
+                className="w-full bg-[#deff9a] text-black font-bold hover:bg-[#c9f578] shadow-[0_0_24px_rgba(222,255,154,0.35)] transition-all h-12 text-sm cursor-pointer"
               >
                 {isBuilding ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating workspace…
+                    Creating Startup Workspace…
                   </>
                 ) : (
                   <>
                     <Rocket className="mr-2 h-4 w-4 fill-black" />
-                    Build This Startup
+                    🚀 Build Your Startup (Launch Workspace)
                   </>
                 )}
               </Button>
 
-              {/* Secondary Save Signal CTA */}
               <Button
                 onClick={handleSave}
                 disabled={isPending || saved}
                 variant="outline"
-                className="w-full border-white/15 bg-white/[0.03] text-white hover:bg-white/[0.08] hover:border-white/25 disabled:opacity-60 h-10"
+                className="w-full border-white/15 bg-white/[0.03] text-white hover:bg-white/[0.08] hover:border-white/25 disabled:opacity-60 h-10 text-xs"
               >
                 {isPending ? (
                   <>
@@ -335,12 +380,11 @@ export function OpportunityDrawer({
                 ) : saved ? (
                   <>
                     <Check className="mr-2 h-4 w-4 text-[#deff9a]" />
-                    Signal saved
+                    Signal Saved to Workspace
                   </>
                 ) : (
                   <>
-                    <Bookmark className="mr-2 h-3.5 w-3.5 text-zinc-400" />
-                    Save signal
+                    Save Signal for Later
                   </>
                 )}
               </Button>
