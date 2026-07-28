@@ -73,6 +73,14 @@ export function StartupWorkspaceView({
     }
   }
 
+  function handleBuildMvpClick() {
+    setActiveTab("mvp");
+    const targetElement = document.getElementById("workspace-tabs-section");
+    if (targetElement) {
+      targetElement.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
   return (
     <div className="relative mx-auto max-w-6xl px-4 py-8 sm:px-6">
       {/* Background Glow */}
@@ -135,8 +143,9 @@ export function StartupWorkspaceView({
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setActiveTab("mvp")}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#deff9a] px-4 py-2 text-xs font-bold text-black shadow-[0_0_20px_rgba(222,255,154,0.25)] transition-all hover:bg-[#c9f578]"
+              type="button"
+              onClick={handleBuildMvpClick}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#deff9a] px-4 py-2 text-xs font-bold text-black shadow-[0_0_20px_rgba(222,255,154,0.25)] transition-all hover:bg-[#c9f578] active:scale-95 cursor-pointer"
             >
               <Rocket className="h-3.5 w-3.5 fill-black" />
               Build MVP Spec
@@ -162,7 +171,7 @@ export function StartupWorkspaceView({
       </div>
 
       {/* Execution Depth Tabs Header */}
-      <div className="relative mt-10">
+      <div id="workspace-tabs-section" className="relative mt-10">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
             <Layers className="h-3.5 w-3.5 text-[#deff9a]" />
