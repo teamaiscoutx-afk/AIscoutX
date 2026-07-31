@@ -5,9 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  AlertTriangle,
   ArrowLeft,
-  ArrowRight,
   CheckCircle2,
   Coins,
   Cpu,
@@ -15,7 +13,6 @@ import {
   Loader2,
   Rocket,
   ShieldAlert,
-  Sparkles,
   Target,
   TrendingUp,
   Users,
@@ -50,7 +47,7 @@ export function OpportunityDrawer({
   const { openUpgradeModal } = useUpgradeModal();
   const [mounted, setMounted] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [, setSaveError] = useState<string | null>(null);
   const [buildError, setBuildError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isBuilding, startBuildTransition] = useTransition();
@@ -127,6 +124,37 @@ export function OpportunityDrawer({
 
   const currentOp = enrichedOpportunity ?? selectedOpportunity;
   const deepDive = currentOp?.deepDive;
+
+  // Ultra-detailed beginner fallback structure
+  const defaultPainPoints = [
+    {
+      title: "Hours Lost to Manual Execution & Re-work",
+      desc: "Creating high-quality output manually requires endless back-and-forth editing and setup. Users spend 5 to 8 hours fixing small mistakes, which severely delays project launches and slows down overall business growth.",
+    },
+    {
+      title: "High Agency & Freelancer Payroll Expenses",
+      desc: "Hiring external freelancers or agencies for specialized tasks costs anywhere from $500 to $2,500 every single month. For early-stage founders and creators, this drains operational budgets before the product generates stable revenue.",
+    },
+    {
+      title: "Robotic & Complex Legacy Software",
+      desc: "Existing traditional software tools suffer from steep learning curves, cluttered user interfaces, and outdated results. Users often give up because tools require hours of technical configuration to get simple outcomes.",
+    },
+  ];
+
+  const defaultSolutionSteps = [
+    {
+      step: "Step 1: Simple Input & Intuitive Setup",
+      desc: "The user opens a clean, modern web dashboard and pastes their requirements or content script. No complex coding, software downloads, or technical setup is required—anyone can start in under 30 seconds.",
+    },
+    {
+      step: "Step 2: Automated AI Engine & Quality Polish",
+      desc: "The core automated background system processes the input in real-time. It fixes errors, balances output quality, and ensures the result matches professional industry standards without manual intervention.",
+    },
+    {
+      step: "Step 3: Instant 1-Click Export & Delivery",
+      desc: "Users receive studio-grade, ready-to-publish files instantly. They can download assets in 1-click or automatically publish them directly to their connected workflow tools and publishing channels.",
+    },
+  ];
 
   return createPortal(
     <AnimatePresence>
@@ -209,16 +237,12 @@ export function OpportunityDrawer({
               </div>
             </header>
 
-            {/* Scrollable Main Content */}
+            {/* Main Content Area */}
             <main className="flex-1 overflow-y-auto px-6 py-8 sm:px-12 md:px-16 lg:px-24 pb-32">
               <div className="mx-auto max-w-5xl space-y-10">
-                
-                {/* Header Title & Pitch */}
-                <div className="rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.01] p-8 md:p-10 shadow-2xl relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
-                    <Sparkles className="w-64 h-64 text-[#deff9a]" />
-                  </div>
 
+                {/* Hero Header Card */}
+                <div className="rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.01] p-8 md:p-10 shadow-2xl relative overflow-hidden">
                   <div className="flex flex-wrap items-center gap-3 mb-4">
                     <Badge variant="outline" className={getTrendStageColor(selectedOpportunity.trendStage)}>
                       {selectedOpportunity.trendStage} Stage
@@ -262,139 +286,116 @@ export function OpportunityDrawer({
                 {deepDiveLoading && (
                   <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center text-zinc-400 space-y-3">
                     <Loader2 className="h-8 w-8 animate-spin text-[#deff9a] mx-auto" />
-                    <p className="text-sm font-medium">Generating deep-dive beginner clarity points...</p>
+                    <p className="text-sm font-medium">Generating deep-dive context for beginners...</p>
                   </div>
                 )}
 
-                {/* 🔴 SECTION 1: THE REAL-WORLD PAINFUL PROBLEM */}
+                {/* CONTAINER 1: THE CORE PROBLEM */}
                 <div className="rounded-3xl border border-red-500/20 bg-gradient-to-b from-red-500/[0.06] to-transparent p-8 space-y-6">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/20 text-red-400">
                       <ShieldAlert className="h-5 w-5" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-white">1. The Painful Problem (Problem Kya Hai?)</h2>
-                      <p className="text-xs text-zinc-400">What is broken right now and why users are desperately searching for a solution.</p>
+                      <h2 className="text-xl font-bold text-white">1. The Core Problem</h2>
+                      <p className="text-xs text-zinc-400">Why current manual methods fail and hold users back from growing.</p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-                    {deepDive?.painPoints?.length ? (
-                      deepDive.painPoints.map((pain, idx) => (
-                        <div key={idx} className="rounded-2xl border border-red-500/15 bg-black/40 p-5 space-y-2">
-                          <div className="text-xs font-bold text-red-400">Pain Point #{idx + 1}</div>
-                          <p className="text-sm text-zinc-200 leading-relaxed">{pain}</p>
-                        </div>
-                      ))
-                    ) : (
-                      <>
-                        <div className="rounded-2xl border border-red-500/15 bg-black/40 p-5 space-y-2">
-                          <div className="text-xs font-bold text-red-400">Pain Point #1</div>
-                          <p className="text-sm text-zinc-200 leading-relaxed">Current manual processes take 5+ hours per task, wasting critical founder time.</p>
-                        </div>
-                        <div className="rounded-2xl border border-red-500/15 bg-black/40 p-5 space-y-2">
-                          <div className="text-xs font-bold text-red-400">Pain Point #2</div>
-                          <p className="text-sm text-zinc-200 leading-relaxed">Hiring agencies or specialists is expensive ($500–$2,000 per month).</p>
-                        </div>
-                        <div className="rounded-2xl border border-red-500/15 bg-black/40 p-5 space-y-2">
-                          <div className="text-xs font-bold text-red-400">Pain Point #3</div>
-                          <p className="text-sm text-zinc-200 leading-relaxed">Existing software alternatives are too robotic, hard to setup, and lack quality.</p>
-                        </div>
-                      </>
-                    )}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-2">
+                    {deepDive?.painPoints?.length
+                      ? deepDive.painPoints.map((pain, idx) => (
+                          <div key={idx} className="rounded-2xl border border-red-500/15 bg-black/50 p-6 space-y-2.5">
+                            <div className="text-xs font-bold text-red-400 uppercase tracking-wide">Problem #{idx + 1}</div>
+                            <p className="text-xs text-zinc-300 leading-relaxed">{pain}</p>
+                          </div>
+                        ))
+                      : defaultPainPoints.map((item, idx) => (
+                          <div key={idx} className="rounded-2xl border border-red-500/15 bg-black/50 p-6 space-y-2.5">
+                            <div className="text-xs font-bold text-red-400 uppercase tracking-wide">{item.title}</div>
+                            <p className="text-xs text-zinc-300 leading-relaxed">{item.desc}</p>
+                          </div>
+                        ))}
                   </div>
                 </div>
 
-                {/* 🟢 SECTION 2: HOW YOUR STARTUP SOLVES IT */}
+                {/* CONTAINER 2: HOW YOUR STARTUP SOLVES IT */}
                 <div className="rounded-3xl border border-[#deff9a]/25 bg-gradient-to-b from-[#deff9a]/[0.05] to-transparent p-8 space-y-6">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#deff9a]/20 text-[#deff9a]">
                       <Zap className="h-5 w-5" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-white">2. How Your Startup Solves It (The Product)</h2>
-                      <p className="text-xs text-zinc-400">Simple 3-step product workflow that turns this problem into an easy 1-click software.</p>
+                      <h2 className="text-xl font-bold text-white">2. How Your Startup Solves It</h2>
+                      <p className="text-xs text-zinc-400">Simple 3-step product workflow that turns this problem into a smooth software solution.</p>
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-black/50 p-6">
-                    <p className="text-sm font-medium text-[#deff9a]">
-                      Core Value Proposition: {deepDive?.valueProp || `${selectedOpportunity.name} makes automated high-quality output accessible in seconds.`}
+                  <div className="rounded-2xl border border-white/10 bg-black/60 p-6">
+                    <p className="text-xs text-zinc-400 font-semibold uppercase tracking-wider mb-1">Core Value Proposition</p>
+                    <p className="text-sm font-medium text-[#deff9a] leading-relaxed">
+                      {deepDive?.valueProp || `${selectedOpportunity.name} replaces slow manual processes with a simple, automated web software that delivers studio-grade results in seconds.`}
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-                    {deepDive?.solutionFeatures?.length ? (
-                      deepDive.solutionFeatures.map((feat, idx) => (
-                        <div key={idx} className="rounded-2xl border border-[#deff9a]/15 bg-black/40 p-5 space-y-2">
-                          <div className="flex items-center gap-2 text-xs font-bold text-[#deff9a]">
-                            <CheckCircle2 className="h-4 w-4" /> Feature #{idx + 1}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-2">
+                    {deepDive?.solutionFeatures?.length
+                      ? deepDive.solutionFeatures.map((feat, idx) => (
+                          <div key={idx} className="rounded-2xl border border-[#deff9a]/15 bg-black/50 p-6 space-y-2.5">
+                            <div className="flex items-center gap-2 text-xs font-bold text-[#deff9a] uppercase tracking-wide">
+                              <CheckCircle2 className="h-4 w-4" /> Step #{idx + 1}
+                            </div>
+                            <p className="text-xs text-zinc-300 leading-relaxed">{feat}</p>
                           </div>
-                          <p className="text-sm text-zinc-200 leading-relaxed">{feat}</p>
-                        </div>
-                      ))
-                    ) : (
-                      <>
-                        <div className="rounded-2xl border border-[#deff9a]/15 bg-black/40 p-5 space-y-2">
-                          <div className="flex items-center gap-2 text-xs font-bold text-[#deff9a]">
-                            <CheckCircle2 className="h-4 w-4" /> Step 1: Input
+                        ))
+                      : defaultSolutionSteps.map((item, idx) => (
+                          <div key={idx} className="rounded-2xl border border-[#deff9a]/15 bg-black/50 p-6 space-y-2.5">
+                            <div className="flex items-center gap-2 text-xs font-bold text-[#deff9a] uppercase tracking-wide">
+                              <CheckCircle2 className="h-4 w-4 text-[#deff9a]" /> {item.step}
+                            </div>
+                            <p className="text-xs text-zinc-300 leading-relaxed">{item.desc}</p>
                           </div>
-                          <p className="text-sm text-zinc-200 leading-relaxed">User inputs raw script or data into a clean, simple web dashboard.</p>
-                        </div>
-                        <div className="rounded-2xl border border-[#deff9a]/15 bg-black/40 p-5 space-y-2">
-                          <div className="flex items-center gap-2 text-xs font-bold text-[#deff9a]">
-                            <CheckCircle2 className="h-4 w-4" /> Step 2: Processing
-                          </div>
-                          <p className="text-sm text-zinc-200 leading-relaxed">AI engine automatically processes, edits, and optimizes output in real-time.</p>
-                        </div>
-                        <div className="rounded-2xl border border-[#deff9a]/15 bg-black/40 p-5 space-y-2">
-                          <div className="flex items-center gap-2 text-xs font-bold text-[#deff9a]">
-                            <CheckCircle2 className="h-4 w-4" /> Step 3: Export
-                          </div>
-                          <p className="text-sm text-zinc-200 leading-relaxed">One-click instant download or direct integration with user tools.</p>
-                        </div>
-                      </>
-                    )}
+                        ))}
                   </div>
                 </div>
 
-                {/* 👥 SECTION 3: TARGET AUDIENCE & CUSTOMERS */}
+                {/* CONTAINER 3: TARGET AUDIENCE */}
                 <div className="rounded-3xl border border-sky-500/20 bg-gradient-to-b from-sky-500/[0.05] to-transparent p-8 space-y-6">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/20 text-sky-400">
                       <Users className="h-5 w-5" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-white">3. Target Audience (Ye Kiske Kaam Aayega?)</h2>
-                      <p className="text-xs text-zinc-400">Exact people and businesses facing this exact pain point right now.</p>
+                      <h2 className="text-xl font-bold text-white">3. Target Audience</h2>
+                      <p className="text-xs text-zinc-400">The specific groups of people and businesses who desperately need this product.</p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     {deepDive?.targetAudience?.length ? (
                       deepDive.targetAudience.map((aud, idx) => (
-                        <div key={idx} className="flex items-start gap-3 rounded-2xl border border-sky-500/15 bg-black/40 p-5">
+                        <div key={idx} className="flex items-start gap-3.5 rounded-2xl border border-sky-500/15 bg-black/50 p-6">
                           <Target className="h-5 w-5 text-sky-400 shrink-0 mt-0.5" />
                           <div>
-                            <p className="text-sm font-semibold text-white">User Persona #{idx + 1}</p>
-                            <p className="text-xs text-zinc-300 mt-1 leading-relaxed">{aud}</p>
+                            <p className="text-xs font-bold text-sky-400 uppercase tracking-wide">User Segment #{idx + 1}</p>
+                            <p className="text-xs text-zinc-300 mt-1.5 leading-relaxed">{aud}</p>
                           </div>
                         </div>
                       ))
                     ) : (
                       <>
-                        <div className="flex items-start gap-3 rounded-2xl border border-sky-500/15 bg-black/40 p-5">
+                        <div className="flex items-start gap-3.5 rounded-2xl border border-sky-500/15 bg-black/50 p-6">
                           <Target className="h-5 w-5 text-sky-400 shrink-0 mt-0.5" />
                           <div>
-                            <p className="text-sm font-semibold text-white">Creators & Solo Founders</p>
-                            <p className="text-xs text-zinc-300 mt-1 leading-relaxed">People who need fast execution without spending huge budgets on freelancers.</p>
+                            <p className="text-xs font-bold text-sky-400 uppercase tracking-wide">Creators & Independent Founders</p>
+                            <p className="text-xs text-zinc-300 mt-1.5 leading-relaxed">Solo operators who need fast execution without burning funds on expensive freelancers or dedicated staff.</p>
                           </div>
                         </div>
-                        <div className="flex items-start gap-3 rounded-2xl border border-sky-500/15 bg-black/40 p-5">
+                        <div className="flex items-start gap-3.5 rounded-2xl border border-sky-500/15 bg-black/50 p-6">
                           <Target className="h-5 w-5 text-sky-400 shrink-0 mt-0.5" />
                           <div>
-                            <p className="text-sm font-semibold text-white">Digital Agencies & Marketers</p>
-                            <p className="text-xs text-zinc-300 mt-1 leading-relaxed">Agencies scaling client work that need automated, consistent delivery.</p>
+                            <p className="text-xs font-bold text-sky-400 uppercase tracking-wide">Digital Agencies & Media Teams</p>
+                            <p className="text-xs text-zinc-300 mt-1.5 leading-relaxed">Agencies managing multiple client accounts who require consistent, high-volume automated output every week.</p>
                           </div>
                         </div>
                       </>
@@ -402,7 +403,7 @@ export function OpportunityDrawer({
                   </div>
                 </div>
 
-                {/* 📊 SECTION 4: TECHNICAL FEASIBILITY & MONETIZATION */}
+                {/* CONTAINER 4: TECH STACK & MONETIZATION */}
                 <div className="rounded-3xl border border-amber-500/20 bg-gradient-to-b from-amber-500/[0.05] to-transparent p-8 space-y-6">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
@@ -410,39 +411,45 @@ export function OpportunityDrawer({
                     </div>
                     <div>
                       <h2 className="text-xl font-bold text-white">4. Tech Stack & Monetization Strategy</h2>
-                      <p className="text-xs text-zinc-400">How to build this MVP fast and charge your first users.</p>
+                      <p className="text-xs text-zinc-400">Recommended technology choices and how to acquire paid early users.</p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="rounded-2xl border border-white/10 bg-black/40 p-5 space-y-2">
-                      <div className="flex items-center gap-2 text-xs font-bold text-amber-400">
-                        <Layers className="h-4 w-4" /> Recommended Stack
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                    <div className="rounded-2xl border border-white/10 bg-black/50 p-6 space-y-2.5">
+                      <div className="flex items-center gap-2 text-xs font-bold text-amber-400 uppercase tracking-wide">
+                        <Layers className="h-4 w-4" /> Tech Architecture
                       </div>
-                      <p className="text-xs text-zinc-300 leading-relaxed">Next.js + Tailwind CSS + OpenAI / ElevenLabs APIs + Supabase</p>
+                      <p className="text-xs text-zinc-300 leading-relaxed">
+                        Next.js (React), Tailwind CSS, OpenAI / ElevenLabs APIs, and Supabase for backend database and auth.
+                      </p>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-black/40 p-5 space-y-2">
-                      <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
+                    <div className="rounded-2xl border border-white/10 bg-black/50 p-6 space-y-2.5">
+                      <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-wide">
                         <Coins className="h-4 w-4" /> Pricing Model
                       </div>
-                      <p className="text-xs text-zinc-300 leading-relaxed">$29/mo (Starter Plan) & $79/mo (Pro/Unlimited Plan)</p>
+                      <p className="text-xs text-zinc-300 leading-relaxed">
+                        SaaS Subscription: $29/month Starter Plan (100 credits) & $79/month Pro Plan (Unlimited generation).
+                      </p>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-black/40 p-5 space-y-2">
-                      <div className="flex items-center gap-2 text-xs font-bold text-sky-400">
+                    <div className="rounded-2xl border border-white/10 bg-black/50 p-6 space-y-2.5">
+                      <div className="flex items-center gap-2 text-xs font-bold text-sky-400 uppercase tracking-wide">
                         <TrendingUp className="h-4 w-4" /> Go-To-Market
                       </div>
-                      <p className="text-xs text-zinc-300 leading-relaxed">Launch on ProductHunt, Reddit (r/SaaS), and Twitter cold outreach</p>
+                      <p className="text-xs text-zinc-300 leading-relaxed">
+                        ProductHunt Launch, cold Twitter/LinkedIn DMs to early creators, and short video demo tutorials on YouTube.
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Sticky Bottom Call-To-Action Box */}
+                {/* Bottom Launch Call-To-Action */}
                 <div className="rounded-3xl border border-[#deff9a]/30 bg-[#deff9a]/[0.05] p-8 text-center space-y-4 shadow-[0_0_50px_rgba(222,255,154,0.15)]">
-                  <h3 className="text-2xl font-extrabold text-white">Ready to Turn This Idea Into Reality?</h3>
+                  <h3 className="text-2xl font-extrabold text-white">Ready to Build This Startup?</h3>
                   <p className="text-xs text-zinc-300 max-w-xl mx-auto leading-relaxed">
-                    Clicking below will set up your personalized Founder Workspace with custom execution modules, GTM launchkits, and MVP specs.
+                    Launch your dedicated execution workspace equipped with custom AI modules, MVP architecture specs, and step-by-step roadmap tools.
                   </p>
 
                   {buildError && (
@@ -458,7 +465,7 @@ export function OpportunityDrawer({
                     {isBuilding ? (
                       <>
                         <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                        Generating Workspace...
+                        Creating Workspace...
                       </>
                     ) : (
                       <>
