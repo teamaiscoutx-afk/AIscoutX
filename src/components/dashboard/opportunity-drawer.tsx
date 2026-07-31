@@ -265,11 +265,12 @@ export function OpportunityDrawer({
                   </p>
 
                   {/* 💡 BEGINNER CALLOUT BOX: IN SIMPLE TERMS */}
-                  <div className="mt-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 flex items-start gap-3.5">
+                  {/* 💡 BEGINNER CALLOUT BOX: IN SIMPLE TERMS */}
+                  <div className="mt-6 rounded-2xl border border-amber-400/40 bg-amber-950/20 p-5 flex items-start gap-3.5 backdrop-blur-sm shadow-[0_0_20px_rgba(251,191,36,0.1)]">
                     <HelpCircle className="h-6 w-6 text-amber-400 shrink-0 mt-0.5" />
                     <div>
                       <p className="text-xs font-bold text-amber-400 uppercase tracking-wider">In Simple Terms (For Beginners)</p>
-                      <p className="text-sm font-medium text-amber-100 mt-1 leading-relaxed">
+                      <p className="text-sm font-semibold text-amber-100 mt-1 leading-relaxed">
                         {deepDive?.valueProp || `${selectedOpportunity.name} allows anyone to create professional studio voiceovers by simply pasting text, saving thousands on voice actors.`}
                       </p>
                     </div>
