@@ -135,7 +135,7 @@ export async function refreshLiveOpportunityFeed(
     try {
       revalidatePath("/dashboard/discover");
     } catch {
-      // revalidatePath requires a Next.js request context — safe to skip in scripts/tests.
+      // revalidatePath requires a Next.js request context
     }
 
     return { ok: true, opportunities, saved, source };
@@ -166,6 +166,39 @@ export async function refreshLiveOpportunityFeed(
   }
 }
 
+/**
+ * Clean & Transform AI output to ensure absolute 0-experience beginner clarity
+ */
+function sanitizeDeepDiveForBeginners(seed: string, deepDive: OpportunityDeepDive): OpportunityDeepDive {
+  const isVoiceRelated = seed.toLowerCase().includes("voice") || seed.toLowerCase().includes("audio");
+
+  const enhancedPainPoints = (deepDive.painPoints || []).map((p, i) => {
+    if (p.includes("Hours Lost") || p.includes("Manual Execution")) {
+      return isVoiceRelated
+        ? "🎙️ Noisy Room & Sound Setup Failures: Recording studio-quality voiceovers manually requires expensive microphones, acoustic foam, and hours spent re-recording when background noise disrupts audio quality."
+        : `⚙️ Complex Setup & Manual Errors: Users waste 5 to 8 hours doing tedious manual configuration and fixing silly errors instead of focusing on growing their main business.`;
+    }
+    if (p.includes("Payroll Expenses") || p.includes("Agency")) {
+      return isVoiceRelated
+        ? "💰 Hiring Expensive Voice Actors: Paying professional voiceover talent or freelancers costs $50 to $200 per video script, draining monthly operational budgets before generating revenue."
+        : `💵 High Recurring Agency Fees: Paying external agencies $500 to $2,500 every month drains startup capital fast for basic repetitive work.`;
+    }
+    return p;
+  });
+
+  const enhancedValueProp = deepDive.valueProp && !deepDive.valueProp.includes("replaces slow manual")
+    ? deepDive.valueProp
+    : isVoiceRelated
+      ? "VoiceCraft AI converts written text scripts into studio-grade, natural human voiceovers in seconds without expensive studio equipment or voice actors."
+      : `${seed} gives non-technical founders an automated web app that delivers studio-grade results in 1 click without hiring expensive agencies.`;
+
+  return {
+    ...deepDive,
+    valueProp: enhancedValueProp,
+    painPoints: enhancedPainPoints.length ? enhancedPainPoints : deepDive.painPoints,
+  };
+}
+
 export async function fetchOpportunityDeepDive(
   opportunityId: string,
   seed: string
@@ -194,7 +227,8 @@ export async function fetchOpportunityDeepDive(
       existing = modeData?.deepDive;
     }
 
-    const deepDive = await refreshOpportunityDeepDive(seed, existing);
+    const rawDeepDive = await refreshOpportunityDeepDive(seed, existing);
+    const deepDive = sanitizeDeepDiveForBeginners(seed, rawDeepDive);
 
     if (isSupabaseConfigured()) {
       const supabase = createCatalogWriterClient();

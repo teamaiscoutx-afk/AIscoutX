@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Coins,
   Cpu,
+  HelpCircle,
   Layers,
   Loader2,
   Rocket,
@@ -125,34 +126,34 @@ export function OpportunityDrawer({
   const currentOp = enrichedOpportunity ?? selectedOpportunity;
   const deepDive = currentOp?.deepDive;
 
-  // Ultra-detailed beginner fallback structure
+  // Ultra-clear specific fallback scenarios for beginners
   const defaultPainPoints = [
     {
-      title: "Hours Lost to Manual Execution & Re-work",
-      desc: "Creating high-quality output manually requires endless back-and-forth editing and setup. Users spend 5 to 8 hours fixing small mistakes, which severely delays project launches and slows down overall business growth.",
+      title: "🎙️ High Production & Recording Effort",
+      desc: "Creating professional media or audio manually requires expensive studio gear, room soundproofing, and endless re-recordings when mistakes happen.",
     },
     {
-      title: "High Agency & Freelancer Payroll Expenses",
-      desc: "Hiring external freelancers or agencies for specialized tasks costs anywhere from $500 to $2,500 every single month. For early-stage founders and creators, this drains operational budgets before the product generates stable revenue.",
+      title: "💰 Expensive Freelancer / Agency Fees",
+      desc: "Hiring voiceover artists or digital agencies costs $50 to $200 per single task, quickly draining small operational budgets.",
     },
     {
-      title: "Robotic & Complex Legacy Software",
-      desc: "Existing traditional software tools suffer from steep learning curves, cluttered user interfaces, and outdated results. Users often give up because tools require hours of technical configuration to get simple outcomes.",
+      title: "⏳ Slow Delivery & Bottlenecks",
+      desc: "Waiting days for freelancers to deliver edits halts marketing schedules and delays key product launches.",
     },
   ];
 
   const defaultSolutionSteps = [
     {
-      step: "Step 1: Simple Input & Intuitive Setup",
-      desc: "The user opens a clean, modern web dashboard and pastes their requirements or content script. No complex coding, software downloads, or technical setup is required—anyone can start in under 30 seconds.",
+      step: "Step 1: Paste Your Script or Input",
+      desc: "Paste your text script into the simple web dashboard. No technical coding, microphone, or software setup required.",
     },
     {
-      step: "Step 2: Automated AI Engine & Quality Polish",
-      desc: "The core automated background system processes the input in real-time. It fixes errors, balances output quality, and ensures the result matches professional industry standards without manual intervention.",
+      step: "Step 2: AI Enhances & Renders Studio Audio",
+      desc: "The AI engine selects human-like voices, removes background noise automatically, and balances speech tone instantly.",
     },
     {
-      step: "Step 3: Instant 1-Click Export & Delivery",
-      desc: "Users receive studio-grade, ready-to-publish files instantly. They can download assets in 1-click or automatically publish them directly to their connected workflow tools and publishing channels.",
+      step: "Step 3: Instant 1-Click Export",
+      desc: "Download high-definition ready-to-use audio files immediately or publish directly to your YouTube and video platforms.",
     },
   ];
 
@@ -237,11 +238,11 @@ export function OpportunityDrawer({
               </div>
             </header>
 
-            {/* Main Content Area */}
+            {/* Main Content */}
             <main className="flex-1 overflow-y-auto px-6 py-8 sm:px-12 md:px-16 lg:px-24 pb-32">
-              <div className="mx-auto max-w-5xl space-y-10">
+              <div className="mx-auto max-w-5xl space-y-8">
 
-                {/* Hero Header Card */}
+                {/* Main Hero Banner */}
                 <div className="rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.01] p-8 md:p-10 shadow-2xl relative overflow-hidden">
                   <div className="flex flex-wrap items-center gap-3 mb-4">
                     <Badge variant="outline" className={getTrendStageColor(selectedOpportunity.trendStage)}>
@@ -262,6 +263,17 @@ export function OpportunityDrawer({
                   <p className="mt-4 text-base md:text-lg text-zinc-300 font-normal leading-relaxed max-w-3xl">
                     {selectedOpportunity.description}
                   </p>
+
+                  {/* 💡 BEGINNER CALLOUT BOX: IN SIMPLE TERMS */}
+                  <div className="mt-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 flex items-start gap-3.5">
+                    <HelpCircle className="h-6 w-6 text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-bold text-amber-400 uppercase tracking-wider">In Simple Terms (For Beginners)</p>
+                      <p className="text-sm font-medium text-amber-100 mt-1 leading-relaxed">
+                        {deepDive?.valueProp || `${selectedOpportunity.name} allows anyone to create professional studio voiceovers by simply pasting text, saving thousands on voice actors.`}
+                      </p>
+                    </div>
+                  </div>
 
                   <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4 border-t border-white/10 pt-6">
                     <div>
@@ -286,11 +298,11 @@ export function OpportunityDrawer({
                 {deepDiveLoading && (
                   <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center text-zinc-400 space-y-3">
                     <Loader2 className="h-8 w-8 animate-spin text-[#deff9a] mx-auto" />
-                    <p className="text-sm font-medium">Generating deep-dive context for beginners...</p>
+                    <p className="text-sm font-medium">Analyzing market context & generating beginner breakdown...</p>
                   </div>
                 )}
 
-                {/* CONTAINER 1: THE CORE PROBLEM */}
+                {/* 🔴 CONTAINER 1: THE CORE PROBLEM */}
                 <div className="rounded-3xl border border-red-500/20 bg-gradient-to-b from-red-500/[0.06] to-transparent p-8 space-y-6">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/20 text-red-400">
@@ -298,7 +310,7 @@ export function OpportunityDrawer({
                     </div>
                     <div>
                       <h2 className="text-xl font-bold text-white">1. The Core Problem</h2>
-                      <p className="text-xs text-zinc-400">Why current manual methods fail and hold users back from growing.</p>
+                      <p className="text-xs text-zinc-400">Exact real-world pain points that customers face today.</p>
                     </div>
                   </div>
 
@@ -306,7 +318,7 @@ export function OpportunityDrawer({
                     {deepDive?.painPoints?.length
                       ? deepDive.painPoints.map((pain, idx) => (
                           <div key={idx} className="rounded-2xl border border-red-500/15 bg-black/50 p-6 space-y-2.5">
-                            <div className="text-xs font-bold text-red-400 uppercase tracking-wide">Problem #{idx + 1}</div>
+                            <div className="text-xs font-bold text-red-400 uppercase tracking-wide">Pain Point #{idx + 1}</div>
                             <p className="text-xs text-zinc-300 leading-relaxed">{pain}</p>
                           </div>
                         ))
@@ -319,7 +331,7 @@ export function OpportunityDrawer({
                   </div>
                 </div>
 
-                {/* CONTAINER 2: HOW YOUR STARTUP SOLVES IT */}
+                {/* 🟢 CONTAINER 2: HOW YOUR STARTUP SOLVES IT */}
                 <div className="rounded-3xl border border-[#deff9a]/25 bg-gradient-to-b from-[#deff9a]/[0.05] to-transparent p-8 space-y-6">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#deff9a]/20 text-[#deff9a]">
@@ -327,15 +339,8 @@ export function OpportunityDrawer({
                     </div>
                     <div>
                       <h2 className="text-xl font-bold text-white">2. How Your Startup Solves It</h2>
-                      <p className="text-xs text-zinc-400">Simple 3-step product workflow that turns this problem into a smooth software solution.</p>
+                      <p className="text-xs text-zinc-400">Simple 3-step product workflow designed for effortless execution.</p>
                     </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-white/10 bg-black/60 p-6">
-                    <p className="text-xs text-zinc-400 font-semibold uppercase tracking-wider mb-1">Core Value Proposition</p>
-                    <p className="text-sm font-medium text-[#deff9a] leading-relaxed">
-                      {deepDive?.valueProp || `${selectedOpportunity.name} replaces slow manual processes with a simple, automated web software that delivers studio-grade results in seconds.`}
-                    </p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-2">
@@ -343,7 +348,7 @@ export function OpportunityDrawer({
                       ? deepDive.solutionFeatures.map((feat, idx) => (
                           <div key={idx} className="rounded-2xl border border-[#deff9a]/15 bg-black/50 p-6 space-y-2.5">
                             <div className="flex items-center gap-2 text-xs font-bold text-[#deff9a] uppercase tracking-wide">
-                              <CheckCircle2 className="h-4 w-4" /> Step #{idx + 1}
+                              <CheckCircle2 className="h-4 w-4" /> Workflow Step #{idx + 1}
                             </div>
                             <p className="text-xs text-zinc-300 leading-relaxed">{feat}</p>
                           </div>
@@ -359,15 +364,15 @@ export function OpportunityDrawer({
                   </div>
                 </div>
 
-                {/* CONTAINER 3: TARGET AUDIENCE */}
+                {/* 👥 CONTAINER 3: TARGET AUDIENCE */}
                 <div className="rounded-3xl border border-sky-500/20 bg-gradient-to-b from-sky-500/[0.05] to-transparent p-8 space-y-6">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/20 text-sky-400">
                       <Users className="h-5 w-5" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-white">3. Target Audience</h2>
-                      <p className="text-xs text-zinc-400">The specific groups of people and businesses who desperately need this product.</p>
+                      <h2 className="text-xl font-bold text-white">3. Who Will Pay You</h2>
+                      <p className="text-xs text-zinc-400">Exact customer personas desperate for this solution.</p>
                     </div>
                   </div>
 
@@ -377,7 +382,7 @@ export function OpportunityDrawer({
                         <div key={idx} className="flex items-start gap-3.5 rounded-2xl border border-sky-500/15 bg-black/50 p-6">
                           <Target className="h-5 w-5 text-sky-400 shrink-0 mt-0.5" />
                           <div>
-                            <p className="text-xs font-bold text-sky-400 uppercase tracking-wide">User Segment #{idx + 1}</p>
+                            <p className="text-xs font-bold text-sky-400 uppercase tracking-wide">Customer Segment #{idx + 1}</p>
                             <p className="text-xs text-zinc-300 mt-1.5 leading-relaxed">{aud}</p>
                           </div>
                         </div>
@@ -387,15 +392,15 @@ export function OpportunityDrawer({
                         <div className="flex items-start gap-3.5 rounded-2xl border border-sky-500/15 bg-black/50 p-6">
                           <Target className="h-5 w-5 text-sky-400 shrink-0 mt-0.5" />
                           <div>
-                            <p className="text-xs font-bold text-sky-400 uppercase tracking-wide">Creators & Independent Founders</p>
-                            <p className="text-xs text-zinc-300 mt-1.5 leading-relaxed">Solo operators who need fast execution without burning funds on expensive freelancers or dedicated staff.</p>
+                            <p className="text-xs font-bold text-sky-400 uppercase tracking-wide">YouTube Creators & Podcasters</p>
+                            <p className="text-xs text-zinc-300 mt-1.5 leading-relaxed">Publishers making 3–5 videos a week who want fast voiceovers without hiring expensive talent.</p>
                           </div>
                         </div>
                         <div className="flex items-start gap-3.5 rounded-2xl border border-sky-500/15 bg-black/50 p-6">
                           <Target className="h-5 w-5 text-sky-400 shrink-0 mt-0.5" />
                           <div>
-                            <p className="text-xs font-bold text-sky-400 uppercase tracking-wide">Digital Agencies & Media Teams</p>
-                            <p className="text-xs text-zinc-300 mt-1.5 leading-relaxed">Agencies managing multiple client accounts who require consistent, high-volume automated output every week.</p>
+                            <p className="text-xs font-bold text-sky-400 uppercase tracking-wide">E-Learning & Course Creators</p>
+                            <p className="text-xs text-zinc-300 mt-1.5 leading-relaxed">Educators building online courses who need clean, consistent audio explanation across dozens of modules.</p>
                           </div>
                         </div>
                       </>
@@ -403,34 +408,34 @@ export function OpportunityDrawer({
                   </div>
                 </div>
 
-                {/* CONTAINER 4: TECH STACK & MONETIZATION */}
+                {/* ⚙️ CONTAINER 4: TECH STACK & MONETIZATION */}
                 <div className="rounded-3xl border border-amber-500/20 bg-gradient-to-b from-amber-500/[0.05] to-transparent p-8 space-y-6">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
                       <Cpu className="h-5 w-5" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-white">4. Tech Stack & Monetization Strategy</h2>
-                      <p className="text-xs text-zinc-400">Recommended technology choices and how to acquire paid early users.</p>
+                      <h2 className="text-xl font-bold text-white">4. Simple Tech Stack & Monetization</h2>
+                      <p className="text-xs text-zinc-400">How to build MVP and charge your first paid users.</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                     <div className="rounded-2xl border border-white/10 bg-black/50 p-6 space-y-2.5">
                       <div className="flex items-center gap-2 text-xs font-bold text-amber-400 uppercase tracking-wide">
-                        <Layers className="h-4 w-4" /> Tech Architecture
+                        <Layers className="h-4 w-4" /> Recommended Tech
                       </div>
                       <p className="text-xs text-zinc-300 leading-relaxed">
-                        Next.js (React), Tailwind CSS, OpenAI / ElevenLabs APIs, and Supabase for backend database and auth.
+                        Next.js + Tailwind CSS, Supabase DB, connected to OpenAI / ElevenLabs Audio API endpoints.
                       </p>
                     </div>
 
                     <div className="rounded-2xl border border-white/10 bg-black/50 p-6 space-y-2.5">
                       <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-wide">
-                        <Coins className="h-4 w-4" /> Pricing Model
+                        <Coins className="h-4 w-4" /> Monthly Pricing
                       </div>
                       <p className="text-xs text-zinc-300 leading-relaxed">
-                        SaaS Subscription: $29/month Starter Plan (100 credits) & $79/month Pro Plan (Unlimited generation).
+                        $29/mo Starter (50 minutes voice audio) & $79/mo Pro Plan (Unlimited audio + priority AI voices).
                       </p>
                     </div>
 
@@ -439,7 +444,7 @@ export function OpportunityDrawer({
                         <TrendingUp className="h-4 w-4" /> Go-To-Market
                       </div>
                       <p className="text-xs text-zinc-300 leading-relaxed">
-                        ProductHunt Launch, cold Twitter/LinkedIn DMs to early creators, and short video demo tutorials on YouTube.
+                        Post before/after audio clips on Twitter/X, launch on ProductHunt, and DM video creators.
                       </p>
                     </div>
                   </div>
