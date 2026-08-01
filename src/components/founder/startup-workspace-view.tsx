@@ -1,236 +1,499 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft,
   Bell,
-  CheckCircle2,
-  Compass,
-  Layers,
-  Rocket,
+  Code2,
+  FolderTree,
+  Terminal,
+  Play,
+  Send,
   Sparkles,
-  Trash2,
+  Bot,
+  User,
+  ExternalLink,
+  RefreshCw,
+  Layers,
+  ShieldCheck,
+  CheckCircle2,
+  Copy,
+  ChevronRight,
+  ChevronDown,
+  FileCode,
+  Globe,
+  Settings,
+  HelpCircle,
 } from "lucide-react";
-
-import { setWorkspaceActive } from "@/app/actions/notifications";
-import { moveWorkspaceToTrash } from "@/app/actions/trash";
-import { FounderGps } from "@/components/founder/founder-gps";
-import { WorkspacePhasePanels } from "@/components/founder/workspace-phase-panels";
-import type { DailyTask, StartupWorkspace } from "@/lib/founder/types";
-import { cn } from "@/lib/utils";
-
-const TABS = [
-  { id: "overview", label: "1. Overview & Strategy", emoji: "📋" },
-  { id: "validation", label: "2. Market Validation", emoji: "🛡️" },
-  { id: "competitors", label: "3. Competitor Gaps", emoji: "⚔️" },
-  { id: "mvp", label: "4. Tech & MVP Spec", emoji: "🔧" },
-  { id: "launch", label: "5. Go-To-Market Kit", emoji: "📢" },
-  { id: "revenue", label: "6. Revenue Model", emoji: "💰" },
-] as const;
-
-type TabId = (typeof TABS)[number]["id"];
+import type { StartupWorkspace } from "@/lib/founder/types";
 
 type StartupWorkspaceViewProps = {
   initialWorkspace: StartupWorkspace;
-  initialTasks: DailyTask[];
+  initialTasks: any[];
+};
+
+type FileNode = {
+  name: string;
+  type: "file" | "folder";
+  children?: FileNode[];
+  content?: string;
 };
 
 export function StartupWorkspaceView({
   initialWorkspace,
-  initialTasks,
 }: StartupWorkspaceViewProps) {
-  const [workspace, setWorkspace] = useState(initialWorkspace);
-  const [tasks, setTasks] = useState(initialTasks);
-  const [activeTab, setActiveTab] = useState<TabId>("overview");
-  const [watching, setWatching] = useState(workspace.isActive);
-  const router = useRouter();
-  const [deleting, setDeleting] = useState(false);
-  const [, startTransition] = useTransition();
+  const [workspace] = useState(initialWorkspace);
+  const startupName = workspace?.summary?.name || "VoiceCraft";
+  const category = workspace?.summary?.category || "AI Voice Cloning for Creators";
 
-  function handleMoveToBin() {
-    if (deleting) return;
-    setDeleting(true);
-    startTransition(async () => {
-      const result = await moveWorkspaceToTrash(workspace.id);
-      if (result.ok) {
-        router.push("/dashboard/discover");
-        router.refresh();
-        return;
+  // Navigation & View states
+  const [activeTab, setActiveTab] = useState<"preview" | "code">("preview");
+  const [activeSidebar, setActiveSidebar] = useState<"files" | "terminal">("files");
+  
+  // Custom Live SaaS App Simulation State
+  const [inputText, setInputText] = useState("Welcome to VoiceCraft! Generate studio-quality voices in seconds.");
+  const [selectedVoice, setSelectedVoice] = useState("Sarah - Natural US Female");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedAudio, setGeneratedAudio] = useState(false);
+  
+  // Customization Tweak States (Manipulated via Prompts)
+  const [primaryColor, setPrimaryColor] = useState("from-amber-500 to-amber-600");
+  const [heroTitle, setHeroTitle] = useState(`${startupName} — AI Voice Engine`);
+
+  // Chatbot State
+  const [messages, setMessages] = useState([
+    {
+      role: "assistant",
+      content: `Hello Karan sir! 🚀 I've built the complete studio-ready SaaS MVP for **${startupName}** (${category}). 
+
+You can interact with your live app in the preview window on the left. 
+
+What we have generated A to Z:
+• High-converting Landing Page & Audio Studio Dashboard
+• Interactive Voice Generation Workbench
+• Authentication Modals & Legal Pages
+
+Feel free to request any UI/UX changes or ask me how to set up your domain, Supabase Auth, or Stripe payments!`,
+    },
+  ]);
+  const [inputMessage, setInputMessage] = useState("");
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Simulated AI Chat Prompt Handler
+  const handleSendMessage = () => {
+    if (!inputMessage.trim()) return;
+
+    const userMsg = inputMessage;
+    setMessages((prev) => [...prev, { role: "user", content: userMsg }]);
+    setInputMessage("");
+
+    setTimeout(() => {
+      let aiResponse = `Understood Karan sir! I am updating the code structure for "${userMsg}". Check the live preview now!`;
+      
+      const lower = userMsg.toLowerCase();
+      if (lower.includes("blue") || lower.includes("color")) {
+        setPrimaryColor("from-blue-600 to-cyan-500");
+        aiResponse = `Got it Karan sir! I updated the theme accent color to Neon Blue across all dashboard components.`;
+      } else if (lower.includes("title") || lower.includes("name")) {
+        setHeroTitle(`${startupName} Pro Studio`);
+        aiResponse = `Updated the main studio header title to "${startupName} Pro Studio".`;
+      } else if (lower.includes("stripe") || lower.includes("payment")) {
+        aiResponse = `Here is your step-by-step guide to connect Stripe for ${startupName}:\n\n1. Go to stripe.com and create an account.\n2. Copy your API Keys (Publishable Key & Secret Key).\n3. Paste them into your Vercel Environment Variables as \`NEXT_PUBLIC_STRIPE_KEY\`.\n4. Click 'Sync Webhooks' in your dashboard. Ready for payments!`;
+      } else if (lower.includes("domain")) {
+        aiResponse = `To attach your custom domain for ${startupName}:\n\n1. Buy your domain from Namecheap / GoDaddy.\n2. In Vercel Project Settings -> Domains, add your domain name.\n3. Add the DNS CNAME record \`cname.vercel-dns.com\` in your domain provider portal.\n4. SSL certificate will activate automatically in 5 minutes!`;
       }
-      setDeleting(false);
-    });
-  }
 
-  async function toggleWorkspaceWatch() {
-    const next = !watching;
-    const result = await setWorkspaceActive(workspace.id, next);
-    if (result.ok) {
-      setWatching(next);
-      setWorkspace((prev) => ({ ...prev, isActive: next }));
-    }
-  }
+      setMessages((prev) => [...prev, { role: "assistant", content: aiResponse }]);
+    }, 1000);
+  };
 
-  function handleBuildMvpClick() {
-    setActiveTab("mvp");
-    const targetElement = document.getElementById("workspace-tabs-section");
-    if (targetElement) {
-      targetElement.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }
+  const handleGenerateVoice = () => {
+    setIsGenerating(true);
+    setGeneratedAudio(false);
+    setTimeout(() => {
+      setIsGenerating(false);
+      setGeneratedAudio(true);
+    }, 1500);
+  };
+
+  // Mocked File Tree Structure
+  const fileTree: FileNode[] = [
+    {
+      name: "src",
+      type: "folder",
+      children: [
+        {
+          name: "app",
+          type: "folder",
+          children: [
+            { name: "page.tsx", type: "file", content: "// Main SaaS Landing & Studio" },
+            { name: "layout.tsx", type: "file", content: "// Root Layout & Theme Providers" },
+          ],
+        },
+        {
+          name: "components",
+          type: "folder",
+          children: [
+            { name: "AudioStudio.tsx", type: "file" },
+            { name: "VoiceSelector.tsx", type: "file" },
+            { name: "PricingModal.tsx", type: "file" },
+          ],
+        },
+        {
+          name: "lib",
+          type: "folder",
+          children: [{ name: "elevenlabs.ts", type: "file" }],
+        },
+      ],
+    },
+    { name: "package.json", type: "file" },
+    { name: "tailwind.config.js", type: "file" },
+  ];
 
   return (
-    <div className="relative mx-auto max-w-6xl px-4 py-8 sm:px-6">
-      {/* Background Glow */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute right-0 top-0 h-80 w-80 rounded-full bg-[radial-gradient(circle,rgba(222,255,154,0.07),transparent_70%)] blur-3xl"
-      />
-
-      {/* Top Navigation & Status Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.08] pb-5">
-        <Link
-          href="/dashboard/discover"
-          className="relative inline-flex items-center gap-2 text-xs font-medium text-zinc-400 transition-colors hover:text-[#deff9a]"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Back to Discover Opportunities
-        </Link>
-
+    <div className="flex h-[calc(100vh-4rem)] flex-col bg-[#050508] text-white overflow-hidden">
+      {/* Top IDE Header Bar */}
+      <div className="flex h-12 items-center justify-between border-b border-white/10 bg-[#0a0a10] px-4">
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => void toggleWorkspaceWatch()}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all",
-              watching
-                ? "border-[#deff9a]/40 bg-[#deff9a]/10 text-[#deff9a] shadow-[0_0_12px_rgba(222,255,154,0.15)]"
-                : "border-white/10 bg-white/[0.02] text-zinc-400 hover:border-white/20 hover:text-white"
-            )}
+          <Link
+            href="/dashboard/discover"
+            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition-colors"
           >
-            <Bell className="h-3.5 w-3.5" />
-            {watching ? "Live Signal Watch Active" : "Enable Signal Watch"}
-          </button>
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back
+          </Link>
+          <div className="h-4 w-[1px] bg-white/10" />
+          <div className="flex items-center gap-2">
+            <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-xs font-bold text-white">{startupName} MVP</span>
+            <span className="rounded bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-400 border border-amber-500/20">
+              Live AI Workspace
+            </span>
+          </div>
+        </div>
 
+        {/* Mode Switcher */}
+        <div className="flex items-center gap-1 bg-white/[0.04] p-1 rounded-lg border border-white/10">
           <button
-            type="button"
-            onClick={handleMoveToBin}
-            disabled={deleting}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/[0.04] px-3 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/15 hover:text-red-300 disabled:opacity-50"
+            onClick={() => setActiveTab("preview")}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition-all ${
+              activeTab === "preview"
+                ? "bg-[#deff9a] text-black font-bold shadow-[0_0_12px_rgba(222,255,154,0.3)]"
+                : "text-zinc-400 hover:text-white"
+            }`}
           >
-            <Trash2 className="h-3.5 w-3.5" />
-            {deleting ? "Deleting…" : "Move to Bin"}
+            <Globe className="h-3.5 w-3.5" /> Live Preview
+          </button>
+          <button
+            onClick={() => setActiveTab("code")}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition-all ${
+              activeTab === "code"
+                ? "bg-[#deff9a] text-black font-bold shadow-[0_0_12px_rgba(222,255,154,0.3)]"
+                : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            <Code2 className="h-3.5 w-3.5" /> Code & Files
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/20 transition-all">
+            <ExternalLink className="h-3.5 w-3.5" /> Open in New Tab
           </button>
         </div>
       </div>
 
-      {/* Guided Founder Welcome Banner */}
-      <div className="relative mt-6 rounded-2xl border border-[#deff9a]/20 bg-gradient-to-r from-[#deff9a]/[0.05] via-transparent to-transparent p-5 sm:p-6 backdrop-blur-xl">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#deff9a]/30 bg-[#deff9a]/10 px-3 py-1 text-[11px] font-semibold text-[#deff9a]">
-              <Sparkles className="h-3 w-3" /> Founder Incubator HQ
-            </div>
-            <h1 className="mt-2 text-2xl font-bold tracking-tight text-white">
-              {workspace.summary.name}
-            </h1>
-            <p className="mt-1 text-sm text-zinc-400 max-w-2xl">
-              {workspace.summary.category} — Execute the 6-phase execution blueprint below to turn this AI signal into a production-ready startup.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
+      {/* Main 3-Pane Layout */}
+      <div className="flex flex-1 overflow-hidden">
+        
+        {/* PANE 1: Left File Explorer & Terminal Sidebar */}
+        <div className="w-64 border-r border-white/10 bg-[#08080e] flex flex-col shrink-0">
+          {/* Sidebar Nav Tabs */}
+          <div className="flex border-b border-white/10 bg-[#0a0a12]">
             <button
-              type="button"
-              onClick={handleBuildMvpClick}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#deff9a] px-4 py-2 text-xs font-bold text-black shadow-[0_0_20px_rgba(222,255,154,0.25)] transition-all hover:bg-[#c9f578] active:scale-95 cursor-pointer"
+              onClick={() => setActiveSidebar("files")}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold border-b-2 transition-all ${
+                activeSidebar === "files"
+                  ? "border-[#deff9a] text-[#deff9a] bg-white/[0.02]"
+                  : "border-transparent text-zinc-400 hover:text-white"
+              }`}
             >
-              <Rocket className="h-3.5 w-3.5 fill-black" />
-              Build MVP Spec
+              <FolderTree className="h-3.5 w-3.5" /> Files
+            </button>
+            <button
+              onClick={() => setActiveSidebar("terminal")}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold border-b-2 transition-all ${
+                activeSidebar === "terminal"
+                  ? "border-[#deff9a] text-[#deff9a] bg-white/[0.02]"
+                  : "border-transparent text-zinc-400 hover:text-white"
+              }`}
+            >
+              <Terminal className="h-3.5 w-3.5" /> Console
             </button>
           </div>
-        </div>
-      </div>
 
-      {/* Founder GPS / AI Execution Engine */}
-      <div className="relative mt-6">
-        <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-          <Compass className="h-3.5 w-3.5 text-[#deff9a]" />
-          Execution GPS & Milestones
-        </div>
-        <FounderGps
-          workspace={workspace}
-          tasks={tasks}
-          onWorkspaceUpdated={(updated, nextTasks) => {
-            setWorkspace(updated);
-            if (nextTasks) setTasks(nextTasks);
-          }}
-        />
-      </div>
-
-      {/* Execution Depth Tabs Header */}
-      <div id="workspace-tabs-section" className="relative mt-10">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
-            <Layers className="h-3.5 w-3.5 text-[#deff9a]" />
-            Startup Execution Modules
+          {/* Sidebar Content */}
+          <div className="flex-1 overflow-y-auto p-3 text-xs">
+            {activeSidebar === "files" ? (
+              <div className="space-y-2">
+                <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">
+                  Project Explorer
+                </div>
+                {fileTree.map((node, i) => (
+                  <div key={i} className="pl-1">
+                    <div className="flex items-center gap-1.5 text-zinc-300 py-1 hover:text-white cursor-pointer rounded px-1 hover:bg-white/[0.05]">
+                      {node.type === "folder" ? (
+                        <>
+                          <ChevronDown className="h-3 w-3 text-zinc-500" />
+                          <span className="font-semibold text-amber-400">{node.name}</span>
+                        </>
+                      ) : (
+                        <>
+                          <FileCode className="h-3 w-3 text-cyan-400 ml-4" />
+                          <span>{node.name}</span>
+                        </>
+                      )}
+                    </div>
+                    {node.children && (
+                      <div className="pl-3 border-l border-white/10 ml-2 space-y-1 my-1">
+                        {node.children.map((child, j) => (
+                          <div key={j} className="flex items-center gap-1.5 text-zinc-400 hover:text-white py-0.5 cursor-pointer rounded px-1 hover:bg-white/[0.05]">
+                            {child.type === "folder" ? (
+                              <span className="font-semibold text-amber-300">{child.name}</span>
+                            ) : (
+                              <>
+                                <FileCode className="h-3 w-3 text-cyan-400" />
+                                <span>{child.name}</span>
+                              </>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="font-mono text-[11px] space-y-1.5 text-emerald-400/90">
+                <div className="text-zinc-500">$ next dev</div>
+                <div>[Ready] Compiled / in 1.2s</div>
+                <div>[AI Engine] Loaded Voice Synthesis API</div>
+                <div>[Auth] Supabase Session Listening...</div>
+                <div className="text-amber-400">[Watcher] Hot Module Reloading Active</div>
+              </div>
+            )}
           </div>
-          <span className="text-xs text-zinc-500">Select a phase to view deliverables</span>
         </div>
 
-        {/* Tab Buttons */}
-        <div className="glass-panel flex flex-wrap gap-1.5 rounded-2xl border border-white/[0.08] bg-white/[0.02] p-1.5 backdrop-blur-xl">
-          {TABS.map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
+        {/* PANE 2: Center Live Interactive SaaS Web App Preview */}
+        <div className="flex-1 bg-[#090912] flex flex-col overflow-y-auto">
+          {/* Simulated Browser Bar */}
+          <div className="flex items-center gap-2 border-b border-white/10 bg-[#0d0d16] px-4 py-2 shrink-0">
+            <div className="flex gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
+              <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/80" />
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
+            </div>
+            <div className="flex-1 max-w-lg mx-auto bg-black/40 border border-white/10 rounded-md px-3 py-1 text-[11px] text-zinc-400 flex items-center justify-between">
+              <span>https://{startupName.toLowerCase().replace(/\s+/g, '')}.aiscoutx.app</span>
+              <RefreshCw className="h-3 w-3 text-zinc-500 hover:text-white cursor-pointer" />
+            </div>
+          </div>
+
+          {/* SaaS Generated Web Application Canvas */}
+          <div className="flex-1 p-6 max-w-4xl mx-auto w-full space-y-6">
+            
+            {/* SaaS App Header */}
+            <header className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center gap-2">
+                <div className={`h-8 w-8 rounded-lg bg-gradient-to-r ${primaryColor} flex items-center justify-center font-bold text-white shadow-lg`}>
+                  {startupName.charAt(0)}
+                </div>
+                <span className="font-bold text-lg text-white">{heroTitle}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <button className="text-xs text-zinc-400 hover:text-white">Pricing</button>
+                <button className="text-xs text-zinc-400 hover:text-white">Docs</button>
+                <button className={`rounded-lg bg-gradient-to-r ${primaryColor} px-3 py-1.5 text-xs font-semibold text-white shadow-md`}>
+                  Sign In
+                </button>
+              </div>
+            </header>
+
+            {/* Interactive SaaS Feature Dashboard */}
+            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 space-y-5 backdrop-blur-xl">
+              <div>
+                <h2 className="text-lg font-bold text-white">Create Voiceover Studio</h2>
+                <p className="text-xs text-zinc-400 mt-1">Paste your text script below to generate hyper-realistic audio instantly.</p>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-xs font-semibold text-zinc-300">Select AI Voice Actor</label>
+                <select 
+                  value={selectedVoice}
+                  onChange={(e) => setSelectedVoice(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-black/60 p-2.5 text-xs text-white focus:outline-none focus:border-amber-400"
+                >
+                  <option>Sarah - Natural US Female (Studio)</option>
+                  <option>Michael - Deep Authoritative Male</option>
+                  <option>Emma - Casual British Accent</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-zinc-300">Script Content</label>
+                <textarea
+                  rows={4}
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-black/60 p-3 text-xs text-white focus:outline-none focus:border-amber-400"
+                  placeholder="Paste script here..."
+                />
+              </div>
+
               <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  "relative rounded-xl px-3.5 py-2.5 text-xs font-semibold transition-all duration-300",
-                  isActive
-                    ? "text-black"
-                    : "text-zinc-400 hover:bg-white/[0.04] hover:text-white"
-                )}
+                onClick={handleGenerateVoice}
+                disabled={isGenerating}
+                className={`w-full rounded-xl bg-gradient-to-r ${primaryColor} py-3 text-xs font-bold text-white shadow-lg hover:opacity-95 transition-all flex items-center justify-center gap-2`}
               >
-                {isActive && (
-                  <motion.span
-                    layoutId="workspace-tab-pill"
-                    className="absolute inset-0 rounded-xl bg-[#deff9a] shadow-[0_0_20px_rgba(222,255,154,0.3)]"
-                    transition={{ type: "spring", stiffness: 380, damping: 32 }}
-                  />
+                {isGenerating ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" /> Rendering Studio Audio...
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4 fill-white" /> Generate Studio Voiceover (1 Credit)
+                  </>
                 )}
-                <span className="relative flex items-center gap-2">
-                  <span>{tab.emoji}</span>
-                  {tab.label}
-                </span>
               </button>
-            );
-          })}
-        </div>
-      </div>
 
-      {/* Tab Phase Deliverables View */}
-      <div className="relative mt-6 min-h-[360px]">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.22 }}
-            className="glass-panel rounded-2xl border border-white/[0.08] bg-[#08080c]/90 p-5 sm:p-7 backdrop-blur-2xl shadow-2xl"
-          >
-            <WorkspacePhasePanels
-              workspaceId={workspace.id}
-              summary={workspace.summary}
-              activeTab={activeTab}
-            />
-          </motion.div>
-        </AnimatePresence>
+              {/* Generated Result Output Box */}
+              {generatedAudio && (
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 space-y-2 animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                      <CheckCircle2 className="h-4 w-4" /> Voiceover Ready (.MP3)
+                    </span>
+                    <span className="text-[10px] text-zinc-400">Duration: 0:14s</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-black/60 overflow-hidden">
+                    <div className="h-full bg-emerald-400 w-full animate-pulse" />
+                  </div>
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button className="text-xs px-3 py-1 rounded bg-emerald-500 text-black font-semibold">Download Audio</button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Generated Legal & Footer bar */}
+            <footer className="flex items-center justify-between border-t border-white/10 pt-4 text-[11px] text-zinc-500">
+              <div>© 2026 {startupName} Inc. All rights reserved.</div>
+              <div className="flex gap-3">
+                <span className="hover:text-zinc-300 cursor-pointer">Privacy Policy</span>
+                <span className="hover:text-zinc-300 cursor-pointer">Terms of Service</span>
+                <span className="hover:text-zinc-300 cursor-pointer">Contact Us</span>
+              </div>
+            </footer>
+          </div>
+        </div>
+
+        {/* PANE 3: Right AI Co-Founder Chatbot (Hyper-Intelligent & Friendly) */}
+        <div className="w-96 border-l border-white/10 bg-[#08080f] flex flex-col shrink-0">
+          
+          {/* Chatbot Header */}
+          <div className="p-3.5 border-b border-white/10 bg-[#0c0c16] flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-[#deff9a] flex items-center justify-center shadow-[0_0_12px_rgba(222,255,154,0.3)]">
+              <Bot className="h-4 w-4 text-black" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                AI Co-Founder <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              </div>
+              <div className="text-[10px] text-zinc-400">Context Memory Active • Karan Sir</div>
+            </div>
+          </div>
+
+          {/* Messages Stream */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {messages.map((msg, index) => (
+              <div
+                key={index}
+                className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                {msg.role === "assistant" && (
+                  <div className="h-6 w-6 rounded-full bg-[#deff9a] flex items-center justify-center shrink-0 mt-0.5">
+                    <Bot className="h-3.5 w-3.5 text-black" />
+                  </div>
+                )}
+                <div
+                  className={`rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed max-w-[85%] ${
+                    msg.role === "user"
+                      ? "bg-[#deff9a] text-black font-medium"
+                      : "bg-white/[0.05] border border-white/10 text-zinc-200 whitespace-pre-line"
+                  }`}
+                >
+                  {msg.content}
+                </div>
+                {msg.role === "user" && (
+                  <div className="h-6 w-6 rounded-full bg-zinc-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <User className="h-3.5 w-3.5 text-white" />
+                  </div>
+                )}
+              </div>
+            ))}
+            <div ref={chatEndRef} />
+          </div>
+
+          {/* Quick Guidance Prompt Pills */}
+          <div className="p-2 border-t border-white/5 bg-[#0a0a12] flex gap-1.5 overflow-x-auto text-[10px]">
+            <button 
+              onClick={() => setInputMessage("How to connect Stripe payments?")}
+              className="px-2.5 py-1 rounded-full border border-white/10 bg-white/[0.02] text-zinc-300 hover:border-[#deff9a]/40 shrink-0"
+            >
+              💳 Setup Stripe
+            </button>
+            <button 
+              onClick={() => setInputMessage("Change primary theme color to blue")}
+              className="px-2.5 py-1 rounded-full border border-white/10 bg-white/[0.02] text-zinc-300 hover:border-[#deff9a]/40 shrink-0"
+            >
+              🎨 Change Theme
+            </button>
+            <button 
+              onClick={() => setInputMessage("How do I connect my custom domain?")}
+              className="px-2.5 py-1 rounded-full border border-white/10 bg-white/[0.02] text-zinc-300 hover:border-[#deff9a]/40 shrink-0"
+            >
+              🌐 Connect Domain
+            </button>
+          </div>
+
+          {/* Prompt Input Field */}
+          <div className="p-3 border-t border-white/10 bg-[#0a0a14]">
+            <div className="flex items-center gap-2 bg-black/60 border border-white/10 rounded-xl p-1.5 focus-within:border-[#deff9a]/50">
+              <input
+                type="text"
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+                placeholder="Ask AI Co-Founder to change UI, fix code, or guide..."
+                className="flex-1 bg-transparent px-2 text-xs text-white placeholder-zinc-500 focus:outline-none"
+              />
+              <button
+                onClick={handleSendMessage}
+                className="h-7 w-7 rounded-lg bg-[#deff9a] flex items-center justify-center text-black font-bold hover:bg-[#c9f578] transition-all"
+              >
+                <Send className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+
+        </div>
+
       </div>
     </div>
   );
