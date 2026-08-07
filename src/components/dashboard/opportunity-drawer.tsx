@@ -121,7 +121,8 @@ export function OpportunityDrawer({
     });
   }
 
-  if (!mounted) return null;
+  // Guard Condition: Agar mounted nahi hai ya selectedOpportunity NULL hai, to drawer render nahi hoga
+  if (!mounted || !selectedOpportunity) return null;
 
   const currentOp = enrichedOpportunity ?? selectedOpportunity;
   const deepDive = currentOp?.deepDive;
@@ -264,7 +265,6 @@ export function OpportunityDrawer({
                     {selectedOpportunity.description}
                   </p>
 
-                  {/* 💡 BEGINNER CALLOUT BOX: IN SIMPLE TERMS */}
                   {/* 💡 BEGINNER CALLOUT BOX: IN SIMPLE TERMS */}
                   <div className="mt-6 rounded-2xl border border-amber-400/40 bg-amber-950/20 p-5 flex items-start gap-3.5 backdrop-blur-sm shadow-[0_0_20px_rgba(251,191,36,0.1)]">
                     <HelpCircle className="h-6 w-6 text-amber-400 shrink-0 mt-0.5" />
