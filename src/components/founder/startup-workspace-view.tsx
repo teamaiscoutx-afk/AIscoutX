@@ -35,7 +35,7 @@ export function StartupWorkspaceView({
   initialWorkspace,
 }: StartupWorkspaceViewProps) {
   const [workspace] = useState(initialWorkspace);
-  const startupName = workspace?.summary?.name || "VoiceCraft";
+  const startupName = workspace?.summary?.name || "";
 
   // Pane Resize / Layout Mode State
   // 'split' = 50/50, 'full-chat' = Chatbot 100%, 'full-output' = Output Canvas 100%
