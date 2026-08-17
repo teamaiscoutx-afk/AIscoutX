@@ -121,13 +121,12 @@ export function OpportunityDrawer({
     });
   }
 
-  // Guard Condition: Agar mounted nahi hai ya selectedOpportunity NULL hai, to drawer render nahi hoga
+  // ✅ Safe Guard: Sabhi hooks declare hone ke baad return (React rules maintained)
   if (!mounted || !selectedOpportunity) return null;
 
   const currentOp = enrichedOpportunity ?? selectedOpportunity;
   const deepDive = currentOp?.deepDive;
 
-  // Ultra-clear specific fallback scenarios for beginners
   const defaultPainPoints = [
     {
       title: "🎙️ High Production & Recording Effort",
@@ -265,7 +264,6 @@ export function OpportunityDrawer({
                     {selectedOpportunity.description}
                   </p>
 
-                  {/* 💡 BEGINNER CALLOUT BOX: IN SIMPLE TERMS */}
                   <div className="mt-6 rounded-2xl border border-amber-400/40 bg-amber-950/20 p-5 flex items-start gap-3.5 backdrop-blur-sm shadow-[0_0_20px_rgba(251,191,36,0.1)]">
                     <HelpCircle className="h-6 w-6 text-amber-400 shrink-0 mt-0.5" />
                     <div>
@@ -303,7 +301,7 @@ export function OpportunityDrawer({
                   </div>
                 )}
 
-                {/* 🔴 CONTAINER 1: THE CORE PROBLEM */}
+                {/* CONTAINER 1: THE CORE PROBLEM */}
                 <div className="rounded-3xl border border-red-500/20 bg-gradient-to-b from-red-500/[0.06] to-transparent p-8 space-y-6">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/20 text-red-400">
@@ -332,7 +330,7 @@ export function OpportunityDrawer({
                   </div>
                 </div>
 
-                {/* 🟢 CONTAINER 2: HOW YOUR STARTUP SOLVES IT */}
+                {/* CONTAINER 2: HOW YOUR STARTUP SOLVES IT */}
                 <div className="rounded-3xl border border-[#deff9a]/25 bg-gradient-to-b from-[#deff9a]/[0.05] to-transparent p-8 space-y-6">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#deff9a]/20 text-[#deff9a]">
@@ -365,7 +363,7 @@ export function OpportunityDrawer({
                   </div>
                 </div>
 
-                {/* 👥 CONTAINER 3: TARGET AUDIENCE */}
+                {/* CONTAINER 3: TARGET AUDIENCE */}
                 <div className="rounded-3xl border border-sky-500/20 bg-gradient-to-b from-sky-500/[0.05] to-transparent p-8 space-y-6">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/20 text-sky-400">
@@ -409,7 +407,7 @@ export function OpportunityDrawer({
                   </div>
                 </div>
 
-                {/* ⚙️ CONTAINER 4: TECH STACK & MONETIZATION */}
+                {/* CONTAINER 4: TECH STACK & MONETIZATION */}
                 <div className="rounded-3xl border border-amber-500/20 bg-gradient-to-b from-amber-500/[0.05] to-transparent p-8 space-y-6">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
