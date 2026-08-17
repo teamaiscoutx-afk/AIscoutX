@@ -55,18 +55,11 @@ export function OpportunityDrawer({
   const [deepDiveLoading, setDeepDiveLoading] = useState(false);
   const [enrichedOpportunity, setEnrichedOpportunity] =
     useState<Opportunity | null>(null);
-  const [hasInitialized, setHasInitialized] = useState(false);
 
-  // 🛑 Prevent automatic popup on initial page load
+  // Safe client-side mount check without side-effects
   useEffect(() => {
     setMounted(true);
-    if (!hasInitialized) {
-      setHasInitialized(true);
-      if (selectedOpportunity) {
-        onClose();
-      }
-    }
-  }, [hasInitialized, selectedOpportunity, onClose]);
+  }, []);
 
   useEffect(() => {
     setSaved(false);
@@ -129,7 +122,7 @@ export function OpportunityDrawer({
     });
   }
 
-  // Safe Guard: Sabhi hooks declare hone ke baad render condition
+  // Pure state guard: Page load par modal TABHI render hoga jab explicit object present hoga
   if (!mounted || !selectedOpportunity) return null;
 
   const currentOp = enrichedOpportunity ?? selectedOpportunity;
