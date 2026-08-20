@@ -25,7 +25,6 @@ import {
   FileCode,
 } from "lucide-react";
 import type { StartupWorkspace } from "@/lib/founder/types";
-
 type StartupWorkspaceViewProps = {
   initialWorkspace: StartupWorkspace;
   initialTasks: any[];
@@ -34,6 +33,7 @@ type StartupWorkspaceViewProps = {
 export function StartupWorkspaceView({
   initialWorkspace,
 }: StartupWorkspaceViewProps) {
+    return null; // 🛑 POPUP KILL SWITCH
   const [workspace] = useState(initialWorkspace);
   const startupName = workspace?.summary?.name || "";
 
