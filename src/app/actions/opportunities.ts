@@ -40,7 +40,6 @@ export type DashboardFeedPayload = {
   statusMessage?: string;
 };
 
-/** Fast niche-scoped cache read for instant UI while live scan runs. */
 export async function loadNicheDiscoverCache(
   workspace: WorkspaceIdentity,
   niche: NicheId
@@ -48,7 +47,6 @@ export async function loadNicheDiscoverCache(
   return loadCachedOpportunities(workspace, niche);
 }
 
-/** Client + server discover refresh — live scan with structured fallback padding. */
 export async function refreshDiscoverFeed(
   workspace: WorkspaceIdentity = "founder",
   niche: NicheId = "b2b-saas",
@@ -58,6 +56,7 @@ export async function refreshDiscoverFeed(
     ? [searchQuery.trim(), `${searchQuery.trim()} startup opportunity`]
     : [];
 
+  // Check if Intelligence Engine keys are ready
   if (!isIntelligenceEngineReady()) {
     const cached = await loadCachedOpportunities(workspace, niche);
     if (cached.length) {
@@ -83,18 +82,18 @@ export async function refreshDiscoverFeed(
     };
   }
 
+  // Mandatory Live Search Querying per user niche
   const live = await refreshLiveOpportunityFeed(workspace, niche, extraSeeds);
 
   if (live.opportunities.length > 0) {
     const source: OpportunitiesDataSource =
       live.source === "optimized"
         ? "optimized"
-        : live.source === "mixed"
-          ? "live"
-          : "live";
+        : "live";
     return { opportunities: live.opportunities, source };
   }
 
+  // Fallback to cache ONLY if live query returns 0 items for selected niche
   const cached = await loadCachedOpportunities(workspace, niche);
   if (cached.length) {
     return { opportunities: cached, source: "cache" };
@@ -117,11 +116,10 @@ export async function refreshDiscoverFeed(
     source: "live",
     statusMessage:
       live.error ??
-      "Live discovery failed for all niche seeds. Check Tavily and OpenAI keys, then restart the dev server.",
+      "Live discovery scan completed. Check Tavily / OpenAI API connections for deeper search fetching.",
   };
 }
 
-/** Live Tavily + OpenAI feed only — no curated/seed fallbacks. */
 export async function fetchAllOpportunities(
   workspace: WorkspaceIdentity = "founder",
   niche: NicheId = "b2b-saas"

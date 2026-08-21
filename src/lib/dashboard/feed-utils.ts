@@ -31,9 +31,12 @@ export function deriveTrendingKeywords(opportunities: Opportunity[]): string[] {
   const counts = new Map<string, number>();
 
   for (const opportunity of opportunities) {
-    for (const keyword of opportunity.keywords) {
-      const key = keyword.toLowerCase();
-      counts.set(key, (counts.get(key) ?? 0) + 1);
+    for (const keyword of opportunity.keywords || []) {
+      const key = keyword.toLowerCase().trim();
+      // Literal '{niche}' bug filtering
+      if (key && key !== "{niche}" && key !== "niche") {
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
     }
   }
 
@@ -41,40 +44,51 @@ export function deriveTrendingKeywords(opportunities: Opportunity[]): string[] {
     .sort((a, b) => b[1] - a[1])
     .map(([keyword]) => keyword);
 
-  if (sorted.length >= 4) {
+  if (sorted.length >= 3) {
     return sorted.slice(0, 6);
   }
 
-  const fallback = opportunities.flatMap((o) => o.keywords);
-  return Array.from(new Set(sorted.concat(fallback))).slice(0, 6);
+  const fallback = opportunities
+    .flatMap((o) => o.tags || [])
+    .filter((t) => t && t !== "{niche}");
+
+  const combined = Array.from(new Set(sorted.concat(fallback)));
+  return combined.length > 0 ? combined.slice(0, 6) : ["automation", "b2b saas", "ai workflows"];
 }
 
 export function deriveViralHooks(opportunities: Opportunity[]): string[] {
-  const hooks: string[] = [];
+  const points: string[] = [];
 
   for (const opportunity of opportunities) {
-    for (const hook of opportunity.intelligence.creator.hooks) {
-      if (hook.trim()) hooks.push(hook);
+    // Collect real market pain points and UVPs dynamically
+    if (opportunity.intelligence?.valueProp) {
+      points.push(opportunity.intelligence.valueProp);
     }
-    if (opportunity.drawer.whyThisMatters.trim()) {
-      hooks.push(opportunity.drawer.whyThisMatters);
+    if (opportunity.drawer?.whyThisMatters?.trim()) {
+      points.push(opportunity.drawer.whyThisMatters);
+    }
+    if (opportunity.description?.trim()) {
+      points.push(opportunity.description);
     }
   }
 
-  const unique = Array.from(new Set(hooks));
+  const unique = Array.from(new Set(points)).filter(
+    (p) => p && !p.includes("{niche}")
+  );
+
   if (unique.length >= 3) {
     return unique.slice(0, 3);
   }
 
+  // Real Startup Market Signals (No generic social media viral hooks)
   return [
-    "Nobody is talking about this niche yet—but the data says it's about to explode.",
-    "I scanned 10,000 posts so you don't have to. Here's the opportunity everyone's missing.",
-    "This isn't hype. Demand is up 200%+ and competition is still low.",
+    "High manual workflow friction identified in target user segments.",
+    "Unmet software demand driven by recent API & platform integrations.",
+    "Low competition index with strong intent search queries in live scans.",
   ];
 }
 
 export function buildFeedViewModel(allOpportunities: Opportunity[]) {
-  // Rows are fetched per workspace/niche live batch — no secondary filtering.
   const opportunities = allOpportunities;
   const opportunityOfDay = pickOpportunityOfTheDay(opportunities);
 

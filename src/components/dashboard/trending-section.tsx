@@ -52,7 +52,7 @@ export function TrendingSection({
         <div className="glass-panel rounded-2xl p-4 sm:p-5">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-              Trending keywords
+              High-Demand Market Signals
             </p>
             {activeKeyword && (
               <button
@@ -82,13 +82,13 @@ export function TrendingSection({
             ))}
           </div>
           <p className="mt-3 text-[11px] text-zinc-600">
-            Click a keyword to filter the opportunities table below.
+            Select a keyword tag to isolate specific niche opportunities below.
           </p>
         </div>
 
         <div className="glass-panel rounded-2xl p-4 sm:p-5">
           <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-            Viral hooks
+            Target Pain Points & Value Props
           </p>
           <ul className="mt-3 space-y-2">
             {viralHooks.map((hook, index) => (
@@ -102,7 +102,7 @@ export function TrendingSection({
                 <button
                   type="button"
                   onClick={() => copyHook(index, hook)}
-                  aria-label={copiedIndex === index ? "Copied" : "Copy hook"}
+                  aria-label={copiedIndex === index ? "Copied" : "Copy position angle"}
                   className={cn(
                     "shrink-0 cursor-pointer rounded-lg border p-1.5 transition-all duration-200",
                     copiedIndex === index

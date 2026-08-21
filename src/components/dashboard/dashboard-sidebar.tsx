@@ -36,7 +36,7 @@ const navItems = [
   { label: "Blueprints", href: "/dashboard/blueprints", icon: FileStack, isProFeature: true },
   { label: "Launch Plan", href: "/dashboard/launch", icon: Megaphone, isProFeature: false },
   { label: "Founder GPS", href: "/dashboard/gps", icon: Navigation, isProFeature: true },
-  { label: "AI Founder Chat", href: "/dashboard/chat", icon: Bot, isProFeature: true },
+  { label: "AI Co-Founder", href: "/dashboard/chat", icon: Bot, isProFeature: true },
   { label: "Trash / Bin", href: "/dashboard/trash", icon: Trash2, isProFeature: false },
 ];
 
@@ -116,7 +116,7 @@ export function DashboardSidebar({ projects = [] }: DashboardSidebarProps) {
                   {isPro ? (
                     <span
                       title="Pro Unlocked"
-                      className="inline-flex items-center gap-0.5 rounded bg-[#deff9a]/10 px-1.5 py-0.5 text-[9px] font-semibold text-[#deff9a]"
+                      className="inline-flex items-center gap-0.5 rounded border border-[#deff9a]/20 bg-[#deff9a]/10 px-1.5 py-0.5 text-[9px] font-semibold text-[#deff9a]"
                     >
                       <Unlock className="h-2.5 w-2.5" />
                       <span className="hidden lg:inline">UNLOCKED</span>
@@ -124,7 +124,7 @@ export function DashboardSidebar({ projects = [] }: DashboardSidebarProps) {
                   ) : (
                     <span
                       title="Pro Feature"
-                      className="inline-flex items-center gap-0.5 rounded bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-amber-400"
+                      className="inline-flex items-center gap-0.5 rounded border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-amber-400"
                     >
                       <Lock className="h-2.5 w-2.5" />
                       <span className="hidden lg:inline">PRO</span>

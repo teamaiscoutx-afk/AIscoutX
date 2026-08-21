@@ -89,10 +89,10 @@ function resolveActiveNiche(
 }
 
 const SOURCE_LABEL: Record<OpportunitiesDataSource, string> = {
-  live: "Live Web",
-  cache: "Live Cache",
-  optimized: "Optimized Feed",
-  unconfigured: "Live Web",
+  live: "Live Market Radar",
+  cache: "Live Intelligence DB",
+  optimized: "AI Engine Optimized",
+  unconfigured: "Live Market Radar",
 };
 
 function resolveFeedSourceLabel(source: OpportunitiesDataSource): string {
@@ -176,8 +176,8 @@ export function CommandCenter({
       setFeedError(undefined);
       startLoading(
         search
-          ? "Searching live web for matching opportunities…"
-          : "Scanning live opportunities for your niche…"
+          ? "Scanning live market signals for query..."
+          : "Scanning live opportunities for your target niche..."
       );
 
       if (!search) {
@@ -276,9 +276,9 @@ export function CommandCenter({
     const hotCount = list.filter((o) => o.hot).length;
 
     return [
-      { value: String(count), label: "Ideas to evaluate" },
-      { value: String(avgScore), label: "Validation potential" },
-      { value: String(hotCount), label: "Ready to build" },
+      { value: String(count), label: "Scouted Startup Concepts" },
+      { value: `${avgScore}%`, label: "Average Market Validation" },
+      { value: String(hotCount), label: "High-Growth Opportunities" },
     ];
   }, [contextFeed.opportunities]);
 
@@ -471,7 +471,6 @@ export function CommandCenter({
     ]
   );
 
-  // Onboarding: run a real live scan before entering the dashboard.
   useEffect(() => {
     if (phase !== "scanning" || !draftIdentity || !draftNiche || !draftNicheLabel) {
       if (phase !== "scanning") onboardingScanRef.current = false;
@@ -493,7 +492,6 @@ export function CommandCenter({
     };
   }, [phase, draftIdentity, draftNiche, draftNicheLabel, runDiscoverRefresh, handleScanComplete]);
 
-  // Refresh live niche feed when workspace/niche changes.
   useEffect(() => {
     if (phase !== "ready") return;
 
@@ -561,7 +559,7 @@ export function CommandCenter({
         workspaceLabel={liveScanWorkspaceLabel}
         progressHint={
           feedLoading
-            ? "Fetching and saving up to 10 live opportunities to your intelligence DB…"
+            ? `Scanning live market signals and scoring opportunities for ${liveScanNicheLabel}...`
             : undefined
         }
       />
@@ -590,7 +588,7 @@ export function CommandCenter({
               <main className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
                 <div className="mb-6 flex flex-wrap items-center gap-3">
                   <h1 className="text-lg font-semibold text-white sm:text-xl">
-                    Intelligence Feed
+                    Market Intelligence Radar
                   </h1>
                   <NicheSwitcher
                     activeWorkspace={activeWorkspace}
@@ -604,7 +602,7 @@ export function CommandCenter({
                   >
                     <span className="mr-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#deff9a]" />
                     {feedLoading
-                      ? "Scanning Live Web…"
+                      ? `Scanning ${activeNicheLabel}...`
                       : resolveFeedSourceLabel(feedSource)}
                   </Badge>
                   {feedError && !feedLoading && allOpportunities.length === 0 && (
@@ -659,15 +657,15 @@ export function CommandCenter({
                   <div className="mt-8 flex flex-col gap-3 sm:mt-10 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                        Ranked by demand momentum
+                        Ranked by market demand momentum
                       </p>
                       <h2 className="mt-1 text-xl font-semibold text-white sm:text-2xl">
-                        Discover Opportunities
+                        Discover High-Validation Signals
                       </h2>
                     </div>
                     <p className="flex items-center gap-1.5 text-xs text-zinc-600">
                       <Zap className="h-3.5 w-3.5 text-[#deff9a]" />
-                      Click any row — insights from your live intelligence DB
+                      Click any row to open full AI Blueprint & Market Analysis
                     </p>
                   </div>
 
@@ -684,12 +682,12 @@ export function CommandCenter({
                 </motion.div>
 
                 <p className="mt-10 border-t border-white/[0.04] pt-6 text-center text-[11px] text-zinc-600">
-                  AIscoutX Intelligence Workspace ·{" "}
+                  AIscoutX Co-Founder Engine ·{" "}
                   <Link
                     href="/"
                     className="text-zinc-500 underline-offset-4 transition-colors hover:text-[#deff9a] hover:underline"
                   >
-                    Return to site
+                    Return to home
                   </Link>
                 </p>
               </main>

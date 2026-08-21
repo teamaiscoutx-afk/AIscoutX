@@ -44,22 +44,22 @@ export function OpportunitiesFeed({
           <p className="text-xs text-zinc-400">
             {hasSearch ? (
               <>
-                Search results for{" "}
+                Filtered ideas for{" "}
                 <span className="font-medium text-[#deff9a]">
                   &ldquo;{searchQuery.trim()}&rdquo;
                 </span>
               </>
             ) : (
               <>
-                Showing matches for{" "}
+                Niche signals for{" "}
                 <span className="font-medium text-[#deff9a]">
                   &ldquo;{activeKeyword}&rdquo;
                 </span>
               </>
             )}
             {" · "}
-            {opportunities.length} result
-            {opportunities.length === 1 ? "" : "s"}
+            {opportunities.length} idea
+            {opportunities.length === 1 ? "" : "s"} found
           </p>
         </div>
       )}
@@ -68,11 +68,11 @@ export function OpportunitiesFeed({
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead>
             <tr className="border-b border-white/[0.06] bg-white/[0.02] text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-              <th className="px-4 py-3 sm:px-6 sm:py-4">Opportunity</th>
-              <th className="px-4 py-3 sm:px-6 sm:py-4">Category</th>
-              <th className="px-4 py-3 sm:px-6 sm:py-4">Growth</th>
-              <th className="px-4 py-3 sm:px-6 sm:py-4">Demand</th>
-              <th className="px-4 py-3 sm:px-6 sm:py-4">Momentum</th>
+              <th className="px-4 py-3 sm:px-6 sm:py-4">Startup Concept</th>
+              <th className="px-4 py-3 sm:px-6 sm:py-4">Market / Niche</th>
+              <th className="px-4 py-3 sm:px-6 sm:py-4">Market Growth</th>
+              <th className="px-4 py-3 sm:px-6 sm:py-4">Validation Score</th>
+              <th className="px-4 py-3 sm:px-6 sm:py-4">Execution Momentum</th>
             </tr>
           </thead>
           <tbody>
@@ -85,24 +85,23 @@ export function OpportunitiesFeed({
                   {hasSearch ? (
                     <div className="mx-auto max-w-sm space-y-2">
                       <p className="text-zinc-400">
-                        No matching signals found.
+                        No matching startup ideas found.
                       </p>
                       <p className="text-xs text-zinc-600">
-                        Try searching{" "}
+                        Try searching keywords like{" "}
                         <span className="font-medium text-zinc-500">
-                          &lsquo;AI&rsquo;
+                          &lsquo;AI Automation&rsquo;
                         </span>{" "}
                         or{" "}
                         <span className="font-medium text-zinc-500">
-                          &lsquo;SaaS&rsquo;
+                          &lsquo;Creator Tools&rsquo;
                         </span>
                         .
                       </p>
                     </div>
                   ) : (
                     <>
-                      No opportunities match this keyword. Try another chip or
-                      clear the filter.
+                      No opportunities match this filter. Select another tag or clear filters.
                     </>
                   )}
                 </td>
@@ -122,7 +121,7 @@ export function OpportunitiesFeed({
                       }
                     }}
                     tabIndex={0}
-                    aria-label={`View details for ${row.name}`}
+                    aria-label={`View blueprint for ${row.name}`}
                     aria-current={isActive ? "true" : undefined}
                     className={cn(
                       "cursor-pointer border-b border-white/[0.04] transition-all duration-200 last:border-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#deff9a]/40 focus-visible:ring-inset",
@@ -141,7 +140,7 @@ export function OpportunitiesFeed({
                             variant="outline"
                             className="border-orange-500/30 bg-orange-500/10 text-[10px] text-orange-400"
                           >
-                            Hot
+                            High Demand
                           </Badge>
                         )}
                       </div>
