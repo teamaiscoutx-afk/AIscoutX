@@ -9,22 +9,27 @@ const faqs = [
   {
     question: "What is AIscoutX?",
     answer:
-      "AIscoutX is an intelligence platform that monitors discussions across Reddit, X, YouTube, and more—then surfaces high-potential opportunities with scores, hooks, and actionable briefs before they go mainstream.",
+      "AIscoutX is your 24/7 AI Startup Co-Founder & Mentor platform. It validates your startup ideas using real-time market data, generates market blueprints, creates MVP execution roadmaps, and builds investor-ready pitch decks.",
   },
   {
-    question: "How are opportunities discovered?",
+    question: "How does AIscoutX validate startup ideas?",
     answer:
-      "Our AI scans thousands of conversations 24/7, detects acceleration patterns, and ranks each signal by demand momentum, competition, and revenue potential—so you only see what’s worth your time.",
+      "Our AI engine scans live web signals, competitor gaps, search demand, and social conversations to score your concept's market demand, competition density, and monetization potential in seconds.",
   },
   {
-    question: "Can creators and founders use it?",
+    question: "Do I need technical skills or pitch deck experience to use this?",
     answer:
-      "Absolutely. Creators use AIscoutX for viral hooks and niche timing; founders use it for market validation, trend spotting, and launching products with a real edge.",
+      "Not at all. AIscoutX is specifically designed for non-technical founders, solopreneurs, and first-time builders. The platform guides you step-by-step and handles the complex research and pitch structuring for you.",
   },
   {
-    question: "When is the official launch?",
+    question: "What do I get with the AI Co-Founder mentor?",
     answer:
-      "We’re onboarding early access members now. Join the waitlist to get priority access, founding-member pricing, and your first Weekly Opportunity Brief before public launch.",
+      "You get 24/7 access to an interactive AI mentor that helps you refine your value proposition, prepare for investor questions, fine-tune your pricing strategy, and solve daily execution roadblocks.",
+  },
+  {
+    question: "Is there a free trial or Freemium plan?",
+    answer:
+      "Yes! You can start on our Freemium plan for free to validate your idea, generate initial startup blueprints, and test the AI Mentor before upgrading to Pro.",
   },
 ];
 

@@ -49,23 +49,23 @@ const features = [
   {
     icon: Flame,
     indicator: "01",
-    title: "Exploding Opportunities",
+    title: "Market Gap Intelligence",
     description:
-      "Surface trends and niches accelerating before they hit mainstream feeds—move while margins still exist.",
+      "Uncover real problems and underserved niches before markets get crowded—move while margins still exist.",
   },
   {
     icon: Megaphone,
     indicator: "02",
-    title: "Viral Hooks",
+    title: "Instant Founder Blueprints",
     description:
-      "Scroll-stopping angles distilled from what’s already winning—ready for your next post or launch.",
+      "Generate complete market research, UVP, TAM/SAM/SOM breakdown, and go-to-market strategies instantly.",
   },
   {
     icon: LineChart,
     indicator: "03",
-    title: "Opportunity Scores",
+    title: "Pitch Deck & Roadmap",
     description:
-      "Every signal ranked by momentum, competition, and upside—build what matters, skip the guesswork.",
+      "Transform raw ideas into investor-ready pitch decks and clear, actionable MVP execution roadmaps.",
   },
 ];
 
@@ -73,23 +73,23 @@ const steps = [
   {
     step: "01",
     icon: Radar,
-    title: "Scan",
+    title: "Validate Idea",
     description:
-      "AI monitors thousands of discussions across Reddit, X, and YouTube—24 hours a day, 7 days a week.",
+      "AI scans live web signals, competitor gaps, and search demand to score your startup concept instantly.",
   },
   {
     step: "02",
     icon: ScanSearch,
-    title: "Analyze",
+    title: "Strategic Blueprint",
     description:
-      "Our engine identifies growth patterns, calculates demand metrics, and scores every opportunity.",
+      "Get complete market analysis, TAM/SAM/SOM estimates, pricing strategy, and your MVP roadmap.",
   },
   {
     step: "03",
     icon: Zap,
-    title: "Act",
+    title: "AI Co-Founder Guidance",
     description:
-      "Get the exact trends, hooks, and recommended actions before they go mainstream.",
+      "Chat 24/7 with your dedicated AI mentor for pitch deck prep, execution tasks, and strategic decisions.",
   },
 ];
 
@@ -98,14 +98,14 @@ const pricingPlans = [
     name: "Freemium",
     price: "$0",
     period: "/forever",
-    description: "Scout the market. See what the engine finds.",
+    description: "Validate your concept and test the AI Co-Founder.",
     features: [
-      "Live intelligence feed + niche switching",
-      "3 blueprint generations per month",
-      "Analyze, Blueprint & Launch modules",
-      "10 AI founder chat messages",
+      "1 Comprehensive Idea Validation",
+      "3 AI Founder Blueprint Generations",
+      "Access to Analyze & Roadmap Modules",
+      "10 AI Mentor Chat Messages",
     ],
-    cta: "Start for Free",
+    cta: "Start Building Free",
     popular: false,
   },
   {
@@ -114,42 +114,42 @@ const pricingPlans = [
     period: "/month",
     description: "For founders who move fast. Everything unlocked.",
     features: [
-      "Unlimited blueprint generation",
-      "1-Click PDF export",
-      "Founder GPS + unlimited projects",
-      "Trash recovery + unlimited chat",
+      "Unlimited Idea Validations & Blueprints",
+      "1-Click PDF Pitch Deck Export",
+      "Founder GPS + Unlimited Projects",
+      "24/7 AI Mentor Access + Vision Support",
     ],
     cta: "Unlock Pro",
     popular: true,
   },
 ];
 
-const platforms = ["Reddit", "X", "YouTube"];
+const platforms = ["Reddit", "X", "YouTube", "Google Search"];
 
 const audiences = [
   {
-    icon: Video,
-    title: "Creators",
-    description:
-      "Find content opportunities before trends explode across platforms.",
-  },
-  {
     icon: Rocket,
-    title: "Founders",
+    title: "First-Time Founders",
     description:
-      "Discover startup opportunities with growing demand and low competition.",
+      "Get step-by-step startup handholding and strategic roadmaps without needing a technical co-founder.",
   },
   {
-    icon: Building2,
-    title: "Agencies",
+    icon: Video,
+    title: "Non-Tech Creators",
     description:
-      "Spot emerging services your clients will soon need—before competitors do.",
+      "Turn your audience insights into validated digital products and fundable SaaS concepts.",
   },
   {
     icon: User,
     title: "Solopreneurs",
     description:
-      "Find profitable opportunities before markets get crowded and margins shrink.",
+      "Execute like a full team—from market research and UVP positioning to pitch deck creation.",
+  },
+  {
+    icon: Building2,
+    title: "Agencies & Studios",
+    description:
+      "Validate emerging service lines and tech opportunities before competitors enter the market.",
   },
 ];
 
@@ -290,7 +290,7 @@ export function LandingPageContent({ ctaHref }: LandingPageContentProps) {
                 className="mb-8 border-white/10 bg-white/[0.03] px-4 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-400 backdrop-blur-sm"
               >
                 <Sparkles className="mr-1.5 inline h-3 w-3 text-[#deff9a]" />
-                AI Founder Operating System
+                YOUR 24/7 AI STARTUP CO-FOUNDER
               </Badge>
             </FadeIn>
 
@@ -300,7 +300,7 @@ export function LandingPageContent({ ctaHref }: LandingPageContentProps) {
                   Build Your Startup With AI.
                 </span>
                 <span className="text-gradient-hero mt-1 block text-2xl opacity-90 sm:text-3xl md:text-4xl">
-                  From idea to first customer.
+                  From Idea to Market & Pitch Deck.
                 </span>
               </h1>
             </FadeIn>
@@ -308,8 +308,7 @@ export function LandingPageContent({ ctaHref }: LandingPageContentProps) {
             <FadeIn delay={0.16}>
               <p className="mt-7 max-w-2xl text-base leading-relaxed text-zinc-400 sm:text-lg md:mt-8 md:text-xl">
                 <span className="text-glow-lime font-semibold">AIscoutX</span>{" "}
-                acts as your AI founder team—guiding you from validation to MVP,
-                launch, and first revenue.
+                acts as your AI founder team—guiding you from idea validation to market analysis, MVP roadmaps, and pitch decks.
               </p>
             </FadeIn>
 
@@ -319,7 +318,7 @@ export function LandingPageContent({ ctaHref }: LandingPageContentProps) {
                 size="lg"
                 className="btn-glow-lime h-12 rounded-xl bg-[#deff9a] px-8 text-base font-semibold text-black hover:bg-[#d8f992]"
               >
-                <Link href={ctaHref}>Start Building →</Link>
+                <Link href={ctaHref}>Start Building Free →</Link>
               </Button>
             </FadeIn>
           </div>
@@ -351,24 +350,22 @@ export function LandingPageContent({ ctaHref }: LandingPageContentProps) {
             <SectionLabel>The problem</SectionLabel>
             <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">
               <span className="text-gradient-hero">
-                The Information Overload Trap
+                The Execution Gap in Early-Stage Building
               </span>
             </h2>
             <p className="mt-6 text-base leading-relaxed text-zinc-500 sm:text-lg">
-              Millions of discussions happen every day on{" "}
+              Most non-technical founders struggle not from a lack of ideas, but from a lack of execution direction—spending weeks manually researching demand across{" "}
               {platforms.map((p, i) => (
                 <span key={p}>
                   <span className="font-medium text-zinc-300">{p}</span>
                   {i < platforms.length - 1 ? ", " : ""}
                 </span>
               ))}
-              —but most founders discover trends weeks too late, when
-              competition is already fierce and margins are gone.
+              and building without clear blueprints.
             </p>
             <p className="mt-4 text-base leading-relaxed text-zinc-500 sm:text-lg">
               <span className="text-glow-lime font-semibold">AIscoutX</span>{" "}
-              filters this noise into clear, scored signals—so you see what
-              matters before everyone else piles in.
+              eliminates the trial-and-error—delivering validated blueprints, market data, and dedicated AI mentoring from day one.
             </p>
           </FadeIn>
         </div>
@@ -386,7 +383,7 @@ export function LandingPageContent({ ctaHref }: LandingPageContentProps) {
               <span className="text-gradient-hero">How it works</span>
             </h2>
             <p className="mt-4 text-sm text-zinc-500 sm:text-base">
-              From raw conversations to actionable intelligence in three steps.
+              From raw concept to structured execution in three simple steps.
             </p>
           </FadeIn>
 
@@ -435,7 +432,7 @@ export function LandingPageContent({ ctaHref }: LandingPageContentProps) {
               <span className="text-gradient-hero">Who is AIscoutX for?</span>
             </h2>
             <p className="mt-4 text-sm text-zinc-500 sm:text-base">
-              Built for operators who need signal—not more noise.
+              Designed for builders who need clarity, validation, and rapid execution.
             </p>
           </FadeIn>
 
@@ -474,7 +471,7 @@ export function LandingPageContent({ ctaHref }: LandingPageContentProps) {
           <FadeIn className="mx-auto max-w-2xl text-center">
             <SectionLabel icon={Sparkles}>Roadmap</SectionLabel>
             <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
-              Coming Soon Capabilities
+              Upcoming Founder Capabilities
             </h2>
           </FadeIn>
 
@@ -514,12 +511,12 @@ export function LandingPageContent({ ctaHref }: LandingPageContentProps) {
         />
         <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
           <FadeIn className="mx-auto max-w-2xl text-center">
-            <SectionLabel icon={BarChart3}>Intelligence stack</SectionLabel>
+            <SectionLabel icon={BarChart3}>Founder OS Engine</SectionLabel>
             <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">
-              <span className="text-gradient-hero">Signals that compound</span>
+              <span className="text-gradient-hero">Execution modules that build startups</span>
             </h2>
             <p className="mt-4 text-sm leading-relaxed text-zinc-500 sm:text-base">
-              Everything you need to act before the crowd—not after the hype.
+              Everything required to validate, structure, and present your business concept.
             </p>
           </FadeIn>
 
@@ -568,10 +565,10 @@ export function LandingPageContent({ ctaHref }: LandingPageContentProps) {
           <FadeIn className="mx-auto max-w-2xl text-center">
             <SectionLabel>Pricing</SectionLabel>
             <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">
-              <span className="text-gradient-hero">Invest in your edge</span>
+              <span className="text-gradient-hero">Invest in your AI Co-Founder</span>
             </h2>
             <p className="mt-4 text-sm text-zinc-500 sm:text-base">
-              Simple plans. Cancel anytime. Stripe-ready at launch.
+              Simple plans. Cancel anytime. Start for free today.
             </p>
           </FadeIn>
 
@@ -618,9 +615,7 @@ export function LandingPageContent({ ctaHref }: LandingPageContentProps) {
             <span className="text-gradient-hero">Why We Built AIscoutX</span>
           </h2>
           <blockquote className="mt-8 text-lg font-light leading-relaxed text-zinc-400 sm:text-xl sm:leading-relaxed md:text-2xl md:leading-relaxed">
-            &ldquo;Most founders and creators discover trends after everyone
-            else. We built this to give you the ultimate decision-making
-            edge.&rdquo;
+            &ldquo;Most non-technical founders fail due to execution ambiguity, not a lack of ideas. We built AIscoutX to give you a dedicated AI Co-Founder from day one.&rdquo;
           </blockquote>
           <p className="mt-6 text-sm text-zinc-600">— The AIscoutX Team</p>
         </FadeIn>
@@ -630,10 +625,10 @@ export function LandingPageContent({ ctaHref }: LandingPageContentProps) {
       <section className="relative border-t border-white/[0.06] py-16 sm:py-20">
         <FadeIn className="mx-auto max-w-xl px-4 text-center sm:px-6">
           <h2 className="text-xl font-semibold text-white sm:text-2xl">
-            Ready to scout smarter?
+            Ready to build with your AI Co-Founder?
           </h2>
           <p className="mt-2 text-sm text-zinc-500">
-            Join early access and get your first briefing free.
+            Get started for free and generate your first startup blueprint today.
           </p>
           <div className="mt-8">
             <WaitlistForm />
