@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { getCurrentProfile } from "@/app/actions/profile";
 import { mapOpportunityRowToClient } from "@/lib/dashboard/opportunity-mapper";
-import type { Opportunity } from "@/lib/dashboard/opportunities";
+import type { Opportunity, OpportunityDeepDive } from "@/lib/dashboard/opportunities";
 import type { NicheId, WorkspaceIdentity } from "@/lib/dashboard/onboarding";
 import { getNicheLabel } from "@/lib/dashboard/onboarding";
 import { DISCOVERY_IDEA_TARGET } from "@/lib/intelligence/discovery-config";
@@ -19,7 +19,7 @@ import {
   liveDraftToOpportunity,
   upsertLiveOpportunities,
 } from "@/lib/intelligence/opportunity-persistence";
-import type { LiveOpportunityDraft, OpportunityDeepDive } from "@/lib/intelligence/types";
+import type { LiveOpportunityDraft } from "@/lib/intelligence/types";
 import { createCatalogWriterClient } from "@/lib/server/supabase-writer";
 import { createServerSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
 
@@ -167,35 +167,40 @@ export async function refreshLiveOpportunityFeed(
 }
 
 /**
- * Clean & Transform AI output to ensure absolute 0-experience beginner clarity
+ * Ensures Risk Radar, Playbook, & Economics are completely dynamic for ANY idea
  */
 function sanitizeDeepDiveForBeginners(seed: string, deepDive: OpportunityDeepDive): OpportunityDeepDive {
-  const isVoiceRelated = seed.toLowerCase().includes("voice") || seed.toLowerCase().includes("audio");
-
-  const enhancedPainPoints = (deepDive.painPoints || []).map((p, i) => {
-    if (p.includes("Hours Lost") || p.includes("Manual Execution")) {
-      return isVoiceRelated
-        ? "🎙️ Noisy Room & Sound Setup Failures: Recording studio-quality voiceovers manually requires expensive microphones, acoustic foam, and hours spent re-recording when background noise disrupts audio quality."
-        : `⚙️ Complex Setup & Manual Errors: Users waste 5 to 8 hours doing tedious manual configuration and fixing silly errors instead of focusing on growing their main business.`;
-    }
-    if (p.includes("Payroll Expenses") || p.includes("Agency")) {
-      return isVoiceRelated
-        ? "💰 Hiring Expensive Voice Actors: Paying professional voiceover talent or freelancers costs $50 to $200 per video script, draining monthly operational budgets before generating revenue."
-        : `💵 High Recurring Agency Fees: Paying external agencies $500 to $2,500 every month drains startup capital fast for basic repetitive work.`;
-    }
-    return p;
-  });
-
   const enhancedValueProp = deepDive.valueProp && !deepDive.valueProp.includes("replaces slow manual")
     ? deepDive.valueProp
-    : isVoiceRelated
-      ? "VoiceCraft AI converts written text scripts into studio-grade, natural human voiceovers in seconds without expensive studio equipment or voice actors."
-      : `${seed} gives non-technical founders an automated web app that delivers studio-grade results in 1 click without hiring expensive agencies.`;
+    : `${seed} gives target users an automated solution to eliminate manual execution and high operational overhead.`;
+
+  const dynamicRiskRadar = deepDive.riskRadar || {
+    whyFoundersFail: `Founders building in ${seed} often over-engineer complex features before validating willingness-to-pay from their initial target customers.`,
+    scopeFreezeSkip: [
+      `Custom white-label domain routing & team permissions`,
+      `Multi-tenant enterprise analytics dashboard`
+    ],
+    scopeFreezeBuild: `Focus purely on 1 core pain point: simple input-to-output workflow with instant delivery.`,
+  };
+
+  const dynamicPlaybook = deepDive.playbook || {
+    days1To3: `Cold DM 20 target users in relevant Twitter/LinkedIn communities discussing ${seed} issues with a free preview offer.`,
+    days4To7: `Offer 10 early users 14-day free access in exchange for a video testimonial or detailed feedback session.`,
+    days8To14: `Launch publicly on ProductHunt & Reddit with customer proof and real case studies.`,
+  };
+
+  const dynamicEconomics = deepDive.techAndEconomics || {
+    techStack: `Next.js + Tailwind, Supabase DB, Serverless APIs.`,
+    pricingAndMargins: `$29/mo Starter & $79/mo Pro. ~70-85% Gross Margin.`,
+    breakeven: `Just 10-15 paying subscribers needed to hit profitability.`,
+  };
 
   return {
     ...deepDive,
     valueProp: enhancedValueProp,
-    painPoints: enhancedPainPoints.length ? enhancedPainPoints : deepDive.painPoints,
+    riskRadar: dynamicRiskRadar,
+    playbook: dynamicPlaybook,
+    techAndEconomics: dynamicEconomics,
   };
 }
 

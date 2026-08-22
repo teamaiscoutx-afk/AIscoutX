@@ -1,9 +1,31 @@
 import { deriveDrawerFromIntelligence } from "@/lib/dashboard/opportunity-mapper";
 import { searchOpportunities } from "@/lib/dashboard/search";
-import type { OpportunityDeepDive } from "@/lib/intelligence/types";
 import type { ModeIntelligence } from "@/lib/dashboard/workspace";
 
-export type { OpportunityDeepDive, MarketGap, MvpAnatomy, SolutionBlueprint } from "@/lib/intelligence/types";
+// Dynamic DeepDive Schema
+export type OpportunityDeepDive = {
+  valueProp: string;
+  painPoints: string[];
+  solutionFeatures: string[];
+  targetAudience: string[];
+  riskRadar?: {
+    whyFoundersFail: string;
+    scopeFreezeSkip: string[];
+    scopeFreezeBuild: string;
+  };
+  playbook?: {
+    days1To3: string;
+    days4To7: string;
+    days8To14: string;
+  };
+  techAndEconomics?: {
+    techStack: string;
+    pricingAndMargins: string;
+    breakeven: string;
+  };
+};
+
+export type { MarketGap, MvpAnatomy, SolutionBlueprint } from "@/lib/intelligence/types";
 
 export type { WorkspaceMode } from "@/lib/dashboard/workspace";
 
