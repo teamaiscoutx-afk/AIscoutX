@@ -49,11 +49,11 @@ export function MentorChat() {
   return (
     <div className="mx-auto flex h-[calc(100vh-8rem)] max-w-4xl flex-col px-4 py-8 sm:px-6">
       <div className="mb-6">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#deff9a]/80">
-          AI Mentor
-        </p>
-        <h1 className="mt-2 text-2xl font-semibold text-white">Contextual founder helper</h1>
-        <p className="mt-2 text-sm text-zinc-500">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#A3E635]/80">
+            AI Mentor
+          </p>
+          <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-white">Contextual founder helper</h1>
+          <p className="mt-2 text-sm leading-6 text-zinc-400">
           Permanent mentor instance for execution guidance across your startup workspace.
         </p>
       </div>
@@ -68,12 +68,12 @@ export function MentorChat() {
               <div
                 className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${
                   message.role === "user"
-                    ? "bg-[#deff9a]/15 text-[#deff9a]"
-                    : "border border-white/[0.08] bg-black/30 text-zinc-300"
+                    ? "border border-[#A3E635]/20 bg-[#A3E635]/10 text-[#D9F99D]"
+                    : "border border-white/10 bg-zinc-900 text-zinc-300"
                 }`}
               >
                 {message.role === "assistant" && (
-                  <Bot className="mb-2 h-4 w-4 text-[#deff9a]" />
+                  <Bot className="mb-2 h-4 w-4 text-[#A3E635]" />
                 )}
                 {message.content}
               </div>
@@ -93,9 +93,9 @@ export function MentorChat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask your AI mentor what to do next…"
-              className="border-white/[0.08] bg-black/20 text-white"
+              className="h-11 border-white/10 bg-zinc-950/60 text-white placeholder:text-zinc-500 focus-visible:ring-2 focus-visible:ring-[#A3E635]/40"
             />
-            <Button type="submit" className="bg-[#deff9a] text-black hover:bg-[#d8f992]">
+            <Button type="submit" className="h-11 bg-[#A3E635] text-zinc-950 hover:bg-[#84CC16]">
               <Send className="h-4 w-4" />
             </Button>
           </form>

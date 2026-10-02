@@ -260,60 +260,61 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex h-screen w-screen bg-[#050508] text-white font-sans overflow-hidden">
+    <div className="fixed inset-0 z-50 flex h-screen w-screen overflow-hidden bg-[#09090B] font-sans text-white tracking-tight">
       
       {/* SIDEBAR */}
-      <div className="w-64 border-r border-white/10 bg-[#09090d] flex flex-col justify-between p-3 hidden md:flex shrink-0">
+      <div className="hidden w-64 shrink-0 flex-col justify-between border-r border-white/[0.06] bg-[#18181B] p-3 md:flex">
         <div className="space-y-3">
-          <div className="flex items-center justify-between px-2 pt-1 border-b border-white/5 pb-2.5">
+          <div className="flex items-center justify-between border-b border-white/[0.06] px-2 pb-2.5 pt-1">
             <div className="flex items-center gap-2">
-              <div className="h-6 w-6 rounded-lg bg-amber-400 flex items-center justify-center font-bold text-black text-xs">
+              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#A3E635] text-xs font-extrabold text-zinc-950">
                 AI
               </div>
-              <span className="text-xs font-bold text-white tracking-wide">AIScoutX OS</span>
+              <span className="text-xs font-extrabold tracking-tight text-white">AIScoutX OS</span>
             </div>
-            <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-md font-bold">
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-[#A3E635]/20 bg-[#A3E635]/10 px-2 py-0.5 text-[10px] font-bold text-[#D9F99D]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#A3E635] shadow-[0_0_8px_rgba(163,230,53,0.9)]" />
               Active Startup
             </span>
           </div>
 
           <button
             onClick={handleNewChat}
-            className="w-full flex items-center justify-between gap-2 bg-white/10 hover:bg-white/15 text-white text-xs font-semibold px-3 py-2 rounded-xl border border-white/10 transition-all cursor-pointer"
+            className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl border border-white/10 bg-zinc-800/80 px-3 py-2 text-xs font-semibold text-white transition-all duration-150 hover:border-[#A3E635]/25 hover:bg-zinc-700/80"
           >
             <span className="flex items-center gap-2">
-              <Plus className="h-4 w-4 text-amber-400" /> New Chat
+              <Plus className="h-4 w-4 text-[#A3E635]" /> New Chat
             </span>
             <span className="text-[10px] text-zinc-400">⌘N</span>
           </button>
 
           <button
             onClick={() => setShowBlueprintModal(true)}
-            className="w-full flex items-center justify-between gap-2 bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 border border-amber-400/30 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer group shadow-lg"
+            className="group flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl border border-white/10 bg-zinc-900/70 px-3 py-2.5 text-xs font-bold text-white backdrop-blur-md transition-all duration-200 hover:border-[#A3E635]/45 hover:bg-zinc-900 hover:shadow-[0_0_28px_rgba(163,230,53,0.14)]"
           >
             <span className="flex items-center gap-2 truncate">
-              <FileDown className="h-4 w-4 text-amber-400 shrink-0" />
+              <FileDown className="h-4 w-4 shrink-0 text-[#A3E635]" />
               <span className="truncate">Full Founder Blueprint</span>
             </span>
-            <ExternalLink className="h-3 w-3 text-amber-400 shrink-0 opacity-70 group-hover:opacity-100" />
+            <ExternalLink className="h-3 w-3 shrink-0 text-zinc-500 opacity-70 transition-colors group-hover:text-[#A3E635] group-hover:opacity-100" />
           </button>
 
           <div className="space-y-0.5 pt-1">
-            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider px-2 block">OS Modules</span>
-            <Link href="/dashboard/analyze" className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium text-zinc-400 hover:bg-white/5 hover:text-white transition-all">
-              <BarChart3 className="h-3.5 w-3.5 text-blue-400" /> Market Analysis
+            <span className="block px-2 text-[10px] font-bold uppercase tracking-wider text-zinc-500">OS Modules</span>
+            <Link href="/dashboard/analyze" className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-zinc-400 transition-all duration-150 hover:bg-zinc-800 hover:text-white">
+              <BarChart3 className="h-3.5 w-3.5 text-[#A3E635]" /> Market Analysis
             </Link>
-            <Link href="/dashboard/launch" className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium text-zinc-400 hover:bg-white/5 hover:text-white transition-all">
-              <Rocket className="h-3.5 w-3.5 text-purple-400" /> Launch Plan
+            <Link href="/dashboard/launch" className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-zinc-400 transition-all duration-150 hover:bg-zinc-800 hover:text-white">
+              <Rocket className="h-3.5 w-3.5 text-[#84CC16]" /> Launch Plan
             </Link>
-            <Link href="/dashboard/gps" className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium text-zinc-400 hover:bg-white/5 hover:text-white transition-all">
-              <Compass className="h-3.5 w-3.5 text-emerald-400" /> Founder GPS
+            <Link href="/dashboard/gps" className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-zinc-400 transition-all duration-150 hover:bg-zinc-800 hover:text-white">
+              <Compass className="h-3.5 w-3.5 text-[#D9F99D]" /> Founder GPS
             </Link>
           </div>
 
-          <div className="space-y-1 pt-1 border-t border-white/5">
-            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider px-2 block">Recent Chats</span>
-            <div className="space-y-1 max-h-[calc(100vh-390px)] overflow-y-auto">
+          <div className="space-y-1 border-t border-white/[0.06] pt-1">
+            <span className="block px-2 text-[10px] font-bold uppercase tracking-wider text-zinc-500">Recent Chats</span>
+            <div className="max-h-[calc(100vh-390px)] space-y-1 overflow-y-auto">
               {activeChats.map((chat) => (
                 <div key={chat.id} onContextMenu={(e) => handleContextMenu(e, chat.id)}>
                   {renamingChatId === chat.id ? (
@@ -324,19 +325,19 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
                       onBlur={() => handleSaveRename(chat.id)}
                       onKeyDown={(e) => e.key === "Enter" && handleSaveRename(chat.id)}
                       autoFocus
-                      className="w-full bg-black/60 border border-amber-400/50 text-white text-xs px-2 py-1.5 rounded-lg outline-none"
+                      className="w-full rounded-lg border border-[#A3E635]/50 bg-black/60 px-2 py-1.5 text-xs text-white outline-none ring-1 ring-[#A3E635]/20"
                     />
                   ) : (
                     <button
                       onClick={() => setActiveChatId(chat.id)}
-                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all text-left truncate cursor-pointer ${
+                      className={`flex w-full cursor-pointer items-center gap-2.5 truncate rounded-xl px-3 py-2 text-left text-xs font-medium transition-all duration-150 ${
                         activeChatId === chat.id
-                          ? "bg-amber-400/15 text-amber-300 border border-amber-400/30"
-                          : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
+                          ? "border border-white/[0.06] border-l-2 border-l-[#A3E635] bg-zinc-800 text-white shadow-[inset_0_0_18px_rgba(163,230,53,0.08)]"
+                          : "text-zinc-400 hover:bg-zinc-800 hover:text-white"
                       }`}
                     >
-                      <MessageSquare className="h-3.5 w-3.5 shrink-0" />
-                      <span className="truncate flex-1">{chat.title}</span>
+                      <MessageSquare className={`h-3.5 w-3.5 shrink-0 ${activeChatId === chat.id ? "text-[#A3E635]" : ""}`} />
+                      <span className="flex-1 truncate">{chat.title}</span>
                     </button>
                   )}
                 </div>
@@ -346,47 +347,46 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
         </div>
 
         {/* BOTTOM LEFT USER PROFILE & SETTINGS BAR */}
-        <div className="relative p-2 border-t border-white/10 bg-[#09090d]">
-          {/* SETTINGS MENU POPOVER */}
+        <div className="relative border-t border-white/[0.06] bg-[#18181B] p-2">
           {showSettingsPopover && (
-            <div className="absolute bottom-16 left-2 right-2 bg-[#12121a] border border-white/15 rounded-2xl shadow-2xl p-1.5 z-50 animate-in fade-in slide-in-from-bottom-2">
-              <div className="px-3 py-2 border-b border-white/10">
+            <div className="absolute bottom-16 left-2 right-2 z-50 animate-in fade-in slide-in-from-bottom-2 rounded-2xl border border-white/10 bg-zinc-900 p-1.5 shadow-2xl">
+              <div className="border-b border-white/[0.06] px-3 py-2">
                 <p className="text-xs font-bold text-white">Karan (Founder)</p>
-                <p className="text-[10px] text-zinc-400 truncate">karan@startup.com</p>
+                <p className="truncate text-[10px] text-zinc-400">karan@startup.com</p>
               </div>
 
-              <div className="py-1 space-y-0.5">
-                <button className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/5 hover:text-white rounded-xl transition cursor-pointer">
-                  <User className="h-3.5 w-3.5 text-amber-400" /> Account Details
+              <div className="space-y-0.5 py-1">
+                <button className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 transition duration-150 hover:bg-zinc-800 hover:text-white">
+                  <User className="h-3.5 w-3.5 text-[#A3E635]" /> Account Details
                 </button>
-                <button className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/5 hover:text-white rounded-xl transition cursor-pointer">
-                  <Key className="h-3.5 w-3.5 text-blue-400" /> API Settings
+                <button className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 transition duration-150 hover:bg-zinc-800 hover:text-white">
+                  <Key className="h-3.5 w-3.5 text-zinc-400" /> API Settings
                 </button>
-                <button className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/5 hover:text-white rounded-xl transition cursor-pointer">
-                  <CreditCard className="h-3.5 w-3.5 text-emerald-400" /> Pro Subscription
+                <button className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 transition duration-150 hover:bg-zinc-800 hover:text-white">
+                  <CreditCard className="h-3.5 w-3.5 text-[#84CC16]" /> Pro Subscription
                 </button>
                 <button
                   onClick={() => {
                     setShowSettingsPopover(false);
                     setShowBinModal(true);
                   }}
-                  className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/5 hover:text-white rounded-xl transition cursor-pointer"
+                  className="flex w-full cursor-pointer items-center justify-between rounded-xl px-3 py-1.5 text-xs text-zinc-300 transition duration-150 hover:bg-zinc-800 hover:text-white"
                 >
                   <span className="flex items-center gap-2">
-                    <Trash2 className="h-3.5 w-3.5 text-rose-400" /> Recycle Bin
+                    <Trash2 className="h-3.5 w-3.5 text-zinc-400" /> Recycle Bin
                   </span>
                   {binChats.length > 0 && (
-                    <span className="text-[10px] bg-rose-500/20 text-rose-300 px-1.5 py-0.5 rounded-full font-bold">
+                    <span className="rounded-full bg-rose-500/20 px-1.5 py-0.5 text-[10px] font-bold text-rose-300">
                       {binChats.length}
                     </span>
                   )}
                 </button>
               </div>
 
-              <div className="border-t border-white/10 pt-1 mt-1">
+              <div className="mt-1 border-t border-white/[0.06] pt-1">
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-400 hover:bg-rose-500/10 rounded-xl transition cursor-pointer"
+                  className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/10"
                 >
                   <LogOut className="h-3.5 w-3.5" /> Log Out
                 </button>
@@ -394,24 +394,23 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
             </div>
           )}
 
-          {/* MAIN PROFILE BAR WITH SETTINGS ICON */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5 overflow-hidden">
-              <div className="h-8 w-8 rounded-full bg-amber-400 flex items-center justify-center font-bold text-black text-xs shrink-0 shadow-md">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#A3E635]/30 bg-zinc-800 text-xs font-extrabold text-[#A3E635] shadow-[0_0_12px_rgba(163,230,53,0.12)]">
                 K
               </div>
               <div className="overflow-hidden">
-                <p className="text-xs font-bold text-white truncate">Karan (Founder)</p>
-                <p className="text-[10px] text-zinc-400 truncate">karan@startup.com</p>
+                <p className="truncate text-xs font-bold text-white">Karan (Founder)</p>
+                <p className="truncate text-[10px] text-zinc-400">karan@startup.com</p>
               </div>
             </div>
 
             <button
               onClick={() => setShowSettingsPopover(!showSettingsPopover)}
-              className={`p-2 rounded-xl transition-all cursor-pointer ${
+              className={`cursor-pointer rounded-xl p-2 transition-all duration-150 ${
                 showSettingsPopover
-                  ? "bg-amber-400/20 text-amber-300 border border-amber-400/30"
-                  : "text-zinc-400 hover:text-white hover:bg-white/5"
+                  ? "border border-[#A3E635]/30 bg-[#A3E635]/10 text-[#A3E635]"
+                  : "text-zinc-400 hover:bg-zinc-800 hover:text-white"
               }`}
               title="Settings & Account"
             >
@@ -422,39 +421,44 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
       </div>
 
       {/* CHAT CANVAS */}
-      <div className="flex-1 flex flex-col bg-[#040406] relative overflow-hidden">
+      <div className="relative flex flex-1 flex-col overflow-hidden bg-[#09090B]">
         {isVoiceActive && (
-          <div className="bg-gradient-to-r from-rose-950/90 via-purple-950/90 to-black border-b border-rose-500/30 px-6 py-2.5 flex items-center justify-between shrink-0">
+          <div className="flex shrink-0 items-center justify-between border-b border-[#A3E635]/20 bg-zinc-900 px-6 py-2.5">
             <div className="flex items-center gap-3">
-              <Volume2 className="h-4 w-4 text-rose-400 animate-bounce" />
+              <Volume2 className="h-4 w-4 animate-bounce text-[#A3E635]" />
               <div>
                 <p className="text-xs font-bold text-white">Live Voice Call Active</p>
                 <p className="text-[10px] text-zinc-400">Listening to microphone...</p>
               </div>
             </div>
-            <div className="flex items-center gap-1 h-5">
-              <span className="w-1 bg-rose-400 rounded-full h-3 animate-pulse" />
-              <span className="w-1 bg-rose-400 rounded-full h-5 animate-pulse delay-75" />
-              <span className="w-1 bg-rose-400 rounded-full h-3 animate-pulse delay-150" />
+            <div className="flex h-5 items-center gap-1">
+              <span className="h-3 w-1 animate-pulse rounded-full bg-[#A3E635]" />
+              <span className="h-5 w-1 animate-pulse rounded-full bg-[#84CC16] delay-75" />
+              <span className="h-3 w-1 animate-pulse rounded-full bg-[#A3E635] delay-150" />
             </div>
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 flex flex-col justify-center">
+        <div className="flex flex-1 flex-col justify-center overflow-y-auto p-4 md:p-8">
           {activeChat?.messages.length === 0 ? (
-            <div className="max-w-2xl mx-auto text-center space-y-4 my-auto">
-              <div className="h-16 w-16 rounded-3xl bg-amber-400/10 border border-amber-400/30 flex items-center justify-center mx-auto text-amber-300 shadow-xl">
-                <Sparkles className="h-8 w-8 animate-pulse" />
+            <div className="my-auto mx-auto max-w-2xl space-y-5 text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl border border-zinc-800 bg-zinc-900 text-[#A3E635] shadow-[0_0_32px_rgba(163,230,53,0.18)]">
+                <Sparkles className="h-8 w-8" strokeWidth={1.75} />
               </div>
-              <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
-                Hey Karan! I am your <span className="text-amber-300">AI Mentor & Co-Founder</span>.
+              <h1 className="text-2xl font-extrabold tracking-tight text-white md:text-3xl">
+                Hey Karan! I am your{" "}
+                <span className="bg-gradient-to-r from-[#A3E635] to-[#84CC16] bg-clip-text text-transparent">
+                  AI Mentor & Co-Founder
+                </span>
+                .
               </h1>
-              <p className="text-sm text-zinc-400 max-w-lg mx-auto leading-relaxed">
-                Let's start now. Ask me about your product strategy, tech architecture, pricing, or outreach roadmap for <strong className="text-white">{startupName}</strong>.
+              <p className="mx-auto max-w-lg text-[15px] leading-7 text-zinc-400">
+                Let&apos;s start now. Ask me about your product strategy, tech architecture, pricing, or outreach roadmap for{" "}
+                <strong className="font-semibold text-white">{startupName}</strong>.
               </p>
             </div>
           ) : (
-            <div className="space-y-5 max-w-3xl mx-auto w-full my-auto">
+            <div className="my-auto mx-auto w-full max-w-3xl space-y-5">
               {activeChat?.messages.map((msg, i) => (
                 <div
                   key={i}
@@ -463,21 +467,21 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
                   }`}
                 >
                   {msg.role === "assistant" && (
-                    <div className="h-8 w-8 rounded-xl bg-[#deff9a] flex items-center justify-center shrink-0 mt-0.5 text-black shadow-md">
+                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#A3E635]/25 bg-zinc-900 text-[#A3E635] shadow-[0_0_12px_rgba(163,230,53,0.15)]">
                       <Bot className="h-4 w-4" />
                     </div>
                   )}
                   <div
-                    className={`rounded-2xl px-5 py-3.5 text-xs md:text-sm leading-relaxed max-w-[85%] ${
+                    className={`max-w-[85%] rounded-2xl px-5 py-3.5 text-xs leading-relaxed md:text-sm ${
                       msg.role === "user"
-                        ? "bg-zinc-800 border border-amber-400/30 text-white shadow-md"
-                        : "bg-white/[0.03] border border-white/10 text-zinc-200 whitespace-pre-line shadow-sm"
+                        ? "border border-[#A3E635]/20 bg-zinc-800 text-white shadow-md"
+                        : "whitespace-pre-line border border-white/10 bg-zinc-900 text-zinc-200 shadow-sm"
                     }`}
                   >
                     {msg.content}
                   </div>
                   {msg.role === "user" && (
-                    <div className="h-8 w-8 rounded-xl bg-amber-400 flex items-center justify-center shrink-0 mt-0.5 text-black font-bold text-xs shadow-md">
+                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#A3E635]/30 bg-zinc-800 text-xs font-extrabold text-[#A3E635]">
                       K
                     </div>
                   )}
@@ -489,13 +493,13 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
         </div>
 
         {/* INPUT BAR */}
-        <div className="p-4 md:p-6 border-t border-white/10 bg-[#08080c] shrink-0">
-          <div className="max-w-3xl mx-auto flex items-center gap-2 bg-black/80 border border-white/15 rounded-2xl p-2 focus-within:border-amber-400/60 shadow-2xl">
+        <div className="shrink-0 border-t border-white/[0.06] bg-[#18181B] p-4 md:p-6">
+          <div className="mx-auto flex max-w-3xl items-center gap-2 rounded-2xl border border-white/10 bg-black/70 p-2.5 shadow-2xl transition-all duration-200 focus-within:border-[#A3E635]/50 focus-within:ring-2 focus-within:ring-[#A3E635]/25">
             <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
 
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="p-2 rounded-xl text-zinc-400 hover:text-amber-300 hover:bg-white/5 transition-colors cursor-pointer"
+              className="cursor-pointer rounded-xl p-2.5 text-zinc-400 transition-colors duration-150 hover:bg-zinc-800 hover:text-[#A3E635]"
               title="Attach Screenshot"
             >
               <Paperclip className="h-4 w-4" />
@@ -503,10 +507,10 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
 
             <button
               onClick={() => setIsVoiceActive(!isVoiceActive)}
-              className={`p-2 rounded-xl transition-all cursor-pointer ${
+              className={`cursor-pointer rounded-xl p-2.5 transition-all duration-150 ${
                 isVoiceActive
-                  ? "bg-rose-500 text-white shadow-[0_0_12px_rgba(244,63,94,0.5)]"
-                  : "text-rose-400 hover:bg-rose-500/10"
+                  ? "bg-[#A3E635] text-zinc-950 shadow-[0_0_12px_rgba(163,230,53,0.45)]"
+                  : "text-zinc-400 hover:bg-zinc-800 hover:text-[#A3E635]"
               }`}
             >
               {isVoiceActive ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
@@ -517,13 +521,13 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-              placeholder="Ask Mentor anything or attach screenshot..."
-              className="flex-1 bg-transparent px-2 text-xs md:text-sm text-white placeholder-zinc-500 focus:outline-none"
+              placeholder="Ask Mentor anything or attach a screenshot…"
+              className="flex-1 bg-transparent px-2 py-1.5 text-sm text-white placeholder:text-zinc-500 focus:outline-none"
             />
 
             <button
               onClick={handleSendMessage}
-              className="h-10 w-10 rounded-xl bg-amber-400 flex items-center justify-center text-black font-bold hover:bg-amber-300 transition-all cursor-pointer"
+              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-[#A3E635] text-zinc-950 transition-all duration-150 hover:bg-[#84CC16] hover:shadow-[0_0_20px_rgba(163,230,53,0.35)]"
             >
               <Send className="h-4 w-4" />
             </button>
@@ -552,7 +556,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
               <div className="flex items-center gap-3">
                 <button
                   onClick={handleDownloadBlueprint}
-                  className="flex items-center gap-1.5 bg-amber-400 text-black font-bold text-xs px-4 py-2 rounded-xl hover:bg-amber-300 transition-all cursor-pointer shadow-lg"
+                  className="flex cursor-pointer items-center gap-1.5 rounded-xl bg-[#A3E635] px-4 py-2 text-xs font-bold text-zinc-950 shadow-[0_0_20px_rgba(163,230,53,0.25)] transition-all hover:bg-[#84CC16]"
                 >
                   <FileDown className="h-4 w-4" /> Download Blueprint
                 </button>
@@ -571,8 +575,8 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
                 <span className="text-[11px] font-semibold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-3 py-1 rounded-full">
                   Breakout Stage
                 </span>
-                <span className="text-[11px] font-semibold bg-amber-400/10 border border-amber-400/30 text-amber-300 px-3 py-1 rounded-full flex items-center gap-1">
-                  <Flame className="h-3 w-3 text-amber-400" /> AI Confidence 100%
+                <span className="flex items-center gap-1 rounded-full border border-[#A3E635]/30 bg-[#A3E635]/10 px-3 py-1 text-[11px] font-semibold text-[#D9F99D]">
+                  <Flame className="h-3 w-3 text-[#A3E635]" /> AI Confidence 100%
                 </span>
                 <span className="text-[11px] font-semibold bg-blue-500/10 border border-blue-500/30 text-blue-400 px-3 py-1 rounded-full">
                   Category: Lifestyle Content Creation
@@ -582,10 +586,10 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
               <h1 className="text-4xl md:text-6xl font-black text-white tracking-tight">{startupName}</h1>
 
               {/* Co-Founder Insight */}
-              <div className="p-4 rounded-2xl bg-[#14120b] border border-amber-500/20 flex gap-3 items-start">
-                <HelpCircle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3 rounded-2xl border border-[#A3E635]/20 bg-zinc-900 p-4">
+                <HelpCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#A3E635]" />
                 <div>
-                  <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-[#A3E635]">
                     CO-FOUNDER INSIGHT (IN SIMPLE TERMS)
                   </span>
                   <p className="text-xs md:text-sm text-zinc-300 mt-0.5">
@@ -610,7 +614,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
                 </div>
                 <div>
                   <span className="text-[10px] font-bold text-zinc-500 uppercase block">TIME TO BUILD MVP</span>
-                  <span className="text-2xl font-extrabold text-amber-300">2-3 Weeks</span>
+                  <span className="text-2xl font-extrabold text-[#A3E635]">2-3 Weeks</span>
                 </div>
               </div>
             </div>
@@ -643,15 +647,15 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
                 </div>
 
                 <div className="p-5 rounded-2xl bg-black/50 border border-rose-500/20 space-y-2">
-                  <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5 uppercase tracking-wider">
-                    <X className="h-4 w-4 text-amber-400" /> WHAT NOT TO BUILD IN V1 (SCOPE FREEZE)
+                  <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-zinc-300">
+                    <X className="h-4 w-4 text-[#A3E635]" /> WHAT NOT TO BUILD IN V1 (SCOPE FREEZE)
                   </span>
                   <ul className="space-y-1 text-xs text-zinc-300">
                     <li className="flex items-center gap-1.5">
-                      <span className="font-bold text-amber-400">Skip:</span> Custom Voice Cloning (High API complexity)
+                      <span className="font-bold text-[#A3E635]">Skip:</span> Custom Voice Cloning (High API complexity)
                     </li>
                     <li className="flex items-center gap-1.5">
-                      <span className="font-bold text-amber-400">Skip:</span> Multi-user Workspace Roles & Teams
+                      <span className="font-bold text-[#A3E635]">Skip:</span> Multi-user Workspace Roles & Teams
                     </li>
                     <li className="flex items-center gap-1.5 pt-1">
                       <span className="font-bold text-emerald-400">Build Instead:</span> Clean Text-to-Speech + 3 Core Avatars
@@ -684,7 +688,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
                 </div>
 
                 <div className="p-5 rounded-2xl bg-black/40 border border-white/5 space-y-2">
-                  <span className="text-[11px] font-bold text-amber-400 block uppercase tracking-wider">
+                  <span className="block text-[11px] font-bold uppercase tracking-wider text-[#A3E635]">
                     💰 EXPENSIVE FREELANCER / AGENCY FEES
                   </span>
                   <p className="text-xs text-zinc-400 leading-relaxed">
@@ -821,9 +825,9 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
             </div>
 
             {/* 5. TECH STACK & UNIT ECONOMICS */}
-            <div className="p-6 md:p-8 rounded-3xl bg-[#120e09] border border-amber-500/10 space-y-5">
+            <div className="space-y-5 rounded-3xl border border-[#A3E635]/10 bg-zinc-900 p-6 md:p-8">
               <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400 border border-amber-500/20">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#A3E635]/20 bg-[#A3E635]/10 text-[#A3E635]">
                   <Cpu className="h-4 w-4" />
                 </div>
                 <div>
@@ -834,7 +838,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
 
               <div className="grid md:grid-cols-3 gap-4">
                 <div className="p-5 rounded-2xl bg-black/40 border border-white/5 space-y-2">
-                  <span className="text-[11px] font-bold text-amber-400 flex items-center gap-1.5 uppercase tracking-wider">
+                  <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#A3E635]">
                     <Layers className="h-3.5 w-3.5" /> RECOMMENDED TECH
                   </span>
                   <p className="text-xs text-zinc-400 leading-relaxed">
