@@ -1,31 +1,36 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-
-import { hasClientActiveWorkspace } from "@/lib/workspace/active-workspace";
 
 export function DiscoverRouteGuard({ children }: { children: ReactNode }) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const explicitDiscover = searchParams.get("intent") === "discover";
-    if (explicitDiscover) {
-      setAllowed(true);
-      return;
-    }
+    try {
+      const explicitDiscover = new URLSearchParams(window.location.search).get("intent") === "discover";
+      if (explicitDiscover) {
+        setAllowed(true);
+        return;
+      }
 
-    if (hasClientActiveWorkspace()) {
-      router.replace("/dashboard/workspace");
-      return;
+      const startupId = window.localStorage.getItem("active_startup_id");
+      const workspaceFlag = window.localStorage.getItem("aiscoutx_active_workspace");
+      const hasActive =
+        Boolean(startupId && startupId !== "false") ||
+        workspaceFlag === "true";
+
+      if (hasActive) {
+        window.location.replace("/dashboard/workspace");
+        return;
+      }
+    } catch {
+      // Storage blocked — stay on Discover rather than crash Safari.
     }
 
     setAllowed(true);
-  }, [router, searchParams]);
+  }, []);
 
   if (!allowed) {
     return <div className="min-h-0 flex-1 bg-[#09090B]" aria-hidden />;

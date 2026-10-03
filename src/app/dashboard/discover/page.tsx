@@ -11,9 +11,13 @@ import type { NicheId, WorkspaceIdentity } from "@/lib/dashboard/onboarding";
 import { normalizeNicheForWorkspace } from "@/lib/dashboard/onboarding";
 import { DiscoverRouteGuard } from "@/components/dashboard/discover-route-guard";
 import {
+  ACTIVE_STARTUP_ID_COOKIE,
   ACTIVE_WORKSPACE_COOKIE,
 } from "@/lib/workspace/active-workspace";
-import { hasActiveWorkspaceCookie } from "@/lib/workspace/active-workspace-server";
+import {
+  hasActiveWorkspaceCookie,
+  readActiveWorkspaceCookie,
+} from "@/lib/workspace/active-workspace-server";
 
 const CommandCenter = nextDynamic(
   () =>
@@ -36,7 +40,11 @@ type DiscoverPageProps = {
 
 export default async function DiscoverPage({ searchParams }: DiscoverPageProps) {
   const wantsDiscover = searchParams?.intent === "discover";
-  const activeId = cookies().get(ACTIVE_WORKSPACE_COOKIE)?.value?.trim();
+  const jar = cookies();
+  const activeId =
+    readActiveWorkspaceCookie() ??
+    jar.get(ACTIVE_STARTUP_ID_COOKIE)?.value?.trim() ??
+    jar.get(ACTIVE_WORKSPACE_COOKIE)?.value?.trim();
   if (!wantsDiscover && (activeId || hasActiveWorkspaceCookie())) {
     redirect(
       activeId

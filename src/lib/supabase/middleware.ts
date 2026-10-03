@@ -15,15 +15,7 @@ function cookieValue(request: NextRequest, name: string): string | undefined {
   return request.cookies.get(name)?.value?.trim();
 }
 
-function isStrictlyInactive(request: NextRequest): boolean {
-  const has = cookieValue(request, "aiscoutx_has_active_startup");
-  const flag = cookieValue(request, "aiscoutx_active_workspace");
-  return has === "0" || has === "false" || flag === "false";
-}
-
-function readActiveStartupId(request: NextRequest): string | null {
-  if (isStrictlyInactive(request)) return null;
-  const raw = cookieValue(request, "aiscoutx_active_startup");
+function decodeId(raw?: string): string | null {
   if (!raw) return null;
   try {
     const decoded = decodeURIComponent(raw);
@@ -34,11 +26,48 @@ function readActiveStartupId(request: NextRequest): string | null {
   }
 }
 
+function isStrictlyInactive(request: NextRequest): boolean {
+  const has = cookieValue(request, "aiscoutx_has_active_startup");
+  const flag = cookieValue(request, "aiscoutx_active_workspace");
+  return has === "0" || has === "false" || flag === "false";
+}
+
+function readActiveStartupId(request: NextRequest): string | null {
+  if (isStrictlyInactive(request)) return null;
+  return (
+    decodeId(cookieValue(request, "active_startup_id")) ??
+    decodeId(cookieValue(request, "aiscoutx_active_startup"))
+  );
+}
+
 function hasActiveWorkspaceSignal(request: NextRequest): boolean {
   if (isStrictlyInactive(request)) return false;
   if (cookieValue(request, "aiscoutx_active_workspace") === "true") return true;
   if (cookieValue(request, "aiscoutx_has_active_startup") === "1") return true;
-  return Boolean(readActiveStartupId(request));
+  if (cookieValue(request, "active_startup_id")) return true;
+  if (cookieValue(request, "aiscoutx_active_startup")) return true;
+  return false;
+}
+
+function stampWorkspaceCookies(
+  response: NextResponse,
+  request: NextRequest,
+  id?: string | null
+) {
+  const secure = request.nextUrl.protocol === "https:";
+  const options = {
+    path: "/",
+    maxAge: 31536000,
+    sameSite: "lax" as const,
+    secure,
+    httpOnly: false,
+  };
+  response.cookies.set("aiscoutx_active_workspace", "true", options);
+  response.cookies.set("aiscoutx_has_active_startup", "1", options);
+  if (id) {
+    response.cookies.set("active_startup_id", id, options);
+    response.cookies.set("aiscoutx_active_startup", id, options);
+  }
 }
 
 function redirectToWorkspace(
@@ -51,6 +80,7 @@ function redirectToWorkspace(
   url.search = "";
   const redirectResponse = NextResponse.redirect(url);
   applyCookies(supabaseResponse, redirectResponse);
+  stampWorkspaceCookies(redirectResponse, request, id);
   return redirectResponse;
 }
 
