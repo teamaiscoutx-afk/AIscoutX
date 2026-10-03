@@ -11,5 +11,5 @@ export default async function ActiveWorkspaceIndexPage() {
     redirect(`/dashboard/workspace/${active.id}`);
   }
 
-  redirect("/dashboard/discover");
+  redirect("/dashboard/discover?intent=discover");
 }

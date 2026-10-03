@@ -9,9 +9,11 @@ import { getCurrentProfile } from "@/app/actions/profile";
 import { IntelligenceSkeleton } from "@/components/dashboard/intelligence-skeleton";
 import type { NicheId, WorkspaceIdentity } from "@/lib/dashboard/onboarding";
 import { normalizeNicheForWorkspace } from "@/lib/dashboard/onboarding";
+import { DiscoverRouteGuard } from "@/components/dashboard/discover-route-guard";
 import {
   ACTIVE_WORKSPACE_COOKIE,
 } from "@/lib/workspace/active-workspace";
+import { hasActiveWorkspaceCookie } from "@/lib/workspace/active-workspace-server";
 
 const CommandCenter = nextDynamic(
   () =>
@@ -35,8 +37,12 @@ type DiscoverPageProps = {
 export default async function DiscoverPage({ searchParams }: DiscoverPageProps) {
   const wantsDiscover = searchParams?.intent === "discover";
   const activeId = cookies().get(ACTIVE_WORKSPACE_COOKIE)?.value?.trim();
-  if (activeId && !wantsDiscover) {
-    redirect(`/dashboard/workspace/${decodeURIComponent(activeId)}`);
+  if (!wantsDiscover && (activeId || hasActiveWorkspaceCookie())) {
+    redirect(
+      activeId
+        ? `/dashboard/workspace/${decodeURIComponent(activeId)}`
+        : "/dashboard/workspace"
+    );
   }
 
   const profile = await getCurrentProfile();
@@ -61,13 +67,15 @@ export default async function DiscoverPage({ searchParams }: DiscoverPageProps) 
         </div>
       }
     >
-      <CommandCenter
-        initialOpportunities={cached}
-        dataSource={cached.length ? "cache" : "live"}
-        initialNotifications={notifications}
-        initialWorkspace={initialWorkspace}
-        initialNiche={initialNiche}
-      />
+      <DiscoverRouteGuard>
+        <CommandCenter
+          initialOpportunities={cached}
+          dataSource={cached.length ? "cache" : "live"}
+          initialNotifications={notifications}
+          initialWorkspace={initialWorkspace}
+          initialNiche={initialNiche}
+        />
+      </DiscoverRouteGuard>
     </Suspense>
   );
 }

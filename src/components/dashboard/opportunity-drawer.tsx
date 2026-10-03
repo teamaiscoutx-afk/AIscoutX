@@ -102,6 +102,14 @@ if (!selectedOpportunity) return;
 startBuildTransition(async () => {
 const result = await createWorkspaceFromOpportunity(selectedOpportunity);
 if (result.ok && result.workspaceId) {
+if (typeof window !== "undefined") {
+document.cookie = "aiscoutx_active_workspace=true; path=/";
+try {
+window.localStorage.setItem("aiscoutx_active_workspace", "true");
+} catch {
+// Private mode — cookie still routes.
+}
+}
 persistActiveWorkspace({
 id: result.workspaceId,
 name: result.workspaceName ?? selectedOpportunity.name,

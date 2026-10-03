@@ -11,10 +11,19 @@ function applyCookies(source: NextResponse, target: NextResponse) {
   });
 }
 
+function cookieValue(request: NextRequest, name: string): string | undefined {
+  return request.cookies.get(name)?.value?.trim();
+}
+
+function isStrictlyInactive(request: NextRequest): boolean {
+  const has = cookieValue(request, "aiscoutx_has_active_startup");
+  const flag = cookieValue(request, "aiscoutx_active_workspace");
+  return has === "0" || has === "false" || flag === "false";
+}
+
 function readActiveStartupId(request: NextRequest): string | null {
-  const hasFlag = request.cookies.get("aiscoutx_has_active_startup")?.value === "1";
-  const raw = request.cookies.get("aiscoutx_active_startup")?.value?.trim();
-  if (!raw && !hasFlag) return null;
+  if (isStrictlyInactive(request)) return null;
+  const raw = cookieValue(request, "aiscoutx_active_startup");
   if (!raw) return null;
   try {
     const decoded = decodeURIComponent(raw);
@@ -25,9 +34,20 @@ function readActiveStartupId(request: NextRequest): string | null {
   }
 }
 
-function redirectToWorkspace(request: NextRequest, supabaseResponse: NextResponse, id: string) {
+function hasActiveWorkspaceSignal(request: NextRequest): boolean {
+  if (isStrictlyInactive(request)) return false;
+  if (cookieValue(request, "aiscoutx_active_workspace") === "true") return true;
+  if (cookieValue(request, "aiscoutx_has_active_startup") === "1") return true;
+  return Boolean(readActiveStartupId(request));
+}
+
+function redirectToWorkspace(
+  request: NextRequest,
+  supabaseResponse: NextResponse,
+  id?: string | null
+) {
   const url = request.nextUrl.clone();
-  url.pathname = `/dashboard/workspace/${id}`;
+  url.pathname = id ? `/dashboard/workspace/${id}` : "/dashboard/workspace";
   url.search = "";
   const redirectResponse = NextResponse.redirect(url);
   applyCookies(supabaseResponse, redirectResponse);
@@ -114,29 +134,36 @@ export async function updateSession(request: NextRequest) {
 
     const wantsSignIn = request.nextUrl.searchParams.get("signin") === "1";
     if (!wantsSignIn) {
-      const activeId = readActiveStartupId(request);
-      if (activeId) {
-        return redirectToWorkspace(request, supabaseResponse, activeId);
+      if (isStrictlyInactive(request)) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/dashboard/discover";
+        url.search = "";
+        const redirectResponse = NextResponse.redirect(url);
+        applyCookies(supabaseResponse, redirectResponse);
+        return redirectResponse;
       }
-      const url = request.nextUrl.clone();
-      url.pathname = "/dashboard";
-      url.search = "";
-      const redirectResponse = NextResponse.redirect(url);
-      applyCookies(supabaseResponse, redirectResponse);
-      return redirectResponse;
+      return redirectToWorkspace(request, supabaseResponse, readActiveStartupId(request));
     }
   }
 
   const wantsDiscover = request.nextUrl.searchParams.get("intent") === "discover";
   const isDiscoverEntry = pathname === "/dashboard/discover";
-  const isDashboardEntry =
-    pathname === "/dashboard" || pathname === "/dashboard/workspace";
+  const isDashboardRoot = pathname === "/dashboard";
 
-  if (user && (isDashboardEntry || (isDiscoverEntry && !wantsDiscover))) {
-    const activeId = readActiveStartupId(request);
-    if (activeId) {
-      return redirectToWorkspace(request, supabaseResponse, activeId);
+  if (user && isDashboardRoot) {
+    if (isStrictlyInactive(request)) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard/discover";
+      url.search = "";
+      const redirectResponse = NextResponse.redirect(url);
+      applyCookies(supabaseResponse, redirectResponse);
+      return redirectResponse;
     }
+    return redirectToWorkspace(request, supabaseResponse, readActiveStartupId(request));
+  }
+
+  if (user && isDiscoverEntry && !wantsDiscover && hasActiveWorkspaceSignal(request)) {
+    return redirectToWorkspace(request, supabaseResponse, readActiveStartupId(request));
   }
 
   if (isAuthCallback) {
