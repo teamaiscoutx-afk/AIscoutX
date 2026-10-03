@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { persistActiveWorkspace } from "@/lib/workspace/active-workspace";
 import { cn } from "@/lib/utils";
 
 export type SidebarProject = {
@@ -74,7 +75,10 @@ export function ProjectSwitcher({ projects, className }: ProjectSwitcherProps) {
         {projects.map((project) => (
           <DropdownMenuItem
             key={project.id}
-            onSelect={() => router.push(`/dashboard/workspace/${project.id}`)}
+            onSelect={() => {
+              persistActiveWorkspace({ id: project.id, name: project.name });
+              router.push(`/dashboard/workspace/${project.id}`);
+            }}
             className="cursor-pointer gap-2 text-zinc-300 focus:bg-white/[0.06] focus:text-white"
           >
             <span className="truncate">{project.name}</span>

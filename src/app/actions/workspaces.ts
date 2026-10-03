@@ -20,6 +20,7 @@ import {
   createServerSupabaseClient,
   isSupabaseConfigured,
 } from "@/lib/supabase";
+import { writeActiveWorkspaceCookie } from "@/lib/workspace/active-workspace-server";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -115,7 +116,13 @@ export async function getWorkspaceById(
 
 export async function createWorkspaceFromOpportunity(
   opportunity: Opportunity
-): Promise<{ ok: boolean; workspaceId?: string; error?: string; code?: string }> {
+): Promise<{
+  ok: boolean;
+  workspaceId?: string;
+  workspaceName?: string;
+  error?: string;
+  code?: string;
+}> {
   if (!isSupabaseConfigured()) {
     return { ok: false, error: "Supabase is not configured" };
   }
@@ -210,10 +217,12 @@ export async function createWorkspaceFromOpportunity(
       stage_type: nextAction.vector,
     });
 
+    writeActiveWorkspaceCookie(workspace.id);
+
     revalidatePath("/dashboard");
     revalidatePath(`/dashboard/workspace/${workspace.id}`);
 
-    return { ok: true, workspaceId: workspace.id };
+    return { ok: true, workspaceId: workspace.id, workspaceName: workspace.opportunity_name };
   } catch (err) {
     return toClientError(
       "workspaces.create",

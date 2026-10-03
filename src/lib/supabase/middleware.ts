@@ -11,6 +11,18 @@ function applyCookies(source: NextResponse, target: NextResponse) {
   });
 }
 
+function readActiveStartupId(request: NextRequest): string | null {
+  const raw = request.cookies.get("aiscoutx_active_startup")?.value?.trim();
+  if (!raw) return null;
+  try {
+    const decoded = decodeURIComponent(raw);
+    if (!decoded || decoded.includes("/") || decoded.includes("..")) return null;
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+
 function safeRedirectPath(value: string | null, fallback = "/dashboard"): string {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
     return fallback;
@@ -91,12 +103,30 @@ export async function updateSession(request: NextRequest) {
 
     const wantsSignIn = request.nextUrl.searchParams.get("signin") === "1";
     if (!wantsSignIn) {
+      const activeId = readActiveStartupId(request);
       const url = request.nextUrl.clone();
-      url.pathname = "/dashboard";
+      url.pathname = activeId
+        ? `/dashboard/workspace/${activeId}`
+        : "/dashboard";
       url.search = "";
       const redirectResponse = NextResponse.redirect(url);
       applyCookies(supabaseResponse, redirectResponse);
       return redirectResponse;
+    }
+  }
+
+  if (user && (pathname === "/dashboard" || pathname === "/dashboard/workspace")) {
+    const stayOnDiscover = request.nextUrl.searchParams.get("view") === "discover";
+    if (!stayOnDiscover) {
+      const activeId = readActiveStartupId(request);
+      if (activeId && pathname === "/dashboard") {
+        const url = request.nextUrl.clone();
+        url.pathname = `/dashboard/workspace/${activeId}`;
+        url.search = "";
+        const redirectResponse = NextResponse.redirect(url);
+        applyCookies(supabaseResponse, redirectResponse);
+        return redirectResponse;
+      }
     }
   }
 

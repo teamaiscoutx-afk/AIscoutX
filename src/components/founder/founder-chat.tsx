@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useChat } from "@ai-sdk/react";
-import { Bot, Send, Sparkles, Camera } from "lucide-react"; // Added Camera icon for UI upload trigger
+import { Bot, Camera, Search, Send, Sparkles } from "lucide-react";
 
 import type { UsageSnapshot } from "@/app/actions/usage";
 import { useUpgradeModal } from "@/components/billing/upgrade-modal";
@@ -183,7 +184,16 @@ export function FounderChat({ usage }: FounderChatProps) {
               : `${Math.max(FREE_TIER_LIMITS.chatMessagesPerMonth - freeMessagesUsed, 0)} free strategy messages left this month.`}
           </p>
         </div>
-        <UsageBadge usage={usage} />
+        <div className="flex items-center gap-2">
+          <Link
+            href="/dashboard/discover"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-zinc-900 px-3 py-1.5 text-[11px] font-semibold text-zinc-300 transition-colors hover:border-[#A3E635]/35 hover:text-white"
+          >
+            <Search className="h-3.5 w-3.5 text-[#A3E635]" />
+            Discover New Ideas
+          </Link>
+          <UsageBadge usage={usage} />
+        </div>
       </div>
 
       <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-white/[0.06] bg-zinc-900/50">

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Bot,
   Plus,
@@ -37,8 +38,17 @@ import {
   User,
   Key,
   CreditCard,
+  Search,
 } from "lucide-react";
 import type { StartupWorkspace } from "@/lib/founder/types";
+import {
+  DEFAULT_CHAT_SEED,
+  persistActiveWorkspace,
+  persistWorkspaceChats,
+  readActiveWorkspace,
+  readWorkspaceChats,
+} from "@/lib/workspace/active-workspace";
+import { markWorkspaceActiveSession } from "@/app/actions/active-workspace";
 
 type StartupWorkspaceViewProps = {
   initialWorkspace: StartupWorkspace;
@@ -52,32 +62,25 @@ type ChatSession = {
   isDeleted?: boolean;
 };
 
+function resolveStartupName(workspace: StartupWorkspace): string {
+  const cached = readActiveWorkspace();
+  return (
+    workspace.opportunityName?.trim() ||
+    cached?.active_startup_name?.trim() ||
+    "VoiceCraft"
+  );
+}
+
 export function StartupWorkspaceView({
   initialWorkspace,
 }: StartupWorkspaceViewProps) {
+  const router = useRouter();
   const [workspace] = useState(initialWorkspace);
-  const startupName = workspace?.summary?.name || "VoiceCraft";
+  const startupName = resolveStartupName(workspace);
 
-  // Chat History States
-  const [chats, setChats] = useState<ChatSession[]>([
-    {
-      id: "chat-1",
-      title: "Initial Strategy & Target Audience",
-      messages: [],
-    },
-    {
-      id: "chat-2",
-      title: "Pricing & Unit Economics",
-      messages: [
-        {
-          role: "assistant",
-          content: "Pricing structure finalized hai: $29/mo Starter aur $79/mo Pro tier.",
-        },
-      ],
-    },
-  ]);
-
+  const [chats, setChats] = useState<ChatSession[]>(DEFAULT_CHAT_SEED);
   const [activeChatId, setActiveChatId] = useState<string>("chat-1");
+  const [chatsReady, setChatsReady] = useState(false);
   const [inputMessage, setInputMessage] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isVoiceActive, setIsVoiceActive] = useState(false);
@@ -111,6 +114,23 @@ export function StartupWorkspaceView({
     window.addEventListener("click", handleClick);
     return () => window.removeEventListener("click", handleClick);
   }, []);
+
+  useEffect(() => {
+    persistActiveWorkspace({ id: workspace.id, name: startupName });
+    void markWorkspaceActiveSession(workspace.id);
+
+    const stored = readWorkspaceChats(workspace.id);
+    if (stored?.chats?.length) {
+      setChats(stored.chats);
+      setActiveChatId(stored.activeChatId || stored.chats[0].id);
+    }
+    setChatsReady(true);
+  }, [workspace.id, startupName]);
+
+  useEffect(() => {
+    if (!chatsReady) return;
+    persistWorkspaceChats(workspace.id, { chats, activeChatId });
+  }, [workspace.id, chats, activeChatId, chatsReady]);
 
   const handleNewChat = () => {
     const newChatId = `chat-${Date.now()}`;
@@ -276,6 +296,19 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
               <span className="h-1.5 w-1.5 rounded-full bg-[#A3E635] shadow-[0_0_8px_rgba(163,230,53,0.9)]" />
               Active Startup
             </span>
+          </div>
+
+          <div className="px-1">
+            <p className="truncate px-1 text-[11px] font-semibold text-white">{startupName}</p>
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard/discover")}
+              className="mt-1.5 flex w-full cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-zinc-900/70 px-3 py-2 text-left text-[11px] font-semibold text-zinc-300 transition-all duration-150 hover:border-[#A3E635]/35 hover:bg-zinc-800 hover:text-white"
+            >
+              <Search className="h-3.5 w-3.5 text-[#A3E635]" />
+              <span className="min-w-0 flex-1 truncate">Switch Startup / Discover New Ideas</span>
+              <Sparkles className="h-3 w-3 shrink-0 text-[#D9F99D]" />
+            </button>
           </div>
 
           <button

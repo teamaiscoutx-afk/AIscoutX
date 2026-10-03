@@ -28,6 +28,7 @@ ChevronRight,
 
 import { fetchOpportunityDeepDive } from "@/app/actions/intelligence";
 import { saveOpportunity } from "@/app/actions/opportunities";
+import { persistActiveWorkspace } from "@/lib/workspace/active-workspace";
 import { useUpgradeModal } from "@/components/billing/upgrade-modal";
 import { createWorkspaceFromOpportunity } from "@/app/actions/workspaces";
 import {
@@ -101,6 +102,10 @@ if (!selectedOpportunity) return;
 startBuildTransition(async () => {
 const result = await createWorkspaceFromOpportunity(selectedOpportunity);
 if (result.ok && result.workspaceId) {
+persistActiveWorkspace({
+id: result.workspaceId,
+name: result.workspaceName ?? selectedOpportunity.name,
+});
 router.push(`/dashboard/workspace/${result.workspaceId}`);
 onClose();
 return;
