@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   Bot,
   Plus,
@@ -65,10 +66,50 @@ function resolveStartupName(workspace: StartupWorkspace): string {
   return workspace.opportunityName?.trim() || "VoiceCraft";
 }
 
+const GPU = { willChange: "transform, opacity" } as const;
+
+const sidebarSpring = { type: "spring" as const, duration: 0.4, bounce: 0.18 };
+
+const staggerContainer = {
+  hidden: {},
+  show: {
+    transition: { staggerChildren: 0.05, delayChildren: 0.12 },
+  },
+};
+
+const staggerItem = {
+  hidden: { opacity: 0, x: -10 },
+  show: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] },
+  },
+};
+
+const heroContainer = {
+  hidden: {},
+  show: {
+    transition: { staggerChildren: 0.08, delayChildren: 0.18 },
+  },
+};
+
+const heroItem = {
+  hidden: { opacity: 0, y: 15 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] },
+  },
+};
+
+const iconTap = { scale: 0.95 };
+const iconHover = { scale: 1.05 };
+
 export function StartupWorkspaceView({
   initialWorkspace,
 }: StartupWorkspaceViewProps) {
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
   const [workspace] = useState(initialWorkspace);
   const startupName = resolveStartupName(workspace);
 
@@ -277,7 +318,13 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
     <div className="fixed inset-0 z-50 flex h-screen w-screen overflow-hidden bg-[#09090B] font-sans text-white tracking-tight">
       
       {/* SIDEBAR */}
-      <div className="hidden w-64 shrink-0 flex-col justify-between border-r border-white/[0.06] bg-[#18181B] p-3 md:flex">
+      <motion.aside
+        className="hidden w-64 shrink-0 flex-col justify-between border-r border-white/[0.06] bg-[#18181B] p-3 md:flex"
+        style={GPU}
+        initial={reduceMotion ? false : { x: -20, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={sidebarSpring}
+      >
         <div className="space-y-3">
           <div className="flex items-center justify-between border-b border-white/[0.06] px-2 pb-2.5 pt-1">
             <div className="flex items-center gap-2">
@@ -326,24 +373,45 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
             <ExternalLink className="h-3 w-3 shrink-0 text-zinc-500 opacity-70 transition-colors group-hover:text-[#A3E635] group-hover:opacity-100" />
           </button>
 
-          <div className="space-y-0.5 pt-1">
+          <motion.div
+            className="space-y-0.5 pt-1"
+            variants={staggerContainer}
+            initial={reduceMotion ? false : "hidden"}
+            animate="show"
+          >
             <span className="block px-2 text-[10px] font-bold uppercase tracking-wider text-zinc-500">OS Modules</span>
+            <motion.div variants={staggerItem} style={GPU}>
             <Link href="/dashboard/analyze" className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-zinc-400 transition-all duration-150 hover:bg-zinc-800 hover:text-white">
               <BarChart3 className="h-3.5 w-3.5 text-[#A3E635]" /> Market Analysis
             </Link>
+            </motion.div>
+            <motion.div variants={staggerItem} style={GPU}>
             <Link href="/dashboard/launch" className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-zinc-400 transition-all duration-150 hover:bg-zinc-800 hover:text-white">
               <Rocket className="h-3.5 w-3.5 text-[#84CC16]" /> Launch Plan
             </Link>
+            </motion.div>
+            <motion.div variants={staggerItem} style={GPU}>
             <Link href="/dashboard/gps" className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-zinc-400 transition-all duration-150 hover:bg-zinc-800 hover:text-white">
               <Compass className="h-3.5 w-3.5 text-[#D9F99D]" /> Founder GPS
             </Link>
-          </div>
+            </motion.div>
+          </motion.div>
 
           <div className="space-y-1 border-t border-white/[0.06] pt-1">
             <span className="block px-2 text-[10px] font-bold uppercase tracking-wider text-zinc-500">Recent Chats</span>
-            <div className="max-h-[calc(100vh-390px)] space-y-1 overflow-y-auto">
+            <motion.div
+              className="max-h-[calc(100vh-390px)] space-y-1 overflow-y-auto"
+              variants={staggerContainer}
+              initial={reduceMotion ? false : "hidden"}
+              animate="show"
+            >
               {activeChats.map((chat) => (
-                <div key={chat.id} onContextMenu={(e) => handleContextMenu(e, chat.id)}>
+                <motion.div
+                  key={chat.id}
+                  variants={staggerItem}
+                  style={GPU}
+                  onContextMenu={(e) => handleContextMenu(e, chat.id)}
+                >
                   {renamingChatId === chat.id ? (
                     <input
                       type="text"
@@ -367,9 +435,9 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
                       <span className="flex-1 truncate">{chat.title}</span>
                     </button>
                   )}
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           </div>
         </div>
 
@@ -445,7 +513,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
             </button>
           </div>
         </div>
-      </div>
+      </motion.aside>
 
       {/* CHAT CANVAS */}
       <div className="relative flex flex-1 flex-col overflow-hidden bg-[#09090B]">
@@ -468,22 +536,55 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
 
         <div className="flex flex-1 flex-col justify-center overflow-y-auto p-4 md:p-8">
           {activeChat?.messages.length === 0 ? (
-            <div className="my-auto mx-auto max-w-2xl space-y-5 text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl border border-zinc-800 bg-zinc-900 text-[#A3E635] shadow-[0_0_32px_rgba(163,230,53,0.18)]">
-                <Sparkles className="h-8 w-8" strokeWidth={1.75} />
-              </div>
-              <h1 className="text-2xl font-extrabold tracking-tight text-white md:text-3xl">
+            <motion.div
+              className="my-auto mx-auto max-w-2xl space-y-5 text-center"
+              variants={heroContainer}
+              initial={reduceMotion ? false : "hidden"}
+              animate="show"
+            >
+              <motion.div
+                className="relative mx-auto flex h-16 w-16 items-center justify-center"
+                variants={heroItem}
+                initial={reduceMotion ? false : { scale: 0.8, opacity: 0, y: 15 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                style={GPU}
+              >
+                <motion.span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-[-18%] rounded-[28px] bg-[radial-gradient(circle,rgba(163,230,53,0.45)_0%,rgba(163,230,53,0.08)_55%,transparent_70%)]"
+                  animate={
+                    reduceMotion
+                      ? { opacity: 0.45 }
+                      : { opacity: [0.35, 0.75, 0.35], scale: [0.96, 1.08, 0.96] }
+                  }
+                  transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+                  style={GPU}
+                />
+                <div className="relative z-10 flex h-16 w-16 items-center justify-center rounded-3xl border border-zinc-800 bg-zinc-900 text-[#A3E635] shadow-[0_0_32px_rgba(163,230,53,0.18)]">
+                  <Sparkles className="h-8 w-8" strokeWidth={1.75} />
+                </div>
+              </motion.div>
+              <motion.h1
+                className="text-2xl font-extrabold tracking-tight text-white md:text-3xl"
+                variants={heroItem}
+                style={GPU}
+              >
                 Hey Karan! I am your{" "}
                 <span className="bg-gradient-to-r from-[#A3E635] to-[#84CC16] bg-clip-text text-transparent">
                   AI Mentor & Co-Founder
                 </span>
                 .
-              </h1>
-              <p className="mx-auto max-w-lg text-[15px] leading-7 text-zinc-400">
+              </motion.h1>
+              <motion.p
+                className="mx-auto max-w-lg text-[15px] leading-7 text-zinc-400"
+                variants={heroItem}
+                style={GPU}
+              >
                 Let&apos;s start now. Ask me about your product strategy, tech architecture, pricing, or outreach roadmap for{" "}
                 <strong className="font-semibold text-white">{startupName}</strong>.
-              </p>
-            </div>
+              </motion.p>
+            </motion.div>
           ) : (
             <div className="my-auto mx-auto w-full max-w-3xl space-y-5">
               {activeChat?.messages.map((msg, i) => (
@@ -520,28 +621,48 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
         </div>
 
         {/* INPUT BAR */}
-        <div className="shrink-0 border-t border-white/[0.06] bg-[#18181B] p-4 md:p-6">
+        <motion.div
+          className="shrink-0 border-t border-white/[0.06] bg-[#18181B] p-4 md:p-6"
+          style={GPU}
+          initial={
+            reduceMotion
+              ? false
+              : { y: 20, opacity: 0, filter: "blur(10px)" }
+          }
+          animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
+          transition={{ duration: 0.45, delay: 0.16, ease: [0.22, 1, 0.36, 1] }}
+        >
           <div className="mx-auto flex max-w-3xl items-center gap-2 rounded-2xl border border-white/10 bg-black/70 p-2.5 shadow-2xl transition-all duration-200 focus-within:border-[#A3E635]/50 focus-within:ring-2 focus-within:ring-[#A3E635]/25">
             <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
 
-            <button
+            <motion.button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="cursor-pointer rounded-xl p-2.5 text-zinc-400 transition-colors duration-150 hover:bg-zinc-800 hover:text-[#A3E635]"
+              className="cursor-pointer rounded-xl p-2.5 text-zinc-400 hover:bg-zinc-800 hover:text-[#A3E635]"
               title="Attach Screenshot"
+              style={GPU}
+              whileHover={iconHover}
+              whileTap={iconTap}
+              transition={{ type: "spring", duration: 0.25, bounce: 0.35 }}
             >
               <Paperclip className="h-4 w-4" />
-            </button>
+            </motion.button>
 
-            <button
+            <motion.button
+              type="button"
               onClick={() => setIsVoiceActive(!isVoiceActive)}
-              className={`cursor-pointer rounded-xl p-2.5 transition-all duration-150 ${
+              className={`cursor-pointer rounded-xl p-2.5 ${
                 isVoiceActive
                   ? "bg-[#A3E635] text-zinc-950 shadow-[0_0_12px_rgba(163,230,53,0.45)]"
                   : "text-zinc-400 hover:bg-zinc-800 hover:text-[#A3E635]"
               }`}
+              style={GPU}
+              whileHover={iconHover}
+              whileTap={iconTap}
+              transition={{ type: "spring", duration: 0.25, bounce: 0.35 }}
             >
               {isVoiceActive ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-            </button>
+            </motion.button>
 
             <input
               type="text"
@@ -552,14 +673,19 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
               className="flex-1 bg-transparent px-2 py-1.5 text-sm text-white placeholder:text-zinc-500 focus:outline-none"
             />
 
-            <button
+            <motion.button
+              type="button"
               onClick={handleSendMessage}
-              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-[#A3E635] text-zinc-950 transition-all duration-150 hover:bg-[#84CC16] hover:shadow-[0_0_20px_rgba(163,230,53,0.35)]"
+              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-[#A3E635] text-zinc-950 hover:bg-[#84CC16] hover:shadow-[0_0_20px_rgba(163,230,53,0.35)]"
+              style={GPU}
+              whileHover={iconHover}
+              whileTap={iconTap}
+              transition={{ type: "spring", duration: 0.25, bounce: 0.35 }}
             >
               <Send className="h-4 w-4" />
-            </button>
+            </motion.button>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* FULL FOUNDER BLUEPRINT OVERLAY MODAL */}
