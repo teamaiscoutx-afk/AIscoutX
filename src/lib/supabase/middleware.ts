@@ -12,7 +12,9 @@ function applyCookies(source: NextResponse, target: NextResponse) {
 }
 
 function readActiveStartupId(request: NextRequest): string | null {
+  const hasFlag = request.cookies.get("aiscoutx_has_active_startup")?.value === "1";
   const raw = request.cookies.get("aiscoutx_active_startup")?.value?.trim();
+  if (!raw && !hasFlag) return null;
   if (!raw) return null;
   try {
     const decoded = decodeURIComponent(raw);
@@ -21,6 +23,15 @@ function readActiveStartupId(request: NextRequest): string | null {
   } catch {
     return null;
   }
+}
+
+function redirectToWorkspace(request: NextRequest, supabaseResponse: NextResponse, id: string) {
+  const url = request.nextUrl.clone();
+  url.pathname = `/dashboard/workspace/${id}`;
+  url.search = "";
+  const redirectResponse = NextResponse.redirect(url);
+  applyCookies(supabaseResponse, redirectResponse);
+  return redirectResponse;
 }
 
 function safeRedirectPath(value: string | null, fallback = "/dashboard"): string {
@@ -104,10 +115,11 @@ export async function updateSession(request: NextRequest) {
     const wantsSignIn = request.nextUrl.searchParams.get("signin") === "1";
     if (!wantsSignIn) {
       const activeId = readActiveStartupId(request);
+      if (activeId) {
+        return redirectToWorkspace(request, supabaseResponse, activeId);
+      }
       const url = request.nextUrl.clone();
-      url.pathname = activeId
-        ? `/dashboard/workspace/${activeId}`
-        : "/dashboard";
+      url.pathname = "/dashboard";
       url.search = "";
       const redirectResponse = NextResponse.redirect(url);
       applyCookies(supabaseResponse, redirectResponse);
@@ -115,18 +127,15 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  if (user && (pathname === "/dashboard" || pathname === "/dashboard/workspace")) {
-    const stayOnDiscover = request.nextUrl.searchParams.get("view") === "discover";
-    if (!stayOnDiscover) {
-      const activeId = readActiveStartupId(request);
-      if (activeId && pathname === "/dashboard") {
-        const url = request.nextUrl.clone();
-        url.pathname = `/dashboard/workspace/${activeId}`;
-        url.search = "";
-        const redirectResponse = NextResponse.redirect(url);
-        applyCookies(supabaseResponse, redirectResponse);
-        return redirectResponse;
-      }
+  const wantsDiscover = request.nextUrl.searchParams.get("intent") === "discover";
+  const isDiscoverEntry = pathname === "/dashboard/discover";
+  const isDashboardEntry =
+    pathname === "/dashboard" || pathname === "/dashboard/workspace";
+
+  if (user && (isDashboardEntry || (isDiscoverEntry && !wantsDiscover))) {
+    const activeId = readActiveStartupId(request);
+    if (activeId) {
+      return redirectToWorkspace(request, supabaseResponse, activeId);
     }
   }
 

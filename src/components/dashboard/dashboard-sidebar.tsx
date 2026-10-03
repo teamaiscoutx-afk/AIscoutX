@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils";
 
 // Pro feature configuration for Navigation Items
 const navItems = [
-  { label: "Discover", href: "/dashboard/discover", icon: Search, isProFeature: false },
+  { label: "Discover", href: "/dashboard/discover?intent=discover", icon: Search, isProFeature: false },
   { label: "Analyze", href: "/dashboard/analyze", icon: LineChart, isProFeature: false },
   { label: "Blueprints", href: "/dashboard/blueprints", icon: FileStack, isProFeature: true },
   { label: "Launch Plan", href: "/dashboard/launch", icon: Megaphone, isProFeature: false },
@@ -91,8 +91,9 @@ export function DashboardSidebar({ projects = [] }: DashboardSidebarProps) {
         )}
       >
         {navItems.map((item) => {
+          const hrefPath = item.href.split("?")[0];
           const isActive =
-            pathname === item.href || pathname.startsWith(`${item.href}/`);
+            pathname === hrefPath || pathname.startsWith(`${hrefPath}/`);
 
           return (
             <Link

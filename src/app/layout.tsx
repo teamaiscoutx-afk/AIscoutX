@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Urbanist } from "next/font/google";
 
+import { AppErrorBoundary } from "@/components/providers/app-error-boundary";
 import { AppProviders } from "@/components/providers/app-providers";
+import { ACTIVE_WORKSPACE_BOOT_SCRIPT } from "@/lib/workspace/active-workspace";
 
 import "./globals.css";
 
@@ -24,11 +26,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="scroll-smooth">
+    <html lang="en" className="scroll-smooth" suppressHydrationWarning>
       <body
         className={`${urbanist.variable} min-h-screen bg-[#030308] font-sans antialiased`}
+        suppressHydrationWarning
       >
+      <script dangerouslySetInnerHTML={{ __html: ACTIVE_WORKSPACE_BOOT_SCRIPT }} />
       <AppProviders>
+        <AppErrorBoundary>
         <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-[#030308]">
           <div
             aria-hidden
@@ -60,6 +65,7 @@ export default function RootLayout({
           />
           {children}
         </div>
+        </AppErrorBoundary>
       </AppProviders>
       </body>
     </html>

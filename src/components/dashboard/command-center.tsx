@@ -448,8 +448,31 @@ export function CommandCenter({
       setFeedError(undefined);
       const niche = resolveActiveNiche(workspace, nicheByWorkspace);
       syncWorkspaceToProfile(workspace, niche.id);
+      void loadNicheDiscoverCache(workspace, niche.id)
+        .then((cached) => {
+          if (cached.length > 0) {
+            setAllOpportunities(cached);
+            setFeedSource("cache");
+          }
+        })
+        .catch(() => undefined);
     },
     [nicheByWorkspace, syncWorkspaceToProfile]
+  );
+
+  const loadCachedFeed = useCallback(
+    (workspace = activeWorkspace, niche = activeNiche) => {
+      void loadNicheDiscoverCache(workspace, niche)
+        .then((cached) => {
+          if (cached.length > 0) {
+            setAllOpportunities(cached);
+            setFeedSource("cache");
+            setFeedError(undefined);
+          }
+        })
+        .catch(() => undefined);
+    },
+    [activeWorkspace, activeNiche]
   );
 
   const handleNicheSwap = useCallback(
@@ -462,12 +485,14 @@ export function CommandCenter({
       setSelectedOpportunity(null);
       setAllOpportunities([]);
       setFeedError(undefined);
+      void runDiscoverRefresh(undefined, activeWorkspace, nicheId);
     },
     [
       activeWorkspace,
       persistNichePref,
       syncProfileNiche,
       syncWorkspaceToProfile,
+      runDiscoverRefresh,
     ]
   );
 
@@ -494,9 +519,8 @@ export function CommandCenter({
 
   useEffect(() => {
     if (phase !== "ready") return;
-
-    void runDiscoverRefresh(undefined, activeWorkspace, activeNiche);
-  }, [phase, activeWorkspace, activeNiche, runDiscoverRefresh]);
+    loadCachedFeed(activeWorkspace, activeNiche);
+  }, [phase, activeWorkspace, activeNiche, loadCachedFeed]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -596,6 +620,13 @@ export function CommandCenter({
                     activeNicheLabel={activeNicheLabel}
                     onNicheChange={handleNicheSwap}
                   />
+                  <button
+                    type="button"
+                    onClick={() => void runDiscoverRefresh()}
+                    className="rounded-lg border border-white/10 bg-zinc-900 px-3 py-1.5 text-[11px] font-semibold text-zinc-200 transition-colors hover:border-[#A3E635]/40 hover:text-white"
+                  >
+                    Scan Market
+                  </button>
                   <Badge
                     variant="outline"
                     className="border-[#deff9a]/30 bg-[#deff9a]/10 text-[10px] uppercase tracking-wider text-[#deff9a]"

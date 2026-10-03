@@ -9,7 +9,6 @@ import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
 import { SubscriptionRenewalBanner } from "@/components/dashboard/subscription-renewal-banner";
 import { UserMenuProvider } from "@/components/layout/user-menu-provider";
 import { getUserMenuContext } from "@/lib/auth/user-menu";
-import { syncActiveWorkspaceSignals } from "@/app/actions/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -51,8 +50,6 @@ export default async function DashboardLayout({
       fetchNotifications(),
       getSubscriptionRenewalAlert(),
     ]);
-
-    void syncActiveWorkspaceSignals().catch(() => undefined);
   } catch {
     // Never block the dashboard shell on a partial data failure.
   }

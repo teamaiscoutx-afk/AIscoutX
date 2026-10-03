@@ -1,12 +1,17 @@
 import { Suspense } from "react";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import nextDynamic from "next/dynamic";
 
 import { loadCachedOpportunities } from "@/app/actions/intelligence";
-import { fetchNotifications, syncActiveWorkspaceSignals } from "@/app/actions/notifications";
+import { fetchNotifications } from "@/app/actions/notifications";
 import { getCurrentProfile } from "@/app/actions/profile";
 import { IntelligenceSkeleton } from "@/components/dashboard/intelligence-skeleton";
 import type { NicheId, WorkspaceIdentity } from "@/lib/dashboard/onboarding";
 import { normalizeNicheForWorkspace } from "@/lib/dashboard/onboarding";
+import {
+  ACTIVE_WORKSPACE_COOKIE,
+} from "@/lib/workspace/active-workspace";
 
 const CommandCenter = nextDynamic(
   () =>
@@ -22,10 +27,18 @@ const CommandCenter = nextDynamic(
 );
 
 export const dynamic = "force-dynamic";
-/** 10 parallel live scans can exceed default serverless limits. */
-export const maxDuration = 300;
 
-export default async function DiscoverPage() {
+type DiscoverPageProps = {
+  searchParams?: { intent?: string };
+};
+
+export default async function DiscoverPage({ searchParams }: DiscoverPageProps) {
+  const wantsDiscover = searchParams?.intent === "discover";
+  const activeId = cookies().get(ACTIVE_WORKSPACE_COOKIE)?.value?.trim();
+  if (activeId && !wantsDiscover) {
+    redirect(`/dashboard/workspace/${decodeURIComponent(activeId)}`);
+  }
+
   const profile = await getCurrentProfile();
 
   const initialWorkspace: WorkspaceIdentity =
@@ -35,8 +48,7 @@ export default async function DiscoverPage() {
     profile?.current_niche
   );
 
-  const [, cached, notifications] = await Promise.all([
-    syncActiveWorkspaceSignals(),
+  const [cached, notifications] = await Promise.all([
     loadCachedOpportunities(initialWorkspace, initialNiche),
     fetchNotifications(),
   ]);

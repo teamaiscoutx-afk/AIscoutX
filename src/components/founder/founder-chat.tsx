@@ -186,7 +186,7 @@ export function FounderChat({ usage }: FounderChatProps) {
         </div>
         <div className="flex items-center gap-2">
           <Link
-            href="/dashboard/discover"
+            href="/dashboard/discover?intent=discover"
             className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-zinc-900 px-3 py-1.5 text-[11px] font-semibold text-zinc-300 transition-colors hover:border-[#A3E635]/35 hover:text-white"
           >
             <Search className="h-3.5 w-3.5 text-[#A3E635]" />

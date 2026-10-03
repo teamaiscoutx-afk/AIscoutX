@@ -1,5 +1,6 @@
 export const ACTIVE_WORKSPACE_STORAGE_KEY = "aiscoutx.active_workspace";
 export const ACTIVE_WORKSPACE_COOKIE = "aiscoutx_active_startup";
+export const HAS_ACTIVE_STARTUP_COOKIE = "aiscoutx_has_active_startup";
 export const ACTIVE_CHATS_STORAGE_PREFIX = "aiscoutx.workspace.chats.";
 
 export type ActiveWorkspaceState = {
@@ -33,15 +34,22 @@ export type PersistedChatState = {
   activeChatId: string;
 };
 
-function writeCookie(id: string) {
-  if (typeof document === "undefined") return;
-  const maxAge = 60 * 60 * 24 * 365;
-  document.cookie = `${ACTIVE_WORKSPACE_COOKIE}=${encodeURIComponent(id)}; Path=/; Max-Age=${maxAge}; SameSite=Lax`;
+function canUseDom(): boolean {
+  return typeof window !== "undefined" && typeof document !== "undefined";
 }
 
-function clearCookie() {
-  if (typeof document === "undefined") return;
+function writeCookies(id: string) {
+  if (!canUseDom()) return;
+  const maxAge = 60 * 60 * 24 * 365;
+  const encoded = encodeURIComponent(id);
+  document.cookie = `${ACTIVE_WORKSPACE_COOKIE}=${encoded}; Path=/; Max-Age=${maxAge}; SameSite=Lax`;
+  document.cookie = `${HAS_ACTIVE_STARTUP_COOKIE}=1; Path=/; Max-Age=${maxAge}; SameSite=Lax`;
+}
+
+function clearCookies() {
+  if (!canUseDom()) return;
   document.cookie = `${ACTIVE_WORKSPACE_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+  document.cookie = `${HAS_ACTIVE_STARTUP_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
 }
 
 export function persistActiveWorkspace(input: {
@@ -54,20 +62,19 @@ export function persistActiveWorkspace(input: {
     active_startup_name: input.name,
   };
 
-  if (typeof window !== "undefined") {
-    try {
-      window.localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, JSON.stringify(state));
-    } catch {
-      // Ignore quota / private-mode failures — cookie still routes.
-    }
-    writeCookie(input.id);
-  }
+  if (!canUseDom()) return state;
 
+  try {
+    window.localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Private mode / quota — cookie still routes.
+  }
+  writeCookies(input.id);
   return state;
 }
 
 export function readActiveWorkspace(): ActiveWorkspaceState | null {
-  if (typeof window === "undefined") return null;
+  if (!canUseDom()) return null;
   try {
     const raw = window.localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY);
     if (!raw) return null;
@@ -83,7 +90,7 @@ export function persistWorkspaceChats(
   workspaceId: string,
   state: PersistedChatState
 ): void {
-  if (typeof window === "undefined") return;
+  if (!canUseDom()) return;
   try {
     window.localStorage.setItem(
       `${ACTIVE_CHATS_STORAGE_PREFIX}${workspaceId}`,
@@ -95,7 +102,7 @@ export function persistWorkspaceChats(
 }
 
 export function readWorkspaceChats(workspaceId: string): PersistedChatState | null {
-  if (typeof window === "undefined") return null;
+  if (!canUseDom()) return null;
   try {
     const raw = window.localStorage.getItem(`${ACTIVE_CHATS_STORAGE_PREFIX}${workspaceId}`);
     if (!raw) return null;
@@ -108,11 +115,33 @@ export function readWorkspaceChats(workspaceId: string): PersistedChatState | nu
 }
 
 export function clearActiveWorkspace(): void {
-  if (typeof window === "undefined") return;
+  if (!canUseDom()) return;
   try {
     window.localStorage.removeItem(ACTIVE_WORKSPACE_STORAGE_KEY);
   } catch {
     // no-op
   }
-  clearCookie();
+  clearCookies();
 }
+
+/** Inline boot script: hard-redirect returning users before React hydrates. */
+export const ACTIVE_WORKSPACE_BOOT_SCRIPT = `(function(){
+  try {
+    var path = location.pathname;
+    if (path.indexOf("/dashboard/workspace") === 0) return;
+    var allowDiscover = /[?&]intent=discover(?:&|$)/.test(location.search);
+    if (path.indexOf("/dashboard/discover") === 0 && allowDiscover) return;
+    var isAppEntry = path === "/" || path === "/dashboard" || path === "/dashboard/" || path.indexOf("/dashboard/discover") === 0;
+    if (!isAppEntry) return;
+    var raw = localStorage.getItem(${JSON.stringify(ACTIVE_WORKSPACE_STORAGE_KEY)});
+    if (!raw) return;
+    var state = JSON.parse(raw);
+    if (!state || !state.has_active_startup || !state.active_startup_id) return;
+    var id = String(state.active_startup_id);
+    if (!id || id.indexOf("/") !== -1 || id.indexOf("..") !== -1) return;
+    var maxAge = 31536000;
+    document.cookie = "${ACTIVE_WORKSPACE_COOKIE}=" + encodeURIComponent(id) + "; Path=/; Max-Age=" + maxAge + "; SameSite=Lax";
+    document.cookie = "${HAS_ACTIVE_STARTUP_COOKIE}=1; Path=/; Max-Age=" + maxAge + "; SameSite=Lax";
+    location.replace("/dashboard/workspace/" + encodeURIComponent(id));
+  } catch (e) {}
+})();`;

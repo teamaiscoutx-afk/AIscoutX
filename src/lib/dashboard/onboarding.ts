@@ -168,7 +168,12 @@ export function loadNicheByWorkspace(): NicheByWorkspace {
 }
 
 export function saveNicheByWorkspace(prefs: NicheByWorkspace): void {
-  localStorage.setItem(NICHE_PREFS_STORAGE_KEY, JSON.stringify(prefs));
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(NICHE_PREFS_STORAGE_KEY, JSON.stringify(prefs));
+  } catch {
+    // Safari private mode can throw.
+  }
 }
 
 export function identityToWorkspaceMode(
@@ -195,5 +200,10 @@ export function loadOnboardingProfile(): UserOnboardingProfile | null {
 }
 
 export function saveOnboardingProfile(profile: UserOnboardingProfile): void {
-  localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(profile));
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(profile));
+  } catch {
+    // Safari private mode can throw.
+  }
 }

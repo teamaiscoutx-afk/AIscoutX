@@ -91,7 +91,7 @@ export function ProjectSwitcher({ projects, className }: ProjectSwitcherProps) {
         <DropdownMenuSeparator className="bg-white/[0.06]" />
 
         <DropdownMenuItem
-          onSelect={() => router.push("/dashboard/discover")}
+          onSelect={() => router.push("/dashboard/discover?intent=discover")}
           className="cursor-pointer gap-2 text-[#deff9a] focus:bg-[#deff9a]/10 focus:text-[#deff9a]"
         >
           <Plus className="h-3.5 w-3.5" />

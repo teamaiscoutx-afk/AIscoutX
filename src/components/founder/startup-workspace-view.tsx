@@ -45,7 +45,6 @@ import {
   DEFAULT_CHAT_SEED,
   persistActiveWorkspace,
   persistWorkspaceChats,
-  readActiveWorkspace,
   readWorkspaceChats,
 } from "@/lib/workspace/active-workspace";
 import { markWorkspaceActiveSession } from "@/app/actions/active-workspace";
@@ -63,12 +62,7 @@ type ChatSession = {
 };
 
 function resolveStartupName(workspace: StartupWorkspace): string {
-  const cached = readActiveWorkspace();
-  return (
-    workspace.opportunityName?.trim() ||
-    cached?.active_startup_name?.trim() ||
-    "VoiceCraft"
-  );
+  return workspace.opportunityName?.trim() || "VoiceCraft";
 }
 
 export function StartupWorkspaceView({
@@ -302,7 +296,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
             <p className="truncate px-1 text-[11px] font-semibold text-white">{startupName}</p>
             <button
               type="button"
-              onClick={() => router.push("/dashboard/discover")}
+              onClick={() => router.push("/dashboard/discover?intent=discover")}
               className="mt-1.5 flex w-full cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-zinc-900/70 px-3 py-2 text-left text-[11px] font-semibold text-zinc-300 transition-all duration-150 hover:border-[#A3E635]/35 hover:bg-zinc-800 hover:text-white"
             >
               <Search className="h-3.5 w-3.5 text-[#A3E635]" />
