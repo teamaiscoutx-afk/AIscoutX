@@ -41,6 +41,9 @@ import {
   CreditCard,
   ChevronsUpDown,
   Radio,
+  MoreHorizontal,
+  Pencil,
+  Pin,
 } from "lucide-react";
 import { fetchNotifications } from "@/app/actions/notifications";
 import type { StartupWorkspace } from "@/lib/founder/types";
@@ -68,6 +71,7 @@ type ChatSession = {
   title: string;
   messages: { role: "assistant" | "user"; content: string }[];
   isDeleted?: boolean;
+  isPinned?: boolean;
 };
 
 function resolveStartupName(workspace: StartupWorkspace): string {
@@ -198,21 +202,23 @@ export function StartupWorkspaceView({
   // Blueprint, Context & Settings State
   const [showBlueprintModal, setShowBlueprintModal] = useState(false);
   const [showSettingsPopover, setShowSettingsPopover] = useState(false);
-  const [contextMenu, setContextMenu] = useState<{
-    x: number;
-    y: number;
-    chatId: string;
+  const [chatMenu, setChatMenu] = useState<{
+    id: string;
+    top: number;
+    left: number;
   } | null>(null);
+  const [settingsTab, setSettingsTab] = useState<"account" | "trash">("account");
 
   const [renamingChatId, setRenamingChatId] = useState<string | null>(null);
   const [renameTitle, setRenameTitle] = useState("");
-  const [showBinModal, setShowBinModal] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const composerRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const activeChats = chats.filter((c) => !c.isDeleted);
+  const activeChats = chats
+    .filter((c) => !c.isDeleted)
+    .sort((a, b) => Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned)));
   const binChats = chats.filter((c) => c.isDeleted);
   const activeChat = chats.find((c) => c.id === activeChatId) || activeChats[0];
 
@@ -221,9 +227,13 @@ export function StartupWorkspaceView({
   }, [activeChat?.messages]);
 
   useEffect(() => {
-    const handleClick = () => setContextMenu(null);
-    window.addEventListener("click", handleClick);
-    return () => window.removeEventListener("click", handleClick);
+    const closeMenu = () => setChatMenu(null);
+    window.addEventListener("click", closeMenu);
+    window.addEventListener("scroll", closeMenu, true);
+    return () => {
+      window.removeEventListener("click", closeMenu);
+      window.removeEventListener("scroll", closeMenu, true);
+    };
   }, []);
 
   useEffect(() => {
@@ -292,9 +302,42 @@ export function StartupWorkspaceView({
     setCanvas("chat");
   };
 
-  const handleContextMenu = (e: React.MouseEvent, chatId: string) => {
-    e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY, chatId });
+  const openChatMenu = (event: React.MouseEvent<HTMLButtonElement>, chatId: string) => {
+    event.stopPropagation();
+    const rect = event.currentTarget.getBoundingClientRect();
+    setChatMenu((current) =>
+      current?.id === chatId
+        ? null
+        : { id: chatId, top: rect.bottom + 6, left: Math.max(8, rect.right - 176) }
+    );
+  };
+
+  const startRename = (chat: ChatSession) => {
+    setRenameTitle(chat.title);
+    setRenamingChatId(chat.id);
+    setChatMenu(null);
+  };
+
+  const togglePin = (chatId: string) => {
+    setChats((prev) =>
+      prev.map((chat) =>
+        chat.id === chatId ? { ...chat, isPinned: !chat.isPinned } : chat
+      )
+    );
+    setChatMenu(null);
+  };
+
+  const softDeleteChat = (chatId: string) => {
+    setChats((prev) =>
+      prev.map((chat) =>
+        chat.id === chatId ? { ...chat, isDeleted: true } : chat
+      )
+    );
+    if (activeChatId === chatId) {
+      const next = chats.find((chat) => chat.id !== chatId && !chat.isDeleted);
+      setActiveChatId(next?.id ?? "");
+    }
+    setChatMenu(null);
   };
 
   const handleSaveRename = (chatId: string) => {
@@ -560,7 +603,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
               }`}
             >
               <Radio className={`h-3.5 w-3.5 ${canvas === "radar" ? "text-[#A3E635]" : "text-[#84CC16]"}`} />
-              Startup Radar
+              Live Startup Updates
             </button>
             </motion.div>
           </motion.div>
@@ -581,7 +624,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
                   key={chat.id}
                   variants={staggerItem}
                   style={GPU}
-                  onContextMenu={(e) => handleContextMenu(e, chat.id)}
+                  className="group relative"
                 >
                   {renamingChatId === chat.id ? (
                     <input
@@ -589,25 +632,50 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
                       value={renameTitle}
                       onChange={(e) => setRenameTitle(e.target.value)}
                       onBlur={() => handleSaveRename(chat.id)}
-                      onKeyDown={(e) => e.key === "Enter" && handleSaveRename(chat.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSaveRename(chat.id);
+                        if (e.key === "Escape") setRenamingChatId(null);
+                      }}
                       autoFocus
                       className="w-full rounded-lg border border-[#A3E635]/50 bg-black/60 px-2 py-1.5 text-xs text-white outline-none ring-1 ring-[#A3E635]/20"
                     />
                   ) : (
-                    <button
-                      onClick={() => {
-                        setActiveChatId(chat.id);
-                        setCanvas("chat");
-                      }}
-                      className={`flex w-full cursor-pointer items-center gap-2.5 truncate rounded-xl px-3 py-2 text-left text-xs font-medium transition-all duration-150 ${
+                    <div
+                      className={`flex items-center rounded-xl pr-1 transition-all duration-150 ${
                         activeChatId === chat.id
                           ? "border border-white/[0.06] border-l-2 border-l-[#A3E635] bg-zinc-800 text-white shadow-[inset_0_0_18px_rgba(163,230,53,0.08)]"
                           : "text-zinc-400 hover:bg-zinc-800 hover:text-white"
                       }`}
                     >
-                      <MessageSquare className={`h-3.5 w-3.5 shrink-0 ${activeChatId === chat.id ? "text-[#A3E635]" : ""}`} />
-                      <span className="flex-1 truncate">{chat.title}</span>
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveChatId(chat.id);
+                          setCanvas("chat");
+                          setChatMenu(null);
+                        }}
+                        className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 truncate px-3 py-2 text-left text-xs font-medium"
+                      >
+                        {chat.isPinned ? (
+                          <Pin className="h-3 w-3 shrink-0 text-[#A3E635]" />
+                        ) : (
+                          <MessageSquare className={`h-3.5 w-3.5 shrink-0 ${activeChatId === chat.id ? "text-[#A3E635]" : ""}`} />
+                        )}
+                        <span className="flex-1 truncate">{chat.title}</span>
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Chat actions for ${chat.title}`}
+                        onClick={(event) => openChatMenu(event, chat.id)}
+                        className={`cursor-pointer rounded-lg p-1 text-zinc-400 transition hover:bg-white/10 hover:text-white ${
+                          chatMenu?.id === chat.id
+                            ? "opacity-100"
+                            : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                        }`}
+                      >
+                        <MoreHorizontal className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   )}
                 </motion.div>
               ))}
@@ -619,47 +687,96 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
         <div className="relative border-t border-white/[0.06] bg-[#18181B] p-2">
           {showSettingsPopover && (
             <div className="absolute bottom-16 left-2 right-2 z-50 animate-in fade-in slide-in-from-bottom-2 rounded-2xl border border-white/10 bg-zinc-900 p-1.5 shadow-2xl">
-              <div className="border-b border-white/[0.06] px-3 py-2">
-                <p className="text-xs font-bold text-white">Karan (Founder)</p>
-                <p className="truncate text-[10px] text-zinc-400">karan@startup.com</p>
-              </div>
-
-              <div className="space-y-0.5 py-1">
-                <button className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 transition duration-150 hover:bg-zinc-800 hover:text-white">
-                  <User className="h-3.5 w-3.5 text-[#A3E635]" /> Account Details
-                </button>
-                <button className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 transition duration-150 hover:bg-zinc-800 hover:text-white">
-                  <Key className="h-3.5 w-3.5 text-zinc-400" /> API Settings
-                </button>
-                <button className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 transition duration-150 hover:bg-zinc-800 hover:text-white">
-                  <CreditCard className="h-3.5 w-3.5 text-[#84CC16]" /> Pro Subscription
+              <div className="grid grid-cols-2 gap-1 p-1">
+                <button
+                  type="button"
+                  onClick={() => setSettingsTab("account")}
+                  className={`cursor-pointer rounded-lg px-2 py-1.5 text-[11px] font-semibold ${
+                    settingsTab === "account"
+                      ? "bg-zinc-800 text-white"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  Account
                 </button>
                 <button
-                  onClick={() => {
-                    setShowSettingsPopover(false);
-                    setShowBinModal(true);
-                  }}
-                  className="flex w-full cursor-pointer items-center justify-between rounded-xl px-3 py-1.5 text-xs text-zinc-300 transition duration-150 hover:bg-zinc-800 hover:text-white"
+                  type="button"
+                  onClick={() => setSettingsTab("trash")}
+                  className={`flex cursor-pointer items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold ${
+                    settingsTab === "trash"
+                      ? "bg-zinc-800 text-white"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
                 >
-                  <span className="flex items-center gap-2">
-                    <Trash2 className="h-3.5 w-3.5 text-zinc-400" /> Recycle Bin
-                  </span>
+                  Trash Bin
                   {binChats.length > 0 && (
-                    <span className="rounded-full bg-rose-500/20 px-1.5 py-0.5 text-[10px] font-bold text-rose-300">
+                    <span className="rounded-full bg-rose-500/20 px-1.5 text-[10px] font-bold text-rose-300">
                       {binChats.length}
                     </span>
                   )}
                 </button>
               </div>
 
-              <div className="mt-1 border-t border-white/[0.06] pt-1">
-                <button
-                  onClick={handleLogout}
-                  className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/10"
-                >
-                  <LogOut className="h-3.5 w-3.5" /> Log Out
-                </button>
-              </div>
+              {settingsTab === "account" ? (
+                <>
+                  <div className="border-b border-white/[0.06] px-3 py-2">
+                    <p className="text-xs font-bold text-white">Karan (Founder)</p>
+                    <p className="truncate text-[10px] text-zinc-400">karan@startup.com</p>
+                  </div>
+                  <div className="space-y-0.5 py-1">
+                    <button className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 transition duration-150 hover:bg-zinc-800 hover:text-white">
+                      <User className="h-3.5 w-3.5 text-[#A3E635]" /> Account Details
+                    </button>
+                    <button className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 transition duration-150 hover:bg-zinc-800 hover:text-white">
+                      <Key className="h-3.5 w-3.5 text-zinc-400" /> API Settings
+                    </button>
+                    <button className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 transition duration-150 hover:bg-zinc-800 hover:text-white">
+                      <CreditCard className="h-3.5 w-3.5 text-[#84CC16]" /> Pro Subscription
+                    </button>
+                  </div>
+                  <div className="mt-1 border-t border-white/[0.06] pt-1">
+                    <button
+                      onClick={handleLogout}
+                      className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/10"
+                    >
+                      <LogOut className="h-3.5 w-3.5" /> Log Out
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="max-h-64 space-y-1.5 overflow-y-auto px-1 py-2">
+                  {binChats.length === 0 ? (
+                    <p className="px-2 py-6 text-center text-[11px] text-zinc-500">
+                      No deleted chats.
+                    </p>
+                  ) : (
+                    binChats.map((chat) => (
+                      <div
+                        key={chat.id}
+                        className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-2.5 py-2"
+                      >
+                        <p className="truncate text-xs font-medium text-zinc-200">{chat.title}</p>
+                        <div className="mt-2 flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleRestoreFromBin(chat.id)}
+                            className="inline-flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/10"
+                          >
+                            <RotateCcw className="h-3 w-3" /> Restore
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handlePermanentDelete(chat.id)}
+                            className="inline-flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-rose-300 hover:bg-rose-500/10"
+                          >
+                            <X className="h-3 w-3" /> Delete Permanently
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -675,7 +792,10 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
             </div>
 
             <button
-              onClick={() => setShowSettingsPopover(!showSettingsPopover)}
+              onClick={() => {
+                setSettingsTab("account");
+                setShowSettingsPopover(!showSettingsPopover);
+              }}
               className={`cursor-pointer rounded-xl p-2 transition-all duration-150 ${
                 showSettingsPopover
                   ? "border border-[#A3E635]/30 bg-[#A3E635]/10 text-[#A3E635]"
@@ -1276,41 +1396,50 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
         </div>
       )}
 
-      {/* RECYCLE BIN MODAL */}
-      {showBinModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#0e0e16] border border-white/15 rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Trash2 className="h-4 w-4 text-rose-400" /> Recycle Bin (Deleted Chats)
-              </h3>
-              <button onClick={() => setShowBinModal(false)} className="text-zinc-400 hover:text-white">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {binChats.length === 0 ? (
-              <p className="text-xs text-zinc-500 text-center py-6">No deleted chats in bin.</p>
-            ) : (
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {binChats.map((chat) => (
-                  <div key={chat.id} className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs">
-                    <span className="text-zinc-300 font-medium truncate flex-1 pr-2">{chat.title}</span>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button onClick={() => handleRestoreFromBin(chat.id)} className="p-1.5 rounded-lg text-emerald-400 hover:bg-emerald-500/10" title="Restore Chat">
-                        <RotateCcw className="h-3.5 w-3.5" />
-                      </button>
-                      <button onClick={() => handlePermanentDelete(chat.id)} className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-500/10" title="Delete Permanently">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {chatMenu && (
+          <motion.div
+            key={chatMenu.id}
+            role="menu"
+            className="fixed z-[80] w-44 rounded-xl border border-white/[0.08] bg-zinc-900/95 p-1 shadow-2xl backdrop-blur-xl"
+            style={{ top: chatMenu.top, left: chatMenu.left, willChange: "transform, opacity" }}
+            initial={reduceMotion ? false : { opacity: 0, y: -4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
+            transition={{ duration: 0.16 }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                const chat = chats.find((item) => item.id === chatMenu.id);
+                if (chat) startRename(chat);
+              }}
+              className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-zinc-200 hover:bg-zinc-800"
+            >
+              <Pencil className="h-3.5 w-3.5 text-[#A3E635]" /> Rename
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => togglePin(chatMenu.id)}
+              className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-zinc-200 hover:bg-zinc-800"
+            >
+              <Pin className="h-3.5 w-3.5 text-[#D9F99D]" />
+              {chats.find((item) => item.id === chatMenu.id)?.isPinned ? "Unpin" : "Pin"}
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => softDeleteChat(chatMenu.id)}
+              className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-rose-300 hover:bg-rose-500/10"
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Delete
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </motion.div>
   );

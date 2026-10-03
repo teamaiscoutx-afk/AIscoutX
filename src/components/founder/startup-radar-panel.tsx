@@ -49,7 +49,7 @@ export function StartupRadarPanel({
         <div>
           <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[#A3E635]">
             <Radio className="h-3.5 w-3.5" />
-            Startup Radar
+            Live Startup Updates
           </p>
           <h2 className="mt-1 text-xl font-extrabold tracking-tight text-white md:text-2xl">
             Live market updates for {startupName}

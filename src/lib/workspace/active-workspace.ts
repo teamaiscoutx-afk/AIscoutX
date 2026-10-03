@@ -32,6 +32,7 @@ export type PersistedChatSession = {
   title: string;
   messages: { role: "assistant" | "user"; content: string }[];
   isDeleted?: boolean;
+  isPinned?: boolean;
 };
 
 export type PersistedChatState = {
