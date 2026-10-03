@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { loadWorkspaceChats } from "@/app/actions/workspace-chats";
 import { getWorkspaceById, getWorkspaceTasks } from "@/app/actions/workspaces";
+import { getUserMenuContext } from "@/lib/auth/user-menu";
 import { StartupWorkspaceView } from "@/components/founder/startup-workspace-view";
 import { writeActiveWorkspaceCookie } from "@/lib/workspace/active-workspace-server";
 import type { StartupWorkspace } from "@/lib/founder/types";
@@ -45,10 +46,11 @@ export default async function WorkspacePage({
   const workspaceId = params.id?.trim();
   if (!workspaceId) notFound();
 
-  const [workspace, tasks, chatState] = await Promise.all([
+  const [workspace, tasks, chatState, viewer] = await Promise.all([
     getWorkspaceById(workspaceId),
     getWorkspaceTasks(workspaceId).catch(() => []),
     loadWorkspaceChats(workspaceId),
+    getUserMenuContext(),
   ]);
 
   const resolved = workspace ?? fallbackWorkspace(workspaceId);
@@ -61,6 +63,9 @@ export default async function WorkspacePage({
         initialTasks={tasks}
         initialChats={chatState.chats}
         initialActiveChatId={chatState.activeChatId}
+        viewerName={viewer.name}
+        viewerEmail={viewer.email}
+        viewerInitials={viewer.initials}
       />
     </div>
   );

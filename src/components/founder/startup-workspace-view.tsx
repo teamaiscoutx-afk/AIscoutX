@@ -60,7 +60,10 @@ import {
 } from "@/lib/workspace/active-workspace";
 import { markWorkspaceActiveSession } from "@/app/actions/active-workspace";
 import { signOut } from "@/app/actions/auth";
-import { saveWorkspaceChats } from "@/app/actions/workspace-chats";
+import {
+  loadWorkspaceChats,
+  saveWorkspaceChats,
+} from "@/app/actions/workspace-chats";
 import { StartupRadarPanel } from "@/components/founder/startup-radar-panel";
 import { WorkspaceSkeleton } from "@/components/founder/workspace-skeleton";
 
@@ -69,6 +72,9 @@ type StartupWorkspaceViewProps = {
   initialTasks: any[];
   initialChats?: ChatSession[];
   initialActiveChatId?: string;
+  viewerName: string;
+  viewerEmail: string;
+  viewerInitials: string;
 };
 
 type ChatSession = {
@@ -189,7 +195,9 @@ function StaggerWords({
 export function StartupWorkspaceView({
   initialWorkspace,
   initialChats = [],
-  initialActiveChatId = "",
+  viewerName,
+  viewerEmail,
+  viewerInitials,
 }: StartupWorkspaceViewProps) {
   const router = useRouter();
   const reduceMotion = useReducedMotion();
@@ -199,6 +207,7 @@ export function StartupWorkspaceView({
   const [chats, setChats] = useState<ChatSession[]>([]);
   const [activeChatId, setActiveChatId] = useState("");
   const [chatsReady, setChatsReady] = useState(false);
+  const [canSyncChats, setCanSyncChats] = useState(false);
   const [canvas, setCanvas] = useState<"chat" | "radar">("chat");
   const [liveUpdates, setLiveUpdates] = useState<StartupRadarUpdate[]>([]);
   const [radarLoading, setRadarLoading] = useState(false);
@@ -244,41 +253,63 @@ export function StartupWorkspaceView({
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     persistActiveWorkspace({ id: workspace.id, name: startupName });
     void markWorkspaceActiveSession(workspace.id);
 
-    const remote = initialChats.filter((chat) => !isPlaceholderChat(chat));
-    const stored = readWorkspaceChats(workspace.id);
-    const local = (stored?.chats ?? []).filter((chat) => !isPlaceholderChat(chat));
+    void loadWorkspaceChats(workspace.id).then((snapshot) => {
+      if (cancelled) return;
 
-    if (remote.length) {
-      setChats(remote);
-      const nextId = remote.some((chat) => chat.id === initialActiveChatId && !chat.isDeleted)
-        ? initialActiveChatId
-        : remote.find((chat) => !chat.isDeleted)?.id ?? "";
-      setActiveChatId(nextId);
-    } else if (local.length) {
-      setChats(local);
-      const nextId = local.some((chat) => chat.id === stored?.activeChatId && !chat.isDeleted)
-        ? stored?.activeChatId ?? ""
-        : local.find((chat) => !chat.isDeleted)?.id ?? "";
-      setActiveChatId(nextId);
-      void saveWorkspaceChats(workspace.id, local, nextId);
-    } else {
-      setChats([]);
-      setActiveChatId("");
-    }
-    setChatsReady(true);
-  }, [workspace.id, startupName, initialChats, initialActiveChatId]);
+      const remote = (snapshot.ok ? snapshot.chats : initialChats).filter(
+        (chat) => !isPlaceholderChat(chat)
+      );
+      const stored = readWorkspaceChats(workspace.id);
+      const local = (stored?.chats ?? []).filter((chat) => !isPlaceholderChat(chat));
+
+      if (snapshot.ok && remote.length) {
+        setChats(remote);
+        const nextId = remote.some((chat) => chat.id === snapshot.activeChatId && !chat.isDeleted)
+          ? snapshot.activeChatId
+          : remote.find((chat) => !chat.isDeleted)?.id ?? "";
+        setActiveChatId(nextId);
+        setCanSyncChats(true);
+      } else if (snapshot.ok && local.length) {
+        const nextId = local.some((chat) => chat.id === stored?.activeChatId && !chat.isDeleted)
+          ? stored?.activeChatId ?? ""
+          : local.find((chat) => !chat.isDeleted)?.id ?? "";
+        setChats(local);
+        setActiveChatId(nextId);
+        setCanSyncChats(true);
+        void saveWorkspaceChats(workspace.id, local, nextId);
+      } else if (snapshot.ok) {
+        setChats([]);
+        setActiveChatId("");
+        setCanSyncChats(true);
+      } else if (local.length) {
+        setChats(local);
+        setActiveChatId(stored?.activeChatId ?? local[0]?.id ?? "");
+        setCanSyncChats(false);
+      } else {
+        setChats([]);
+        setActiveChatId("");
+        setCanSyncChats(false);
+      }
+      setChatsReady(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [workspace.id, startupName, initialChats]);
 
   useEffect(() => {
-    if (!chatsReady) return;
+    if (!chatsReady || !canSyncChats) return;
     persistWorkspaceChats(workspace.id, { chats, activeChatId });
     const timer = window.setTimeout(() => {
       void saveWorkspaceChats(workspace.id, chats, activeChatId);
-    }, 400);
+    }, 300);
     return () => window.clearTimeout(timer);
-  }, [workspace.id, chats, activeChatId, chatsReady]);
+  }, [workspace.id, chats, activeChatId, chatsReady, canSyncChats]);
 
   const blueprintUpdates = useMemo(() => buildStartupRadar(workspace), [workspace]);
   const radarUpdates = liveUpdates.length
@@ -508,7 +539,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
     setSelectedImage(null);
 
     setTimeout(() => {
-      const aiReply = `Samajh gaya Karan! **${startupName}** ke context me strategy execute karte hain.`;
+      const aiReply = `Samajh gaya ${viewerName.split(" ")[0] || "there"}! **${startupName}** ke context me strategy execute karte hain.`;
       setChats((prevChats) =>
         prevChats.map((c) =>
           c.id === chatId
@@ -743,8 +774,8 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
               {settingsTab === "account" ? (
                 <>
                   <div className="border-b border-white/[0.06] px-3 py-2">
-                    <p className="text-xs font-bold text-white">Karan (Founder)</p>
-                    <p className="truncate text-[10px] text-zinc-400">karan@startup.com</p>
+                    <p className="truncate text-xs font-bold text-white">{viewerName}</p>
+                    <p className="truncate text-[10px] text-zinc-400">{viewerEmail}</p>
                   </div>
                   <div className="space-y-0.5 py-1">
                     <button className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 transition duration-150 hover:bg-zinc-800 hover:text-white">
@@ -806,11 +837,11 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5 overflow-hidden">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#A3E635]/30 bg-zinc-800 text-xs font-extrabold text-[#A3E635] shadow-[0_0_12px_rgba(163,230,53,0.12)]">
-                K
+                {viewerInitials}
               </div>
               <div className="overflow-hidden">
-                <p className="truncate text-xs font-bold text-white">Karan (Founder)</p>
-                <p className="truncate text-[10px] text-zinc-400">karan@startup.com</p>
+                <p className="truncate text-xs font-bold text-white">{viewerName}</p>
+                <p className="truncate text-[10px] text-zinc-400">{viewerEmail}</p>
               </div>
             </div>
 
@@ -936,7 +967,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
                 </div>
               </motion.div>
               <h1 className="text-2xl font-extrabold tracking-tight text-white md:text-3xl">
-                <StaggerWords text="Hey Karan! I am your" reduceMotion={reduceMotion} />{" "}
+                <StaggerWords text={`Hey ${viewerName.split(" ")[0] || "there"}! I am your`} reduceMotion={reduceMotion} />{" "}
                 <StaggerWords
                   text="AI Mentor & Co-Founder."
                   reduceMotion={reduceMotion}
@@ -1002,7 +1033,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
                   </div>
                   {msg.role === "user" && (
                     <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#A3E635]/30 bg-zinc-800 text-xs font-extrabold text-[#A3E635]">
-                      K
+                      {viewerInitials}
                     </div>
                   )}
                 </div>

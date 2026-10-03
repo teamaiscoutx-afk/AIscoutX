@@ -15,6 +15,7 @@ export type PersistedMentorChat = {
 };
 
 export type WorkspaceChatSnapshot = {
+  ok: boolean;
   chats: PersistedMentorChat[];
   activeChatId: string;
 };
@@ -23,7 +24,7 @@ export async function loadWorkspaceChats(
   workspaceId: string
 ): Promise<WorkspaceChatSnapshot> {
   if (!isSupabaseConfigured() || !workspaceId) {
-    return { chats: [], activeChatId: "" };
+    return { ok: false, chats: [], activeChatId: "" };
   }
 
   try {
@@ -31,7 +32,7 @@ export async function loadWorkspaceChats(
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { chats: [], activeChatId: "" };
+    if (!user) return { ok: false, chats: [], activeChatId: "" };
 
     const { data, error } = await supabase
       .from("workspace_chats")
@@ -40,7 +41,7 @@ export async function loadWorkspaceChats(
       .eq("user_id", user.id)
       .order("sort_order", { ascending: true });
 
-    if (error || !data) return { chats: [], activeChatId: "" };
+    if (error || !data) return { ok: false, chats: [], activeChatId: "" };
 
     const chats: PersistedMentorChat[] = data.map((row) => ({
       id: row.id,
@@ -51,11 +52,12 @@ export async function loadWorkspaceChats(
     }));
     const active = data.find((row) => row.is_active && !row.is_deleted);
     return {
+      ok: true,
       chats,
       activeChatId: active?.id ?? chats.find((chat) => !chat.isDeleted)?.id ?? "",
     };
   } catch {
-    return { chats: [], activeChatId: "" };
+    return { ok: false, chats: [], activeChatId: "" };
   }
 }
 
