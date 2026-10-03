@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { ensureUserProfile } from "@/lib/auth/ensure-profile";
+import { pathAfterAuth } from "@/lib/auth/post-auth-path";
 import type { Database } from "@/lib/database.types";
 import { getSupabaseEnv } from "@/lib/supabase-env";
 
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
     return redirectToLogin(origin, "Auth configuration error");
   }
 
-  const destination = new URL(nextPath, origin);
+  let destination = new URL(nextPath, origin);
   let response = NextResponse.redirect(destination);
 
   const supabase = createServerClient<Database>(env.url, env.anonKey, {
@@ -74,7 +75,27 @@ export async function GET(request: NextRequest) {
       await ensureUserProfile(supabase, data.user);
     }
 
-    return response;
+    const next = await pathAfterAuth(supabase, nextPath);
+    destination = new URL(next, origin);
+    const redirected = NextResponse.redirect(destination);
+    response.cookies.getAll().forEach((cookie) => {
+      redirected.cookies.set(cookie);
+    });
+    const workspaceMatch = next.match(/\/dashboard\/workspace\/([^/?]+)/);
+    if (workspaceMatch?.[1]) {
+      const cookieOptions = {
+        path: "/",
+        maxAge: 31536000,
+        sameSite: "lax" as const,
+        secure: origin.startsWith("https://"),
+        httpOnly: false,
+      };
+      redirected.cookies.set("active_startup_id", workspaceMatch[1], cookieOptions);
+      redirected.cookies.set("aiscoutx_active_startup", workspaceMatch[1], cookieOptions);
+      redirected.cookies.set("aiscoutx_has_active_startup", "1", cookieOptions);
+      redirected.cookies.set("aiscoutx_active_workspace", "true", cookieOptions);
+    }
+    return redirected;
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Authentication failed";

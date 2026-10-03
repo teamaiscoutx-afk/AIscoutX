@@ -53,17 +53,22 @@ import {
   type StartupRadarUpdate,
 } from "@/lib/founder/startup-radar";
 import {
+  clearActiveWorkspace,
   persistActiveWorkspace,
   persistWorkspaceChats,
   readWorkspaceChats,
 } from "@/lib/workspace/active-workspace";
 import { markWorkspaceActiveSession } from "@/app/actions/active-workspace";
+import { signOut } from "@/app/actions/auth";
+import { saveWorkspaceChats } from "@/app/actions/workspace-chats";
 import { StartupRadarPanel } from "@/components/founder/startup-radar-panel";
 import { WorkspaceSkeleton } from "@/components/founder/workspace-skeleton";
 
 type StartupWorkspaceViewProps = {
   initialWorkspace: StartupWorkspace;
   initialTasks: any[];
+  initialChats?: ChatSession[];
+  initialActiveChatId?: string;
 };
 
 type ChatSession = {
@@ -183,6 +188,8 @@ function StaggerWords({
 
 export function StartupWorkspaceView({
   initialWorkspace,
+  initialChats = [],
+  initialActiveChatId = "",
 }: StartupWorkspaceViewProps) {
   const router = useRouter();
   const reduceMotion = useReducedMotion();
@@ -240,24 +247,37 @@ export function StartupWorkspaceView({
     persistActiveWorkspace({ id: workspace.id, name: startupName });
     void markWorkspaceActiveSession(workspace.id);
 
+    const remote = initialChats.filter((chat) => !isPlaceholderChat(chat));
     const stored = readWorkspaceChats(workspace.id);
-    const saved = (stored?.chats ?? []).filter((chat) => !isPlaceholderChat(chat));
-    if (saved.length) {
-      setChats(saved);
-      const nextId = saved.some((chat) => chat.id === stored?.activeChatId)
-        ? stored?.activeChatId ?? saved[0].id
-        : saved[0].id;
+    const local = (stored?.chats ?? []).filter((chat) => !isPlaceholderChat(chat));
+
+    if (remote.length) {
+      setChats(remote);
+      const nextId = remote.some((chat) => chat.id === initialActiveChatId && !chat.isDeleted)
+        ? initialActiveChatId
+        : remote.find((chat) => !chat.isDeleted)?.id ?? "";
       setActiveChatId(nextId);
+    } else if (local.length) {
+      setChats(local);
+      const nextId = local.some((chat) => chat.id === stored?.activeChatId && !chat.isDeleted)
+        ? stored?.activeChatId ?? ""
+        : local.find((chat) => !chat.isDeleted)?.id ?? "";
+      setActiveChatId(nextId);
+      void saveWorkspaceChats(workspace.id, local, nextId);
     } else {
       setChats([]);
       setActiveChatId("");
     }
     setChatsReady(true);
-  }, [workspace.id, startupName]);
+  }, [workspace.id, startupName, initialChats, initialActiveChatId]);
 
   useEffect(() => {
     if (!chatsReady) return;
     persistWorkspaceChats(workspace.id, { chats, activeChatId });
+    const timer = window.setTimeout(() => {
+      void saveWorkspaceChats(workspace.id, chats, activeChatId);
+    }, 400);
+    return () => window.clearTimeout(timer);
   }, [workspace.id, chats, activeChatId, chatsReady]);
 
   const blueprintUpdates = useMemo(() => buildStartupRadar(workspace), [workspace]);
@@ -365,7 +385,10 @@ export function StartupWorkspaceView({
   };
 
   const handleLogout = () => {
-    window.location.href = "/login";
+    clearActiveWorkspace();
+    void signOut().finally(() => {
+      window.location.href = "/";
+    });
   };
 
   const handleDownloadBlueprint = () => {

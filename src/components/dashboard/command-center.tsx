@@ -69,6 +69,7 @@ type CommandCenterProps = {
   initialNotifications?: PlatformNotification[];
   initialWorkspace: WorkspaceIdentity;
   initialNiche: NicheId;
+  skipOnboarding?: boolean;
 };
 
 function resolveActiveNiche(
@@ -105,6 +106,7 @@ export function CommandCenter({
   initialNotifications,
   initialWorkspace,
   initialNiche,
+  skipOnboarding = false,
 }: CommandCenterProps) {
   const { startLoading, stopLoading } = useLoading();
   const [phase, setPhase] = useState<ExperiencePhase>("hydrating");
@@ -320,6 +322,10 @@ export function CommandCenter({
   );
 
   useEffect(() => {
+    if (skipOnboarding) {
+      setPhase("ready");
+      return;
+    }
     const saved = loadOnboardingProfile();
     const nichePrefs = loadNicheByWorkspace();
 
@@ -348,7 +354,7 @@ export function CommandCenter({
     } else {
       setPhase("onboarding");
     }
-  }, []);
+  }, [skipOnboarding]);
 
   const openOpportunity = useCallback((opportunity: Opportunity) => {
     setSelectedOpportunity(opportunity);

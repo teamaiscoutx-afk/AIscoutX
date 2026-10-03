@@ -69,6 +69,19 @@ export function hasActiveWorkspaceCookie(): boolean {
   }
 }
 
+export function clearActiveWorkspaceCookie(): void {
+  try {
+    const jar = cookies();
+    const options = { path: "/", maxAge: 0 };
+    jar.set(ACTIVE_STARTUP_ID_COOKIE, "", options);
+    jar.set(ACTIVE_WORKSPACE_COOKIE, "", options);
+    jar.set(HAS_ACTIVE_STARTUP_COOKIE, "", options);
+    jar.set(ACTIVE_WORKSPACE_FLAG_COOKIE, "", options);
+  } catch {
+    // Cookie writes can fail outside a request context.
+  }
+}
+
 export function writeActiveWorkspaceCookie(workspaceId: string): void {
   try {
     const jar = cookies();

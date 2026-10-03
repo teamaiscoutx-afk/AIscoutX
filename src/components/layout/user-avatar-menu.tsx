@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { signOut } from "@/app/actions/auth";
+import { clearActiveWorkspace } from "@/lib/workspace/active-workspace";
 import { AccountSettingsDialog } from "@/components/account/account-settings-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -53,6 +54,7 @@ export function UserAvatarMenu({ menu, compact = false }: UserAvatarMenuProps) {
 
   function handleSignOut() {
     startTransition(async () => {
+      clearActiveWorkspace();
       await signOut();
       router.push("/");
       router.refresh();

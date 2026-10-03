@@ -140,6 +140,24 @@ export type PlatformNotificationRow = {
   created_at: string;
 };
 
+export type WorkspaceChatMessage = {
+  role: "assistant" | "user";
+  content: string;
+};
+
+export type WorkspaceChatRow = {
+  id: string;
+  workspace_id: string;
+  user_id: string;
+  title: string;
+  messages: WorkspaceChatMessage[];
+  is_deleted: boolean;
+  is_pinned: boolean;
+  is_active: boolean;
+  sort_order: number;
+  updated_at: string;
+};
+
 export type DailyTaskRow = {
   id: string;
   workspace_id: string;
@@ -316,6 +334,31 @@ export type Database = {
           is_read: boolean;
           title: string;
           body: string;
+        }>;
+        Relationships: [];
+      };
+      workspace_chats: {
+        Row: WorkspaceChatRow;
+        Insert: {
+          id: string;
+          workspace_id: string;
+          user_id: string;
+          title: string;
+          messages?: WorkspaceChatMessage[];
+          is_deleted?: boolean;
+          is_pinned?: boolean;
+          is_active?: boolean;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Update: Partial<{
+          title: string;
+          messages: WorkspaceChatMessage[];
+          is_deleted: boolean;
+          is_pinned: boolean;
+          is_active: boolean;
+          sort_order: number;
+          updated_at: string;
         }>;
         Relationships: [];
       };

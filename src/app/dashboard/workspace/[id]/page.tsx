@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { loadWorkspaceChats } from "@/app/actions/workspace-chats";
 import { getWorkspaceById, getWorkspaceTasks } from "@/app/actions/workspaces";
 import { StartupWorkspaceView } from "@/components/founder/startup-workspace-view";
 import { writeActiveWorkspaceCookie } from "@/lib/workspace/active-workspace-server";
@@ -44,9 +45,10 @@ export default async function WorkspacePage({
   const workspaceId = params.id?.trim();
   if (!workspaceId) notFound();
 
-  const [workspace, tasks] = await Promise.all([
+  const [workspace, tasks, chatState] = await Promise.all([
     getWorkspaceById(workspaceId),
     getWorkspaceTasks(workspaceId).catch(() => []),
+    loadWorkspaceChats(workspaceId),
   ]);
 
   const resolved = workspace ?? fallbackWorkspace(workspaceId);
@@ -54,7 +56,12 @@ export default async function WorkspacePage({
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-[#09090B]">
-      <StartupWorkspaceView initialWorkspace={resolved} initialTasks={tasks} />
+      <StartupWorkspaceView
+        initialWorkspace={resolved}
+        initialTasks={tasks}
+        initialChats={chatState.chats}
+        initialActiveChatId={chatState.activeChatId}
+      />
     </div>
   );
 }

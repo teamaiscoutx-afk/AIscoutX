@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { ensureUserProfile } from "@/lib/auth/ensure-profile";
+import { pathAfterAuth } from "@/lib/auth/post-auth-path";
+import { clearActiveWorkspaceCookie } from "@/lib/workspace/active-workspace-server";
 import {
   createServerSupabaseClient,
   isSupabaseConfigured,
@@ -124,7 +126,7 @@ export async function signInWithEmail(
   }
 
   revalidatePath("/dashboard");
-  redirect(parsed.redirectTo);
+  redirect(await pathAfterAuth(supabase, parsed.redirectTo));
 }
 
 /** Register new users only — never attempts sign-in. */
@@ -160,7 +162,7 @@ export async function signUpWithEmail(
 
   if (data.session && data.user) {
     revalidatePath("/dashboard");
-    redirect(parsed.redirectTo);
+    redirect(await pathAfterAuth(supabase, parsed.redirectTo));
   }
 
   return {
@@ -211,6 +213,7 @@ export async function signOut(): Promise<{ ok: true }> {
 
   const supabase = createServerSupabaseClient();
   await supabase.auth.signOut();
+  clearActiveWorkspaceCookie();
   revalidatePath("/dashboard");
   revalidatePath("/");
   return { ok: true };

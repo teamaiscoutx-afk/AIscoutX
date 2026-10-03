@@ -6,6 +6,7 @@ import nextDynamic from "next/dynamic";
 import { loadCachedOpportunities } from "@/app/actions/intelligence";
 import { fetchNotifications } from "@/app/actions/notifications";
 import { getCurrentProfile } from "@/app/actions/profile";
+import { resolveActiveWorkspace } from "@/app/actions/active-workspace";
 import { IntelligenceSkeleton } from "@/components/dashboard/intelligence-skeleton";
 import type { NicheId, WorkspaceIdentity } from "@/lib/dashboard/onboarding";
 import { normalizeNicheForWorkspace } from "@/lib/dashboard/onboarding";
@@ -45,11 +46,14 @@ export default async function DiscoverPage({ searchParams }: DiscoverPageProps) 
     readActiveWorkspaceCookie() ??
     jar.get(ACTIVE_STARTUP_ID_COOKIE)?.value?.trim() ??
     jar.get(ACTIVE_WORKSPACE_COOKIE)?.value?.trim();
-  if (!wantsDiscover && (activeId || hasActiveWorkspaceCookie())) {
+  const accountWorkspace = await resolveActiveWorkspace();
+  if (!wantsDiscover && (activeId || hasActiveWorkspaceCookie() || accountWorkspace)) {
     redirect(
       activeId
         ? `/dashboard/workspace/${decodeURIComponent(activeId)}`
-        : "/dashboard/workspace"
+        : accountWorkspace
+          ? `/dashboard/workspace/${accountWorkspace.id}`
+          : "/dashboard/workspace"
     );
   }
 
@@ -82,6 +86,7 @@ export default async function DiscoverPage({ searchParams }: DiscoverPageProps) 
           initialNotifications={notifications}
           initialWorkspace={initialWorkspace}
           initialNiche={initialNiche}
+          skipOnboarding={Boolean(profile?.onboarding_completed || accountWorkspace)}
         />
       </DiscoverRouteGuard>
     </Suspense>

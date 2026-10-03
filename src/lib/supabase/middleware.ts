@@ -11,42 +11,17 @@ function applyCookies(source: NextResponse, target: NextResponse) {
   });
 }
 
-function cookieValue(request: NextRequest, name: string): string | undefined {
-  return request.cookies.get(name)?.value?.trim();
-}
-
-function decodeId(raw?: string): string | null {
-  if (!raw) return null;
-  try {
-    const decoded = decodeURIComponent(raw);
-    if (!decoded || decoded.includes("/") || decoded.includes("..")) return null;
-    return decoded;
-  } catch {
-    return null;
-  }
-}
-
-function isStrictlyInactive(request: NextRequest): boolean {
-  const has = cookieValue(request, "aiscoutx_has_active_startup");
-  const flag = cookieValue(request, "aiscoutx_active_workspace");
-  return has === "0" || has === "false" || flag === "false";
-}
-
-function readActiveStartupId(request: NextRequest): string | null {
-  if (isStrictlyInactive(request)) return null;
-  return (
-    decodeId(cookieValue(request, "active_startup_id")) ??
-    decodeId(cookieValue(request, "aiscoutx_active_startup"))
-  );
-}
-
-function hasActiveWorkspaceSignal(request: NextRequest): boolean {
-  if (isStrictlyInactive(request)) return false;
-  if (cookieValue(request, "aiscoutx_active_workspace") === "true") return true;
-  if (cookieValue(request, "aiscoutx_has_active_startup") === "1") return true;
-  if (cookieValue(request, "active_startup_id")) return true;
-  if (cookieValue(request, "aiscoutx_active_startup")) return true;
-  return false;
+async function lookupActiveWorkspaceId(
+  supabase: ReturnType<typeof createServerClient<Database>>
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("workspaces")
+    .select("id, is_active")
+    .eq("is_deleted", false)
+    .order("updated_at", { ascending: false })
+    .limit(20);
+  if (error || !data?.length) return null;
+  return data.find((row) => row.is_active)?.id ?? data[0]?.id ?? null;
 }
 
 function stampWorkspaceCookies(
@@ -139,61 +114,44 @@ export async function updateSession(request: NextRequest) {
     return redirectResponse;
   }
 
-  if (user && isLogin) {
-    const redirectTo = safeRedirectPath(
-      request.nextUrl.searchParams.get("redirect")
-    );
-    const url = request.nextUrl.clone();
-    url.pathname = redirectTo;
-    url.search = "";
-    const redirectResponse = NextResponse.redirect(url);
-    applyCookies(supabaseResponse, redirectResponse);
-    return redirectResponse;
-  }
-
-  if (user && pathname === "/") {
-    const redirectTo = request.nextUrl.searchParams.get("redirect");
-    if (redirectTo) {
-      const url = request.nextUrl.clone();
-      url.pathname = safeRedirectPath(redirectTo);
-      url.search = "";
-      const redirectResponse = NextResponse.redirect(url);
-      applyCookies(supabaseResponse, redirectResponse);
-      return redirectResponse;
-    }
-
-    const wantsSignIn = request.nextUrl.searchParams.get("signin") === "1";
-    if (!wantsSignIn) {
-      if (isStrictlyInactive(request)) {
-        const url = request.nextUrl.clone();
-        url.pathname = "/dashboard/discover";
-        url.search = "";
-        const redirectResponse = NextResponse.redirect(url);
-        applyCookies(supabaseResponse, redirectResponse);
-        return redirectResponse;
-      }
-      return redirectToWorkspace(request, supabaseResponse, readActiveStartupId(request));
-    }
-  }
-
   const wantsDiscover = request.nextUrl.searchParams.get("intent") === "discover";
   const isDiscoverEntry = pathname === "/dashboard/discover";
   const isDashboardRoot = pathname === "/dashboard";
+  const wantsSignIn = request.nextUrl.searchParams.get("signin") === "1";
+  const isEntry =
+    (pathname === "/" && !wantsSignIn) ||
+    isLogin ||
+    isDashboardRoot ||
+    (isDiscoverEntry && !wantsDiscover);
 
-  if (user && isDashboardRoot) {
-    if (isStrictlyInactive(request)) {
+  if (user && isEntry) {
+    const requested = safeRedirectPath(request.nextUrl.searchParams.get("redirect"));
+    const specific =
+      request.nextUrl.searchParams.get("redirect") &&
+      requested !== "/dashboard" &&
+      !requested.startsWith("/dashboard/discover");
+    if (specific && (isLogin || pathname === "/")) {
       const url = request.nextUrl.clone();
-      url.pathname = "/dashboard/discover";
+      url.pathname = requested;
       url.search = "";
       const redirectResponse = NextResponse.redirect(url);
       applyCookies(supabaseResponse, redirectResponse);
       return redirectResponse;
     }
-    return redirectToWorkspace(request, supabaseResponse, readActiveStartupId(request));
-  }
 
-  if (user && isDiscoverEntry && !wantsDiscover && hasActiveWorkspaceSignal(request)) {
-    return redirectToWorkspace(request, supabaseResponse, readActiveStartupId(request));
+    const dbId = await lookupActiveWorkspaceId(supabase);
+    if (dbId) {
+      return redirectToWorkspace(request, supabaseResponse, dbId);
+    }
+
+    if (isLogin || pathname === "/" || isDashboardRoot) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard/discover";
+      url.search = "intent=discover";
+      const redirectResponse = NextResponse.redirect(url);
+      applyCookies(supabaseResponse, redirectResponse);
+      return redirectResponse;
+    }
   }
 
   if (isAuthCallback) {

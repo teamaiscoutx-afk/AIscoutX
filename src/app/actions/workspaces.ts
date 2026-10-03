@@ -218,6 +218,10 @@ export async function createWorkspaceFromOpportunity(
     });
 
     writeActiveWorkspaceCookie(workspace.id);
+    await supabase
+      .from("profiles")
+      .update({ onboarding_completed: true })
+      .eq("id", user.id);
 
     revalidatePath("/dashboard");
     revalidatePath(`/dashboard/workspace/${workspace.id}`);
