@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Bot,
   Plus,
@@ -39,16 +39,23 @@ import {
   User,
   Key,
   CreditCard,
-  Search,
+  ChevronsUpDown,
+  Radio,
 } from "lucide-react";
+import { fetchNotifications } from "@/app/actions/notifications";
 import type { StartupWorkspace } from "@/lib/founder/types";
 import {
-  DEFAULT_CHAT_SEED,
+  buildStartupRadar,
+  mapWatchtowerUpdate,
+  type StartupRadarUpdate,
+} from "@/lib/founder/startup-radar";
+import {
   persistActiveWorkspace,
   persistWorkspaceChats,
   readWorkspaceChats,
 } from "@/lib/workspace/active-workspace";
 import { markWorkspaceActiveSession } from "@/app/actions/active-workspace";
+import { StartupRadarPanel } from "@/components/founder/startup-radar-panel";
 import { WorkspaceSkeleton } from "@/components/founder/workspace-skeleton";
 
 type StartupWorkspaceViewProps = {
@@ -65,6 +72,17 @@ type ChatSession = {
 
 function resolveStartupName(workspace: StartupWorkspace): string {
   return workspace.opportunityName?.trim() || "VoiceCraft";
+}
+
+const PLACEHOLDER_CHAT_IDS = new Set(["chat-1", "chat-2"]);
+const PLACEHOLDER_CHAT_TITLES = new Set([
+  "Initial Strategy & Target Audience",
+  "Pricing & Unit Economics",
+]);
+
+function isPlaceholderChat(chat: ChatSession): boolean {
+  const empty = chat.messages.length === 0;
+  return empty && (PLACEHOLDER_CHAT_IDS.has(chat.id) || PLACEHOLDER_CHAT_TITLES.has(chat.title));
 }
 
 const GPU = { willChange: "transform, opacity" } as const;
@@ -167,9 +185,12 @@ export function StartupWorkspaceView({
   const [workspace] = useState(initialWorkspace);
   const startupName = resolveStartupName(workspace);
 
-  const [chats, setChats] = useState<ChatSession[]>(DEFAULT_CHAT_SEED);
-  const [activeChatId, setActiveChatId] = useState<string>("chat-1");
+  const [chats, setChats] = useState<ChatSession[]>([]);
+  const [activeChatId, setActiveChatId] = useState("");
   const [chatsReady, setChatsReady] = useState(false);
+  const [canvas, setCanvas] = useState<"chat" | "radar">("chat");
+  const [liveUpdates, setLiveUpdates] = useState<StartupRadarUpdate[]>([]);
+  const [radarLoading, setRadarLoading] = useState(false);
   const [inputMessage, setInputMessage] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isVoiceActive, setIsVoiceActive] = useState(false);
@@ -210,9 +231,16 @@ export function StartupWorkspaceView({
     void markWorkspaceActiveSession(workspace.id);
 
     const stored = readWorkspaceChats(workspace.id);
-    if (stored?.chats?.length) {
-      setChats(stored.chats);
-      setActiveChatId(stored.activeChatId || stored.chats[0].id);
+    const saved = (stored?.chats ?? []).filter((chat) => !isPlaceholderChat(chat));
+    if (saved.length) {
+      setChats(saved);
+      const nextId = saved.some((chat) => chat.id === stored?.activeChatId)
+        ? stored?.activeChatId ?? saved[0].id
+        : saved[0].id;
+      setActiveChatId(nextId);
+    } else {
+      setChats([]);
+      setActiveChatId("");
     }
     setChatsReady(true);
   }, [workspace.id, startupName]);
@@ -221,6 +249,36 @@ export function StartupWorkspaceView({
     if (!chatsReady) return;
     persistWorkspaceChats(workspace.id, { chats, activeChatId });
   }, [workspace.id, chats, activeChatId, chatsReady]);
+
+  const blueprintUpdates = useMemo(() => buildStartupRadar(workspace), [workspace]);
+  const radarUpdates = liveUpdates.length
+    ? [...liveUpdates, ...blueprintUpdates]
+    : blueprintUpdates;
+
+  useEffect(() => {
+    if (canvas !== "radar") return;
+    let cancelled = false;
+    setRadarLoading(true);
+    void fetchNotifications()
+      .then((rows) => {
+        if (cancelled) return;
+        const relevant = rows.filter((row) => {
+          if (row.workspaceId && row.workspaceId === workspace.id) return true;
+          if (workspace.nicheFocus && row.nicheFocus === workspace.nicheFocus) return true;
+          return false;
+        });
+        setLiveUpdates(relevant.map(mapWatchtowerUpdate));
+      })
+      .catch(() => {
+        if (!cancelled) setLiveUpdates([]);
+      })
+      .finally(() => {
+        if (!cancelled) setRadarLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [canvas, workspace.id, workspace.nicheFocus]);
 
   const handleNewChat = () => {
     const newChatId = `chat-${Date.now()}`;
@@ -231,6 +289,7 @@ export function StartupWorkspaceView({
     };
     setChats([newChat, ...chats]);
     setActiveChatId(newChatId);
+    setCanvas("chat");
   };
 
   const handleContextMenu = (e: React.MouseEvent, chatId: string) => {
@@ -324,8 +383,24 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
   };
 
   const insertPrompt = (prompt: string) => {
+    setCanvas("chat");
     setInputMessage(prompt);
     requestAnimationFrame(() => composerRef.current?.focus());
+  };
+
+  const discussUpdate = (update: StartupRadarUpdate) => {
+    const existing = chats.find((chat) => chat.id === activeChatId && !chat.isDeleted);
+    if (!existing) {
+      const newChatId = `chat-${Date.now()}`;
+      setChats((prev) => [
+        { id: newChatId, title: "New Conversation", messages: [] },
+        ...prev,
+      ]);
+      setActiveChatId(newChatId);
+    }
+    insertPrompt(
+      `How can we capitalize on ${update.title} for ${startupName}?`
+    );
   };
 
   const handleSendMessage = () => {
@@ -334,24 +409,34 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
     const userContent = selectedImage
       ? `[Screenshot Attached]\n${inputMessage}`
       : inputMessage;
+    const draft = inputMessage.trim();
+    let chatId = chats.some((chat) => chat.id === activeChatId && !chat.isDeleted)
+      ? activeChatId
+      : "";
+    if (!chatId) {
+      chatId = `chat-${Date.now()}`;
+      setActiveChatId(chatId);
+    }
 
-    const updatedMessages = [
-      ...activeChat.messages,
-      { role: "user" as const, content: userContent },
-    ];
-
-    const updatedTitle =
-      activeChat.title === "New Conversation" && inputMessage.length > 0
-        ? inputMessage.slice(0, 25) + "..."
-        : activeChat.title;
-
-    setChats((prev) =>
-      prev.map((c) =>
-        c.id === activeChatId
-          ? { ...c, title: updatedTitle, messages: updatedMessages }
-          : c
-      )
-    );
+    setChats((prev) => {
+      const current = prev.find((chat) => chat.id === chatId);
+      const base: ChatSession = current ?? {
+        id: chatId,
+        title: "New Conversation",
+        messages: [],
+      };
+      const updatedTitle =
+        base.title === "New Conversation" && draft.length > 0
+          ? `${draft.slice(0, 25)}...`
+          : base.title;
+      const next: ChatSession = {
+        ...base,
+        title: updatedTitle,
+        messages: [...base.messages, { role: "user", content: userContent }],
+      };
+      if (!current) return [next, ...prev];
+      return prev.map((chat) => (chat.id === chatId ? next : chat));
+    });
 
     setInputMessage("");
     setSelectedImage(null);
@@ -360,7 +445,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
       const aiReply = `Samajh gaya Karan! **${startupName}** ke context me strategy execute karte hain.`;
       setChats((prevChats) =>
         prevChats.map((c) =>
-          c.id === activeChatId
+          c.id === chatId
             ? {
                 ...c,
                 messages: [
@@ -409,16 +494,15 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
             </span>
           </div>
 
-          <div className="px-1">
+          <div className="px-1 pt-0.5">
             <p className="truncate px-1 text-[11px] font-semibold text-white">{startupName}</p>
             <button
               type="button"
               onClick={() => router.push("/dashboard/discover?intent=discover")}
-              className={`mt-1.5 flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-left text-[11px] font-semibold text-zinc-300 transition-all duration-150 hover:border-[#A3E635]/35 hover:bg-white/[0.06] hover:text-white ${glassButton}`}
+              className="mt-2 inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[10px] font-semibold text-zinc-300 backdrop-blur-xl transition-all duration-150 hover:border-[#A3E635]/40 hover:bg-[#A3E635]/10 hover:text-white"
             >
-              <Search className="h-3.5 w-3.5 text-[#A3E635]" />
-              <span className="min-w-0 flex-1 truncate">Switch Startup / Discover New Ideas</span>
-              <Sparkles className="h-3 w-3 shrink-0 text-[#D9F99D]" />
+              <ChevronsUpDown className="h-3 w-3 text-[#A3E635]" />
+              Switch Startup
             </button>
           </div>
 
@@ -465,16 +549,33 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
               <Compass className="h-3.5 w-3.5 text-[#D9F99D]" /> Founder GPS
             </Link>
             </motion.div>
+            <motion.div variants={staggerItem} style={GPU}>
+            <button
+              type="button"
+              onClick={() => setCanvas("radar")}
+              className={`flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-medium transition-all duration-150 ${
+                canvas === "radar"
+                  ? "border border-white/[0.06] border-l-2 border-l-[#A3E635] bg-zinc-800 text-white"
+                  : "text-zinc-400 hover:bg-zinc-800 hover:text-white"
+              }`}
+            >
+              <Radio className={`h-3.5 w-3.5 ${canvas === "radar" ? "text-[#A3E635]" : "text-[#84CC16]"}`} />
+              Startup Radar
+            </button>
+            </motion.div>
           </motion.div>
 
           <div className="space-y-1 border-t border-white/[0.06] pt-1">
             <span className="block px-2 text-[10px] font-bold uppercase tracking-wider text-zinc-500">Recent Chats</span>
             <motion.div
-              className="max-h-[calc(100vh-390px)] space-y-1 overflow-y-auto"
+              className="max-h-[calc(100vh-470px)] space-y-1 overflow-y-auto"
               variants={staggerContainer}
               initial={reduceMotion ? false : "hidden"}
               animate="show"
             >
+              {activeChats.length === 0 ? (
+                <p className="px-3 py-2 text-[11px] leading-5 text-zinc-500">Start a conversation</p>
+              ) : null}
               {activeChats.map((chat) => (
                 <motion.div
                   key={chat.id}
@@ -494,7 +595,10 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
                     />
                   ) : (
                     <button
-                      onClick={() => setActiveChatId(chat.id)}
+                      onClick={() => {
+                        setActiveChatId(chat.id);
+                        setCanvas("chat");
+                      }}
                       className={`flex w-full cursor-pointer items-center gap-2.5 truncate rounded-xl px-3 py-2 text-left text-xs font-medium transition-all duration-150 ${
                         activeChatId === chat.id
                           ? "border border-white/[0.06] border-l-2 border-l-[#A3E635] bg-zinc-800 text-white shadow-[inset_0_0_18px_rgba(163,230,53,0.08)]"
@@ -618,9 +722,48 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
           </div>
         )}
 
-        <div className="flex flex-1 flex-col justify-center overflow-y-auto p-4 md:p-8">
-          {activeChat?.messages.length === 0 ? (
+        <div className="flex items-center justify-between gap-2 border-b border-white/[0.06] px-4 py-3 md:hidden">
+          <p className="truncate text-xs font-semibold text-white">{startupName}</p>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard/discover?intent=discover")}
+              className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[10px] font-semibold text-zinc-300"
+            >
+              <ChevronsUpDown className="h-3 w-3 text-[#A3E635]" />
+              Switch
+            </button>
+            <button
+              type="button"
+              onClick={() => setCanvas(canvas === "radar" ? "chat" : "radar")}
+              className={`inline-flex cursor-pointer items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
+                canvas === "radar"
+                  ? "border-[#A3E635]/40 bg-[#A3E635]/10 text-[#D9F99D]"
+                  : "border-white/[0.08] bg-white/[0.04] text-zinc-300"
+              }`}
+            >
+              <Radio className="h-3 w-3" />
+              Radar
+            </button>
+          </div>
+        </div>
+
+        <div className={`flex flex-1 flex-col overflow-y-auto p-4 md:p-8 ${canvas === "radar" ? "justify-start" : "justify-center"}`}>
+          <AnimatePresence mode="wait">
+          {canvas === "radar" ? (
+            <StartupRadarPanel
+              key="radar"
+              startupName={startupName}
+              niche={workspace.nicheFocus}
+              updates={radarUpdates}
+              loadingLive={radarLoading}
+              reduceMotion={reduceMotion}
+              onDiscuss={discussUpdate}
+              onClose={() => setCanvas("chat")}
+            />
+          ) : !activeChat?.messages.length ? (
             <motion.div
+              key="empty"
               className="relative z-10 my-auto mx-auto max-w-2xl space-y-5 text-center"
               variants={heroContainer}
               initial={reduceMotion ? false : "hidden"}
@@ -685,7 +828,14 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
               </motion.div>
             </motion.div>
           ) : (
-            <div className="my-auto mx-auto w-full max-w-3xl space-y-5">
+            <motion.div
+              key="thread"
+              className="relative z-10 my-auto mx-auto w-full max-w-3xl space-y-5"
+              initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reduceMotion ? undefined : { opacity: 0 }}
+              style={GPU}
+            >
               {activeChat?.messages.map((msg, i) => (
                 <div
                   key={i}
@@ -715,11 +865,13 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
                 </div>
               ))}
               <div ref={chatEndRef} />
-            </div>
+            </motion.div>
           )}
+          </AnimatePresence>
         </div>
 
         {/* INPUT BAR */}
+        {canvas === "chat" && (
         <motion.div
           className="relative z-10 shrink-0 px-4 pb-5 pt-2 md:px-6"
           style={GPU}
@@ -786,6 +938,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
             </motion.button>
           </div>
         </motion.div>
+        )}
       </div>
 
       {/* FULL FOUNDER BLUEPRINT OVERLAY MODAL */}
