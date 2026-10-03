@@ -49,6 +49,7 @@ import {
   readWorkspaceChats,
 } from "@/lib/workspace/active-workspace";
 import { markWorkspaceActiveSession } from "@/app/actions/active-workspace";
+import { WorkspaceSkeleton } from "@/components/founder/workspace-skeleton";
 
 type StartupWorkspaceViewProps = {
   initialWorkspace: StartupWorkspace;
@@ -105,6 +106,59 @@ const heroItem = {
 const iconTap = { scale: 0.95 };
 const iconHover = { scale: 1.05 };
 
+const QUICK_PROMPTS = [
+  {
+    label: "🚀 Map Launch Timeline",
+    prompt: "Map a concrete 30-day launch timeline for this startup.",
+  },
+  {
+    label: "💡 Refine Value Proposition",
+    prompt: "Refine the value proposition so a customer understands it in one sentence.",
+  },
+  {
+    label: "📊 Revenue Model Check",
+    prompt: "Pressure-test the revenue model, pricing, and gross margin.",
+  },
+  {
+    label: "🎯 First 10 Customers",
+    prompt: "Give me a first-10-customers plan I can execute this week.",
+  },
+] as const;
+
+const glassButton =
+  "border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl";
+
+function StaggerWords({
+  text,
+  className,
+  reduceMotion,
+  delay = 0.16,
+}: {
+  text: string;
+  className?: string;
+  reduceMotion: boolean | null;
+  delay?: number;
+}) {
+  const words = text.split(" ");
+  return (
+    <span>
+      {words.map((word, index) => (
+        <motion.span
+          key={`${word}-${index}`}
+          className={`inline-block ${className ?? ""}`}
+          style={GPU}
+          initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.32, delay: delay + index * 0.045, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {word}
+          {index < words.length - 1 ? "\u00A0" : ""}
+        </motion.span>
+      ))}
+    </span>
+  );
+}
+
 export function StartupWorkspaceView({
   initialWorkspace,
 }: StartupWorkspaceViewProps) {
@@ -134,6 +188,7 @@ export function StartupWorkspaceView({
   const [showBinModal, setShowBinModal] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const composerRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const activeChats = chats.filter((c) => !c.isDeleted);
@@ -268,6 +323,11 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
     a.click();
   };
 
+  const insertPrompt = (prompt: string) => {
+    setInputMessage(prompt);
+    requestAnimationFrame(() => composerRef.current?.focus());
+  };
+
   const handleSendMessage = () => {
     if (!inputMessage.trim() && !selectedImage) return;
 
@@ -314,8 +374,18 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
     }, 600);
   };
 
+  if (!chatsReady) {
+    return <WorkspaceSkeleton />;
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex h-screen w-screen overflow-hidden bg-[#09090B] font-sans text-white tracking-tight">
+    <motion.div
+      className="fixed inset-0 z-50 flex h-screen w-screen origin-center overflow-hidden bg-[#09090B] font-sans tracking-tight text-white"
+      style={GPU}
+      initial={reduceMotion ? false : { opacity: 0, scale: 0.99 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+    >
       
       {/* SIDEBAR */}
       <motion.aside
@@ -344,7 +414,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
             <button
               type="button"
               onClick={() => router.push("/dashboard/discover?intent=discover")}
-              className="mt-1.5 flex w-full cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-zinc-900/70 px-3 py-2 text-left text-[11px] font-semibold text-zinc-300 transition-all duration-150 hover:border-[#A3E635]/35 hover:bg-zinc-800 hover:text-white"
+              className={`mt-1.5 flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-left text-[11px] font-semibold text-zinc-300 transition-all duration-150 hover:border-[#A3E635]/35 hover:bg-white/[0.06] hover:text-white ${glassButton}`}
             >
               <Search className="h-3.5 w-3.5 text-[#A3E635]" />
               <span className="min-w-0 flex-1 truncate">Switch Startup / Discover New Ideas</span>
@@ -354,7 +424,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
 
           <button
             onClick={handleNewChat}
-            className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl border border-white/10 bg-zinc-800/80 px-3 py-2 text-xs font-semibold text-white transition-all duration-150 hover:border-[#A3E635]/25 hover:bg-zinc-700/80"
+            className={`flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-white transition-all duration-150 hover:border-[#A3E635]/25 hover:bg-white/[0.06] ${glassButton}`}
           >
             <span className="flex items-center gap-2">
               <Plus className="h-4 w-4 text-[#A3E635]" /> New Chat
@@ -364,7 +434,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
 
           <button
             onClick={() => setShowBlueprintModal(true)}
-            className="group flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl border border-white/10 bg-zinc-900/70 px-3 py-2.5 text-xs font-bold text-white backdrop-blur-md transition-all duration-200 hover:border-[#A3E635]/45 hover:bg-zinc-900 hover:shadow-[0_0_28px_rgba(163,230,53,0.14)]"
+            className={`group flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-xs font-bold text-white transition-all duration-200 hover:border-[#A3E635]/45 hover:bg-white/[0.06] hover:shadow-[0_0_28px_rgba(163,230,53,0.14)] ${glassButton}`}
           >
             <span className="flex items-center gap-2 truncate">
               <FileDown className="h-4 w-4 shrink-0 text-[#A3E635]" />
@@ -517,6 +587,20 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
 
       {/* CHAT CANVAS */}
       <div className="relative flex flex-1 flex-col overflow-hidden bg-[#09090B]">
+        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+          <motion.div
+            className="absolute left-1/2 top-[18%] h-[460px] w-[720px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(132,204,22,0.16)_0%,transparent_68%)] blur-3xl"
+            style={GPU}
+            animate={reduceMotion ? undefined : { x: [0, 28, -18, 0], y: [0, -16, 10, 0] }}
+            transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.div
+            className="absolute left-[18%] top-[36%] h-[380px] w-[520px] rounded-full bg-[radial-gradient(circle,rgba(51,65,85,0.55)_0%,transparent_70%)] blur-3xl"
+            style={GPU}
+            animate={reduceMotion ? undefined : { x: [0, -22, 16, 0], y: [0, 18, -8, 0] }}
+            transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </div>
         {isVoiceActive && (
           <div className="flex shrink-0 items-center justify-between border-b border-[#A3E635]/20 bg-zinc-900 px-6 py-2.5">
             <div className="flex items-center gap-3">
@@ -537,7 +621,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
         <div className="flex flex-1 flex-col justify-center overflow-y-auto p-4 md:p-8">
           {activeChat?.messages.length === 0 ? (
             <motion.div
-              className="my-auto mx-auto max-w-2xl space-y-5 text-center"
+              className="relative z-10 my-auto mx-auto max-w-2xl space-y-5 text-center"
               variants={heroContainer}
               initial={reduceMotion ? false : "hidden"}
               animate="show"
@@ -545,37 +629,35 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
               <motion.div
                 className="relative mx-auto flex h-16 w-16 items-center justify-center"
                 variants={heroItem}
-                initial={reduceMotion ? false : { scale: 0.8, opacity: 0, y: 15 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                initial={reduceMotion ? false : { scale: 0.8, opacity: 0, y: 15, rotate: -10 }}
+                animate={{ scale: 1, opacity: 1, y: 0, rotate: 0 }}
+                transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
                 style={GPU}
               >
                 <motion.span
                   aria-hidden
-                  className="pointer-events-none absolute inset-[-18%] rounded-[28px] bg-[radial-gradient(circle,rgba(163,230,53,0.45)_0%,rgba(163,230,53,0.08)_55%,transparent_70%)]"
+                  className="pointer-events-none absolute inset-[-28%] rounded-[32px] shadow-[0_0_50px_rgba(132,204,22,0.25)]"
                   animate={
                     reduceMotion
-                      ? { opacity: 0.45 }
-                      : { opacity: [0.35, 0.75, 0.35], scale: [0.96, 1.08, 0.96] }
+                      ? { opacity: 0.55 }
+                      : { opacity: [0.35, 0.85, 0.35], scale: [0.94, 1.1, 0.94] }
                   }
-                  transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+                  transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
                   style={GPU}
                 />
-                <div className="relative z-10 flex h-16 w-16 items-center justify-center rounded-3xl border border-zinc-800 bg-zinc-900 text-[#A3E635] shadow-[0_0_32px_rgba(163,230,53,0.18)]">
+                <div className="relative z-10 flex h-16 w-16 items-center justify-center rounded-3xl border border-white/[0.08] bg-zinc-900/80 text-[#A3E635] shadow-[0_0_50px_rgba(132,204,22,0.25)] backdrop-blur-xl">
                   <Sparkles className="h-8 w-8" strokeWidth={1.75} />
                 </div>
               </motion.div>
-              <motion.h1
-                className="text-2xl font-extrabold tracking-tight text-white md:text-3xl"
-                variants={heroItem}
-                style={GPU}
-              >
-                Hey Karan! I am your{" "}
-                <span className="bg-gradient-to-r from-[#A3E635] to-[#84CC16] bg-clip-text text-transparent">
-                  AI Mentor & Co-Founder
-                </span>
-                .
-              </motion.h1>
+              <h1 className="text-2xl font-extrabold tracking-tight text-white md:text-3xl">
+                <StaggerWords text="Hey Karan! I am your" reduceMotion={reduceMotion} />{" "}
+                <StaggerWords
+                  text="AI Mentor & Co-Founder."
+                  reduceMotion={reduceMotion}
+                  delay={0.42}
+                  className="bg-gradient-to-r from-[#A3E635] to-[#84CC16] bg-clip-text text-transparent"
+                />
+              </h1>
               <motion.p
                 className="mx-auto max-w-lg text-[15px] leading-7 text-zinc-400"
                 variants={heroItem}
@@ -584,6 +666,23 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
                 Let&apos;s start now. Ask me about your product strategy, tech architecture, pricing, or outreach roadmap for{" "}
                 <strong className="font-semibold text-white">{startupName}</strong>.
               </motion.p>
+              <motion.div
+                className="flex flex-wrap items-center justify-center gap-2 pt-1"
+                variants={heroItem}
+                style={GPU}
+              >
+                {QUICK_PROMPTS.map((chip) => (
+                  <button
+                    key={chip.label}
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => insertPrompt(chip.prompt)}
+                    className="cursor-pointer rounded-full border border-white/[0.08] bg-white/[0.04] px-3.5 py-2 text-xs font-medium text-zinc-200 backdrop-blur-xl transition-all duration-200 hover:border-[#A3E635]/40 hover:bg-white/[0.08] hover:text-white hover:shadow-[0_0_24px_rgba(132,204,22,0.16)]"
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </motion.div>
             </motion.div>
           ) : (
             <div className="my-auto mx-auto w-full max-w-3xl space-y-5">
@@ -622,7 +721,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
 
         {/* INPUT BAR */}
         <motion.div
-          className="shrink-0 border-t border-white/[0.06] bg-[#18181B] p-4 md:p-6"
+          className="relative z-10 shrink-0 px-4 pb-5 pt-2 md:px-6"
           style={GPU}
           initial={
             reduceMotion
@@ -632,7 +731,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
           animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
           transition={{ duration: 0.45, delay: 0.16, ease: [0.22, 1, 0.36, 1] }}
         >
-          <div className="mx-auto flex max-w-3xl items-center gap-2 rounded-2xl border border-white/10 bg-black/70 p-2.5 shadow-2xl transition-all duration-200 focus-within:border-[#A3E635]/50 focus-within:ring-2 focus-within:ring-[#A3E635]/25">
+          <div className="mx-auto flex h-[60px] max-w-3xl items-center gap-2 rounded-[28px] border border-white/[0.08] bg-zinc-950/70 p-2.5 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-[box-shadow,border-color] duration-200 focus-within:border-[#A3E635]/55 focus-within:shadow-[0_0_0_1px_rgba(163,230,53,0.35),0_0_40px_rgba(132,204,22,0.18)]">
             <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
 
             <motion.button
@@ -665,6 +764,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
             </motion.button>
 
             <input
+              ref={composerRef}
               type="text"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
@@ -1059,6 +1159,6 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
         </div>
       )}
 
-    </div>
+    </motion.div>
   );
 }
