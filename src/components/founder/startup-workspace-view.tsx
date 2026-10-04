@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -55,15 +55,10 @@ import {
 import {
   clearActiveWorkspace,
   persistActiveWorkspace,
-  persistWorkspaceChats,
-  readWorkspaceChats,
 } from "@/lib/workspace/active-workspace";
 import { markWorkspaceActiveSession } from "@/app/actions/active-workspace";
 import { signOut } from "@/app/actions/auth";
-import {
-  loadWorkspaceChats,
-  saveWorkspaceChats,
-} from "@/app/actions/workspace-chats";
+import type { PersistedMentorChat } from "@/app/actions/workspace-chats";
 import { StartupRadarPanel } from "@/components/founder/startup-radar-panel";
 import { WorkspaceSkeleton } from "@/components/founder/workspace-skeleton";
 
@@ -195,6 +190,7 @@ function StaggerWords({
 export function StartupWorkspaceView({
   initialWorkspace,
   initialChats = [],
+  initialActiveChatId = "",
   viewerName,
   viewerEmail,
   viewerInitials,
@@ -204,10 +200,15 @@ export function StartupWorkspaceView({
   const [workspace] = useState(initialWorkspace);
   const startupName = resolveStartupName(workspace);
 
-  const [chats, setChats] = useState<ChatSession[]>([]);
-  const [activeChatId, setActiveChatId] = useState("");
+  const [chats, setChats] = useState<ChatSession[]>(() =>
+    initialChats.filter((chat) => !isPlaceholderChat(chat))
+  );
+  const [activeChatId, setActiveChatId] = useState(initialActiveChatId);
   const [chatsReady, setChatsReady] = useState(false);
-  const [canSyncChats, setCanSyncChats] = useState(false);
+  const chatsRef = useRef<ChatSession[]>(initialChats);
+  const activeChatRef = useRef(initialActiveChatId);
+  const writingRef = useRef(false);
+  const fetchSeq = useRef(0);
   const [canvas, setCanvas] = useState<"chat" | "radar">("chat");
   const [liveUpdates, setLiveUpdates] = useState<StartupRadarUpdate[]>([]);
   const [radarLoading, setRadarLoading] = useState(false);
@@ -253,63 +254,106 @@ export function StartupWorkspaceView({
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    persistActiveWorkspace({ id: workspace.id, name: startupName });
-    void markWorkspaceActiveSession(workspace.id);
-
-    void loadWorkspaceChats(workspace.id).then((snapshot) => {
-      if (cancelled) return;
-
-      const remote = (snapshot.ok ? snapshot.chats : initialChats).filter(
-        (chat) => !isPlaceholderChat(chat)
-      );
-      const stored = readWorkspaceChats(workspace.id);
-      const local = (stored?.chats ?? []).filter((chat) => !isPlaceholderChat(chat));
-
-      if (snapshot.ok && remote.length) {
-        setChats(remote);
-        const nextId = remote.some((chat) => chat.id === snapshot.activeChatId && !chat.isDeleted)
-          ? snapshot.activeChatId
-          : remote.find((chat) => !chat.isDeleted)?.id ?? "";
-        setActiveChatId(nextId);
-        setCanSyncChats(true);
-      } else if (snapshot.ok && local.length) {
-        const nextId = local.some((chat) => chat.id === stored?.activeChatId && !chat.isDeleted)
-          ? stored?.activeChatId ?? ""
-          : local.find((chat) => !chat.isDeleted)?.id ?? "";
-        setChats(local);
-        setActiveChatId(nextId);
-        setCanSyncChats(true);
-        void saveWorkspaceChats(workspace.id, local, nextId);
-      } else if (snapshot.ok) {
-        setChats([]);
-        setActiveChatId("");
-        setCanSyncChats(true);
-      } else if (local.length) {
-        setChats(local);
-        setActiveChatId(stored?.activeChatId ?? local[0]?.id ?? "");
-        setCanSyncChats(false);
-      } else {
-        setChats([]);
-        setActiveChatId("");
-        setCanSyncChats(false);
-      }
-      setChatsReady(true);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [workspace.id, startupName, initialChats]);
+    chatsRef.current = chats;
+  }, [chats]);
 
   useEffect(() => {
-    if (!chatsReady || !canSyncChats) return;
-    persistWorkspaceChats(workspace.id, { chats, activeChatId });
-    const timer = window.setTimeout(() => {
-      void saveWorkspaceChats(workspace.id, chats, activeChatId);
-    }, 300);
-    return () => window.clearTimeout(timer);
-  }, [workspace.id, chats, activeChatId, chatsReady, canSyncChats]);
+    activeChatRef.current = activeChatId;
+  }, [activeChatId]);
+
+  const applyServerChats = useCallback((snapshot: {
+    chats: PersistedMentorChat[];
+    activeChatId: string;
+  }) => {
+    const remote = snapshot.chats.filter((chat) => !isPlaceholderChat(chat));
+    chatsRef.current = remote;
+    setChats(remote);
+    setActiveChatId((current) => {
+      if (current && remote.some((chat) => chat.id === current && !chat.isDeleted)) {
+        return current;
+      }
+      const next =
+        snapshot.activeChatId && remote.some((chat) => chat.id === snapshot.activeChatId && !chat.isDeleted)
+          ? snapshot.activeChatId
+          : remote.find((chat) => !chat.isDeleted)?.id ?? "";
+      activeChatRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const fetchChats = useCallback(async () => {
+    if (writingRef.current) return;
+    const seq = ++fetchSeq.current;
+    try {
+      const response = await fetch(
+        `/api/chats?workspaceId=${encodeURIComponent(workspace.id)}`,
+        { cache: "no-store", credentials: "same-origin" }
+      );
+      if (seq !== fetchSeq.current || writingRef.current) return;
+      const snapshot = (await response.json()) as {
+        ok?: boolean;
+        chats?: PersistedMentorChat[];
+        activeChatId?: string;
+      };
+      if (!response.ok || !snapshot.ok || !Array.isArray(snapshot.chats)) return;
+      if (seq !== fetchSeq.current || writingRef.current) return;
+      applyServerChats({
+        chats: snapshot.chats,
+        activeChatId: snapshot.activeChatId ?? "",
+      });
+    } catch {
+      // Keep the last server snapshot on screen.
+    } finally {
+      if (seq === fetchSeq.current) setChatsReady(true);
+    }
+  }, [applyServerChats, workspace.id]);
+
+  useEffect(() => {
+    persistActiveWorkspace({ id: workspace.id, name: startupName });
+    void markWorkspaceActiveSession(workspace.id);
+    void fetchChats();
+
+    const onFocus = () => {
+      void fetchChats();
+    };
+    window.addEventListener("focus", onFocus);
+    const poll = window.setInterval(() => {
+      void fetchChats();
+    }, 4000);
+
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.clearInterval(poll);
+    };
+  }, [fetchChats, startupName, workspace.id]);
+
+  const commitChats = useCallback(async (next: ChatSession[], nextActiveId: string) => {
+    writingRef.current = true;
+    fetchSeq.current += 1;
+    try {
+      const response = await fetch("/api/chats", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: workspace.id,
+          chats: next,
+          activeChatId: nextActiveId,
+        }),
+      });
+      const saved = (await response.json()) as { ok?: boolean };
+      if (!response.ok || !saved.ok) return false;
+      chatsRef.current = next;
+      activeChatRef.current = nextActiveId;
+      setChats(next);
+      setActiveChatId(nextActiveId);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      writingRef.current = false;
+    }
+  }, [workspace.id]);
 
   const blueprintUpdates = useMemo(() => buildStartupRadar(workspace), [workspace]);
   const radarUpdates = liveUpdates.length
@@ -342,15 +386,16 @@ export function StartupWorkspaceView({
   }, [canvas, workspace.id, workspace.nicheFocus]);
 
   const handleNewChat = () => {
+    if (writingRef.current) return;
     const newChatId = `chat-${Date.now()}`;
     const newChat: ChatSession = {
       id: newChatId,
       title: "New Conversation",
       messages: [],
     };
-    setChats([newChat, ...chats]);
-    setActiveChatId(newChatId);
-    setCanvas("chat");
+    void commitChats([newChat, ...chatsRef.current], newChatId).then((ok) => {
+      if (ok) setCanvas("chat");
+    });
   };
 
   const openChatMenu = (event: React.MouseEvent<HTMLButtonElement>, chatId: string) => {
@@ -370,44 +415,49 @@ export function StartupWorkspaceView({
   };
 
   const togglePin = (chatId: string) => {
-    setChats((prev) =>
-      prev.map((chat) =>
-        chat.id === chatId ? { ...chat, isPinned: !chat.isPinned } : chat
-      )
-    );
     setChatMenu(null);
+    const next = chatsRef.current.map((chat) =>
+      chat.id === chatId ? { ...chat, isPinned: !chat.isPinned } : chat
+    );
+    void commitChats(next, activeChatRef.current);
   };
 
   const softDeleteChat = (chatId: string) => {
-    setChats((prev) =>
-      prev.map((chat) =>
-        chat.id === chatId ? { ...chat, isDeleted: true } : chat
-      )
-    );
-    if (activeChatId === chatId) {
-      const next = chats.find((chat) => chat.id !== chatId && !chat.isDeleted);
-      setActiveChatId(next?.id ?? "");
-    }
     setChatMenu(null);
+    const next = chatsRef.current.map((chat) =>
+      chat.id === chatId ? { ...chat, isDeleted: true } : chat
+    );
+    const nextActive =
+      activeChatRef.current === chatId
+        ? next.find((chat) => !chat.isDeleted)?.id ?? ""
+        : activeChatRef.current;
+    void commitChats(next, nextActive);
   };
 
   const handleSaveRename = (chatId: string) => {
-    if (renameTitle.trim()) {
-      setChats((prev) =>
-        prev.map((c) => (c.id === chatId ? { ...c, title: renameTitle } : c))
-      );
-    }
+    const title = renameTitle.trim();
     setRenamingChatId(null);
+    if (!title) return;
+    const next = chatsRef.current.map((chat) =>
+      chat.id === chatId ? { ...chat, title } : chat
+    );
+    void commitChats(next, activeChatRef.current);
   };
 
   const handleRestoreFromBin = (chatId: string) => {
-    setChats((prev) =>
-      prev.map((c) => (c.id === chatId ? { ...c, isDeleted: false } : c))
+    const next = chatsRef.current.map((chat) =>
+      chat.id === chatId ? { ...chat, isDeleted: false } : chat
     );
+    void commitChats(next, activeChatRef.current);
   };
 
   const handlePermanentDelete = (chatId: string) => {
-    setChats((prev) => prev.filter((c) => c.id !== chatId));
+    const next = chatsRef.current.filter((chat) => chat.id !== chatId);
+    const nextActive =
+      activeChatRef.current === chatId
+        ? next.find((chat) => !chat.isDeleted)?.id ?? ""
+        : activeChatRef.current;
+    void commitChats(next, nextActive);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -486,14 +536,15 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
   };
 
   const discussUpdate = (update: StartupRadarUpdate) => {
-    const existing = chats.find((chat) => chat.id === activeChatId && !chat.isDeleted);
+    const existing = chatsRef.current.find(
+      (chat) => chat.id === activeChatRef.current && !chat.isDeleted
+    );
     if (!existing) {
       const newChatId = `chat-${Date.now()}`;
-      setChats((prev) => [
-        { id: newChatId, title: "New Conversation", messages: [] },
-        ...prev,
-      ]);
-      setActiveChatId(newChatId);
+      void commitChats(
+        [{ id: newChatId, title: "New Conversation", messages: [] }, ...chatsRef.current],
+        newChatId
+      );
     }
     insertPrompt(
       `How can we capitalize on ${update.title} for ${startupName}?`
@@ -501,59 +552,59 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
   };
 
   const handleSendMessage = () => {
+    if (writingRef.current) return;
     if (!inputMessage.trim() && !selectedImage) return;
 
     const userContent = selectedImage
       ? `[Screenshot Attached]\n${inputMessage}`
       : inputMessage;
     const draft = inputMessage.trim();
-    let chatId = chats.some((chat) => chat.id === activeChatId && !chat.isDeleted)
-      ? activeChatId
+    let chatId = chatsRef.current.some(
+      (chat) => chat.id === activeChatRef.current && !chat.isDeleted
+    )
+      ? activeChatRef.current
       : "";
-    if (!chatId) {
-      chatId = `chat-${Date.now()}`;
-      setActiveChatId(chatId);
-    }
+    if (!chatId) chatId = `chat-${Date.now()}`;
 
-    setChats((prev) => {
-      const current = prev.find((chat) => chat.id === chatId);
-      const base: ChatSession = current ?? {
-        id: chatId,
-        title: "New Conversation",
-        messages: [],
-      };
-      const updatedTitle =
-        base.title === "New Conversation" && draft.length > 0
-          ? `${draft.slice(0, 25)}...`
-          : base.title;
-      const next: ChatSession = {
-        ...base,
-        title: updatedTitle,
-        messages: [...base.messages, { role: "user", content: userContent }],
-      };
-      if (!current) return [next, ...prev];
-      return prev.map((chat) => (chat.id === chatId ? next : chat));
-    });
+    const current = chatsRef.current.find((chat) => chat.id === chatId);
+    const base: ChatSession = current ?? {
+      id: chatId,
+      title: "New Conversation",
+      messages: [],
+    };
+    const updatedTitle =
+      base.title === "New Conversation" && draft.length > 0
+        ? `${draft.slice(0, 25)}...`
+        : base.title;
+    const nextChat: ChatSession = {
+      ...base,
+      title: updatedTitle,
+      messages: [...base.messages, { role: "user", content: userContent }],
+    };
+    const nextList = current
+      ? chatsRef.current.map((chat) => (chat.id === chatId ? nextChat : chat))
+      : [nextChat, ...chatsRef.current];
 
-    setInputMessage("");
-    setSelectedImage(null);
-
-    setTimeout(() => {
-      const aiReply = `Samajh gaya ${viewerName.split(" ")[0] || "there"}! **${startupName}** ke context me strategy execute karte hain.`;
-      setChats((prevChats) =>
-        prevChats.map((c) =>
-          c.id === chatId
+    void commitChats(nextList, chatId).then((ok) => {
+      if (!ok) return;
+      setInputMessage("");
+      setSelectedImage(null);
+      window.setTimeout(() => {
+        const aiReply = `Samajh gaya ${viewerName.split(" ")[0] || "there"}! **${startupName}** ke context me strategy execute karte hain.`;
+        const withReply = chatsRef.current.map((chat) =>
+          chat.id === chatId
             ? {
-                ...c,
+                ...chat,
                 messages: [
-                  ...c.messages,
+                  ...chat.messages,
                   { role: "assistant" as const, content: aiReply },
                 ],
               }
-            : c
-        )
-      );
-    }, 600);
+            : chat
+        );
+        void commitChats(withReply, chatId);
+      }, 600);
+    });
   };
 
   if (!chatsReady) {
