@@ -57,6 +57,7 @@ import {
   persistActiveWorkspace,
 } from "@/lib/workspace/active-workspace";
 import { markWorkspaceActiveSession } from "@/app/actions/active-workspace";
+import { CreditMeter } from "@/components/billing/credit-meter";
 import { signOut } from "@/app/actions/auth";
 import type { PersistedMentorChat } from "@/app/actions/workspace-chats";
 import { StartupRadarPanel } from "@/components/founder/startup-radar-panel";
@@ -929,6 +930,9 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
             animate={reduceMotion ? undefined : { x: [0, -22, 16, 0], y: [0, 18, -8, 0] }}
             transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
           />
+        </div>
+        <div className="relative z-20 flex justify-end px-4 pt-3 sm:px-6">
+          <CreditMeter />
         </div>
         {isVoiceActive && (
           <div className="flex shrink-0 items-center justify-between border-b border-[#A3E635]/20 bg-zinc-900 px-6 py-2.5">

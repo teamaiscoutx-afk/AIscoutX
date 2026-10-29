@@ -11,7 +11,7 @@ type FooterLink = {
 
 const productLinks: FooterLink[] = [
   { label: "Features", href: "/#features" },
-  { label: "Pricing", href: "/#pricing" },
+  { label: "Pricing", href: "/pricing" },
   { label: "Coming Soon", href: "/#coming-soon" },
 ];
 

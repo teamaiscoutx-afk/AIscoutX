@@ -5,6 +5,7 @@ import {
   PRO_PRICE_AMOUNT_CENTS,
   PRO_CURRENCY,
 } from "@/lib/billing/constants";
+import { catalogAmount } from "@/lib/billing/credit-plans";
 import { logServerError } from "@/lib/server/safe-action";
 import {
   createServerSupabaseClient,
@@ -48,7 +49,11 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}));
     const plan = typeof body?.plan === "string" ? body.plan : "pro";
-    if (plan !== "pro") {
+    const priced =
+      plan === "pro"
+        ? { amountCents: PRO_PRICE_AMOUNT_CENTS, description: "AI Founder OS Pro Subscription" }
+        : catalogAmount(plan);
+    if (!priced) {
       return NextResponse.json(
         { success: false, error: "Unsupported plan." },
         { status: 400 }
@@ -57,12 +62,12 @@ export async function POST(req: NextRequest) {
 
     const razorpay = getRazorpayClient();
     const order = await razorpay.orders.create({
-      amount: PRO_PRICE_AMOUNT_CENTS,
+      amount: priced.amountCents,
       currency: PRO_CURRENCY,
-      receipt: `pro_${user.id.slice(0, 8)}_${Date.now()}`,
+      receipt: `${plan}_${user.id.slice(0, 8)}_${Date.now()}`,
       notes: {
         user_id: user.id,
-        plan: "pro",
+        plan,
         email: user.email ?? "",
       },
     });
@@ -70,8 +75,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       orderId: order.id,
-      amount: PRO_PRICE_AMOUNT_CENTS,
+      amount: priced.amountCents,
       currency: PRO_CURRENCY,
+      description: priced.description,
       prefill: {
         email: user.email ?? undefined,
         name:

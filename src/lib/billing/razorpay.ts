@@ -56,6 +56,8 @@ export function loadRazorpayScript(): Promise<void> {
 
 type OpenCheckoutInput = {
   orderId: string;
+  amount?: number;
+  description?: string;
   prefill?: { email?: string; name?: string };
   onSuccess?: () => void;
   onDismiss?: () => void;
@@ -76,10 +78,10 @@ export async function openRazorpayCheckout(input: OpenCheckoutInput): Promise<vo
 
   const options: Record<string, unknown> = {
     key: keyId,
-    amount: PRO_AMOUNT_PAISE,
+    amount: input.amount ?? PRO_AMOUNT_PAISE,
     currency: PRO_CURRENCY,
     name: PRO_CHECKOUT.name,
-    description: PRO_CHECKOUT.description,
+    description: input.description ?? PRO_CHECKOUT.description,
     order_id: input.orderId,
     prefill: input.prefill,
     theme: { color: PRO_CHECKOUT.themeColor },

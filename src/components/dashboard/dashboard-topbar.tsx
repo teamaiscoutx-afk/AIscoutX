@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 
+import { CreditMeter } from "@/components/billing/credit-meter";
 import { FounderWatchtower } from "@/components/dashboard/founder-watchtower";
 import { UpgradeToPro } from "@/components/dashboard/upgrade-to-pro";
 import { WorkspaceModeToggle } from "@/components/dashboard/workspace-mode-toggle";
@@ -204,6 +205,10 @@ export function DashboardTopbar({
       </div>
 
       {/* Mobile owns this cluster in the sidebar header — avoid duplicates */}
+      <div className="shrink-0">
+        <CreditMeter />
+      </div>
+
       <div className="hidden shrink-0 items-center gap-2 lg:flex">
         {/* Hide Upgrade button if user is Pro */}
         {!isPro && <UpgradeToPro compact />}

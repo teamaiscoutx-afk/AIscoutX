@@ -5,7 +5,6 @@ import {
   BarChart3,
   Bell,
   Building2,
-  Check,
   Crown,
   Eye,
   FileText,
@@ -24,11 +23,11 @@ import {
 import { motion } from "framer-motion";
 import Link from "next/link";
 
+import { PricingCards } from "@/components/billing/pricing-cards";
 import { DashboardPreview } from "@/components/landing/dashboard-preview";
 import { FaqSection } from "@/components/landing/faq-section";
 import {
   FadeIn,
-  GlowHoverCard,
   StaggerContainer,
   StaggerItem,
 } from "@/components/landing/motion";
@@ -40,7 +39,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -90,37 +88,6 @@ const steps = [
     title: "AI Co-Founder Guidance",
     description:
       "Chat 24/7 with your dedicated AI mentor for pitch deck prep, execution tasks, and strategic decisions.",
-  },
-];
-
-const pricingPlans = [
-  {
-    name: "Freemium",
-    price: "$0",
-    period: "/forever",
-    description: "Validate your concept and test the AI Co-Founder.",
-    features: [
-      "1 Comprehensive Idea Validation",
-      "3 AI Founder Blueprint Generations",
-      "Access to Analyze & Roadmap Modules",
-      "10 AI Mentor Chat Messages",
-    ],
-    cta: "Start Building Free",
-    popular: false,
-  },
-  {
-    name: "Pro",
-    price: "$12",
-    period: "/month",
-    description: "For founders who move fast. Everything unlocked.",
-    features: [
-      "Unlimited Idea Validations & Blueprints",
-      "1-Click PDF Pitch Deck Export",
-      "Founder GPS + Unlimited Projects",
-      "24/7 AI Mentor Access + Vision Support",
-    ],
-    cta: "Unlock Pro",
-    popular: true,
   },
 ];
 
@@ -177,90 +144,6 @@ function SectionLabel({
       )}
       {children}
     </div>
-  );
-}
-
-function PricingCard({
-  plan,
-}: {
-  plan: (typeof pricingPlans)[number];
-}) {
-  const cardInner = (
-    <div
-      className={`card-premium relative z-10 flex h-full flex-col rounded-2xl transition-all duration-300 ${
-        plan.popular
-          ? "border-[#deff9a]/30 shadow-[0_0_48px_rgba(222,255,154,0.12)] hover:border-[#deff9a]/50 hover:shadow-[0_0_64px_rgba(222,255,154,0.22)]"
-          : "hover:border-white/[0.15]"
-      }`}
-    >
-      {plan.popular && (
-        <div className="absolute -top-3 left-1/2 z-20 -translate-x-1/2">
-          <Badge className="border-[#deff9a]/30 bg-[#deff9a] text-black hover:bg-[#deff9a]">
-            Most Popular
-          </Badge>
-        </div>
-      )}
-      <CardHeader className="pb-4 pt-8">
-        <CardTitle className="text-lg font-semibold text-white">
-          {plan.name}
-        </CardTitle>
-        <div className="mt-3 flex items-baseline gap-1">
-          <span className="text-4xl font-bold tracking-tight text-white">
-            {plan.price}
-          </span>
-          <span className="text-sm text-zinc-500">{plan.period}</span>
-        </div>
-        <CardDescription className="mt-2 text-sm text-zinc-500">
-          {plan.description}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex-1">
-        <ul className="space-y-3">
-          {plan.features.map((feature) => (
-            <li
-              key={feature}
-              className="flex items-center gap-2.5 text-sm text-zinc-400"
-            >
-              <Check
-                className="h-4 w-4 shrink-0 text-[#deff9a] transition-transform duration-300"
-                strokeWidth={1.5}
-              />
-              {feature}
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-      <CardFooter className="pt-2">
-        <Button
-          className={`w-full rounded-xl transition-all duration-300 ${
-            plan.popular
-              ? "btn-glow-lime bg-[#deff9a] text-black hover:bg-[#d8f992]"
-              : "border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08]"
-          }`}
-          variant={plan.popular ? "default" : "outline"}
-          asChild
-        >
-          <a href="#waitlist">{plan.cta}</a>
-        </Button>
-      </CardFooter>
-    </div>
-  );
-
-  if (plan.popular) {
-    return (
-      <GlowHoverCard
-        className={`relative flex flex-col border-0 bg-transparent shadow-none lg:-mt-2 lg:mb-2`}
-      >
-        <div className="absolute -inset-px z-0 rounded-2xl bg-gradient-to-b from-[#deff9a]/40 via-[#deff9a]/10 to-transparent opacity-70 blur-[1px] transition-opacity duration-300 group-hover:opacity-100" />
-        {cardInner}
-      </GlowHoverCard>
-    );
-  }
-
-  return (
-    <Card className="relative flex flex-col border-0 bg-transparent shadow-none">
-      {cardInner}
-    </Card>
   );
 }
 
@@ -568,17 +451,13 @@ export function LandingPageContent({ ctaHref }: LandingPageContentProps) {
               <span className="text-gradient-hero">Invest in your AI Co-Founder</span>
             </h2>
             <p className="mt-4 text-sm text-zinc-500 sm:text-base">
-              Simple plans. Cancel anytime. Start for free today.
+              200 credits refresh every month. Longer plans keep that same monthly refill.
             </p>
           </FadeIn>
 
-          <StaggerContainer className="mx-auto mt-12 grid max-w-3xl gap-6 sm:grid-cols-2 lg:gap-8">
-            {pricingPlans.map((plan) => (
-              <StaggerItem key={plan.name}>
-                <PricingCard plan={plan} />
-              </StaggerItem>
-            ))}
-          </StaggerContainer>
+          <div className="mx-auto mt-12 max-w-6xl">
+            <PricingCards />
+          </div>
         </div>
       </section>
 

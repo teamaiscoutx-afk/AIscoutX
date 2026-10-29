@@ -5,7 +5,7 @@ import { getUserMenuContext } from "@/lib/auth/user-menu";
 
 const navItems = [
   { label: "Features", href: "/#features" },
-  { label: "Pricing", href: "/#pricing" },
+  { label: "Pricing", href: "/pricing" },
   { label: "FAQ", href: "/#faq" },
   { label: "About", href: "/about" },
   { label: "Contact", href: "/contact" },

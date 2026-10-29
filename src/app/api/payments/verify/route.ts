@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import Razorpay from "razorpay";
 
 import {
   provisionProSubscription,
@@ -60,6 +61,20 @@ export async function POST(request: Request) {
         { ok: false, error: "Invalid payment signature." },
         { status: 400 }
       );
+    }
+
+    const keyId = process.env.RAZORPAY_KEY_ID?.trim();
+    const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim();
+    let purchasedPlan = "pro";
+    if (keyId && keySecret) {
+      const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
+      const order = await razorpay.orders.fetch(orderId);
+      const note = order.notes?.plan;
+      if (typeof note === "string" && note.length > 0) purchasedPlan = note;
+    }
+
+    if (purchasedPlan === "topup") {
+      return NextResponse.json({ ok: true, plan: "topup" });
     }
 
     const provisioned = await provisionProSubscription({
