@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { azureChatCompletion, isAzureOpenAIConfigured, type ChatMessage } from "@/lib/ai/azure-openai";
+import {
+  azureChatCompletion,
+  buildMentorSystemPrompt,
+  fetchLiveMarketContext,
+  isAzureOpenAIConfigured,
+  type ChatMessage,
+} from "@/lib/azure-ai";
 import { creditCostForAction } from "@/lib/billing/credit-costs";
 import { addBonusCredits, deductCreditsForAction } from "@/lib/billing/credit-engine.server";
 import { logServerError } from "@/lib/server/safe-action";
@@ -11,24 +17,11 @@ export const dynamic = "force-dynamic";
 
 type ChatBody = {
   message?: string;
-  action?: "chat" | "blueprint";
   workspaceName?: string;
   founderName?: string;
+  nicheLabel?: string;
   history?: { role: "user" | "assistant"; content: string }[];
 };
-
-function buildMentorSystemPrompt(input: {
-  workspaceName: string;
-  founderName: string;
-}): string {
-  return `You are the elite empathetic Lead Tech Co-Founder for AIscoutX mentoring ${input.founderName} on their startup "${input.workspaceName}".
-
-Operational laws:
-- Reply like a world-class no-code mentor using conversational, accessible Hinglish (clean Hindi + English mix).
-- Be structural, actionable, and concise. Use markdown sparingly for lists and emphasis.
-- Anchor advice to validation, MVP scope, GTM, and unit economics for their niche.
-- Never mention internal credit systems or API providers.`;
-}
 
 export async function POST(request: Request) {
   if (!isSupabaseConfigured()) {
@@ -67,31 +60,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Message is required." }, { status: 400 });
   }
 
-  const action = body.action === "blueprint" ? "blueprint" : "chat";
   const workspaceName = body.workspaceName?.trim() || "your startup";
   const founderName = body.founderName?.trim() || "Founder";
+  const nicheLabel = body.nicheLabel?.trim();
 
-  const history = Array.isArray(body.history)
-    ? body.history
-        .filter(
-          (entry) =>
-            entry &&
-            (entry.role === "user" || entry.role === "assistant") &&
-            typeof entry.content === "string"
-        )
-        .slice(-12)
-    : [];
-
-  const messages: ChatMessage[] = [
-    { role: "system", content: buildMentorSystemPrompt({ workspaceName, founderName }) },
-    ...history.map((entry) => ({
-      role: entry.role,
-      content: entry.content,
-    })),
-    { role: "user", content: message },
-  ];
-
-  const deduction = await deductCreditsForAction(user.id, action);
+  const deduction = await deductCreditsForAction(user.id, "chat");
   if (!deduction.ok) {
     return NextResponse.json(
       {
@@ -104,12 +77,41 @@ export async function POST(request: Request) {
     );
   }
 
+  const history = Array.isArray(body.history)
+    ? body.history
+        .filter(
+          (entry) =>
+            entry &&
+            (entry.role === "user" || entry.role === "assistant") &&
+            typeof entry.content === "string"
+        )
+        .slice(-12)
+    : [];
+
   try {
-    const reply = await azureChatCompletion({ messages, temperature: 0.65 });
+    const marketContext = await fetchLiveMarketContext({
+      query: `${workspaceName}: ${message}`,
+      nicheLabel,
+    });
+
+    const messages: ChatMessage[] = [
+      {
+        role: "system",
+        content: buildMentorSystemPrompt({ workspaceName, founderName, marketContext }),
+      },
+      ...history.map((entry) => ({
+        role: entry.role,
+        content: entry.content,
+      })),
+      { role: "user", content: message },
+    ];
+
+    const reply = await azureChatCompletion({ messages, temperature: 0.65, maxTokens: 1400 });
 
     const headers = new Headers();
     headers.set("X-Credits-Remaining", String(deduction.snapshot.remaining));
     headers.set("X-Credits-Allowance", String(deduction.snapshot.allowance));
+    headers.set("X-Market-Scan-Provider", marketContext.provider);
     if (deduction.warning) {
       headers.set("X-Credits-Warning", deduction.warning);
     }
@@ -120,11 +122,16 @@ export async function POST(request: Request) {
         reply,
         credits: deduction.snapshot,
         warning: deduction.warning,
+        marketScan: {
+          provider: marketContext.provider,
+          scannedAt: marketContext.scannedAt,
+          resultCount: marketContext.snippets.length,
+        },
       },
       { headers }
     );
   } catch (err) {
-    await addBonusCredits(user.id, creditCostForAction(action)).catch(() => undefined);
+    await addBonusCredits(user.id, creditCostForAction("chat")).catch(() => undefined);
     logServerError("api.ai.chat", err);
     return NextResponse.json(
       { ok: false, error: err instanceof Error ? err.message : "AI request failed." },

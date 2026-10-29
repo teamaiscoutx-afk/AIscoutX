@@ -1,3 +1,4 @@
+import { generateVenturePackViaAzure, isAzureOpenAIConfigured } from "@/lib/azure-ai";
 import { isIntelligenceEngineReady } from "@/lib/intelligence/env";
 import { mapLiveDraftToPacks } from "@/lib/intelligence/generation-bridge";
 import { discoverLiveOpportunity } from "@/lib/intelligence/opportunity-engine";
@@ -23,16 +24,20 @@ export async function runGenerationPipeline(
   blueprint: BlueprintPack;
   launch: LaunchPack;
 }> {
-  if (!isIntelligenceEngineReady()) {
-    throw new Error(
-      "Generation requires TAVILY_API_KEY (or SERPER_API_KEY) and OPENAI_API_KEY in .env.local."
-    );
-  }
-
   const workspace = context?.workspace ?? "founder";
   const niche = context?.niche ?? "b2b-saas";
   const nicheLabel =
     context?.nicheLabel ?? getNicheLabel(workspace, niche);
+
+  if (isAzureOpenAIConfigured()) {
+    return generateVenturePackViaAzure({ query: query.trim(), nicheLabel });
+  }
+
+  if (!isIntelligenceEngineReady()) {
+    throw new Error(
+      "Generation requires Azure OpenAI or TAVILY_API_KEY + OPENAI_API_KEY in .env.local."
+    );
+  }
 
   const researchQuery = `${query.trim()} — ${nicheLabel} niche startup opportunity`;
 

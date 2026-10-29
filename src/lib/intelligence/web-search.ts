@@ -1,3 +1,4 @@
+import { fetchLiveMarketContext } from "@/lib/azure-ai";
 import type { ChannelSearchResult, SearchChannel, WebSnippet } from "@/lib/intelligence/types";
 import { readIntelligenceEnv } from "@/lib/env";
 
@@ -198,6 +199,16 @@ function generateSyntheticFallbackHits(query: string): RawHit[] {
 }
 
 async function runQuery(query: string, maxResults = 8): Promise<RawHit[]> {
+  const azureScan = await fetchLiveMarketContext({ query });
+  if (azureScan.provider !== "synthetic" && azureScan.snippets.length > 0) {
+    return azureScan.snippets.slice(0, maxResults).map((s) => ({
+      title: s.title,
+      url: s.url,
+      content: s.excerpt,
+      publishedAt: s.publishedAt,
+    }));
+  }
+
   // Try Provider 1: Tavily
   if (readIntelligenceEnv("TAVILY_API_KEY")) {
     const hits = await searchTavily(query, maxResults);
@@ -220,7 +231,25 @@ async function runQuery(query: string, maxResults = 8): Promise<RawHit[]> {
   return generateSyntheticFallbackHits(query);
 }
 
-export function getWebSearchProvider(): "tavily" | "serper" | "perplexity" | "fallback" {
+export function getWebSearchProvider():
+  | "azure_search"
+  | "bing"
+  | "tavily"
+  | "serper"
+  | "perplexity"
+  | "fallback" {
+  if (
+    readIntelligenceEnv("AZURE_SEARCH_ENDPOINT") &&
+    readIntelligenceEnv("AZURE_SEARCH_API_KEY")
+  ) {
+    return "azure_search";
+  }
+  if (
+    readIntelligenceEnv("AZURE_BING_SEARCH_KEY") ||
+    readIntelligenceEnv("BING_SEARCH_V7_SUBSCRIPTION_KEY")
+  ) {
+    return "bing";
+  }
   if (readIntelligenceEnv("TAVILY_API_KEY")) return "tavily";
   if (readIntelligenceEnv("SERPER_API_KEY")) return "serper";
   if (readIntelligenceEnv("PERPLEXITY_API_KEY")) return "perplexity";
