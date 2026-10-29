@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Rocket, Sparkles } from "lucide-react";
 
 import { generateVenturePack } from "@/app/actions/generation";
+import { dispatchCreditsUpdated } from "@/lib/billing/credits-events";
 import { useUpgradeModal } from "@/components/billing/upgrade-modal";
 import { useLoading } from "@/components/providers/loading-provider";
 import {
@@ -44,6 +45,7 @@ export function BuildInput() {
       if (result.storageMode === "local") {
         incrementLocalBlueprintCount();
       }
+      dispatchCreditsUpdated();
 
       router.push("/dashboard/blueprints");
     });

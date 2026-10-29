@@ -13,11 +13,11 @@ export function useRazorpayCheckout() {
     setError(null);
 
     try {
-      const res = await fetch("/api/checkout", {
+      const res = await fetch("/api/payments/razorpay-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ plan: "pro" }),
+        body: JSON.stringify({ plan: "monthly" }),
       });
 
       const data = (await res.json()) as {
@@ -25,6 +25,9 @@ export function useRazorpayCheckout() {
         error?: string;
         code?: string;
         orderId?: string;
+        amount?: number;
+        currency?: string;
+        description?: string;
         prefill?: { email?: string; name?: string };
       };
 
@@ -39,6 +42,9 @@ export function useRazorpayCheckout() {
 
       await openRazorpayCheckout({
         orderId: data.orderId,
+        amount: data.amount,
+        currency: data.currency,
+        description: data.description,
         prefill: data.prefill,
         onSuccess: () => window.location.reload(),
         onDismiss: () => setLoading(false),

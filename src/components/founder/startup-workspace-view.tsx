@@ -58,6 +58,7 @@ import {
 } from "@/lib/workspace/active-workspace";
 import { markWorkspaceActiveSession } from "@/app/actions/active-workspace";
 import { CreditMeter } from "@/components/billing/credit-meter";
+import { dispatchCreditsUpdated } from "@/lib/billing/credits-events";
 import { signOut } from "@/app/actions/auth";
 import type { PersistedMentorChat } from "@/app/actions/workspace-chats";
 import { StartupRadarPanel } from "@/components/founder/startup-radar-panel";
@@ -586,25 +587,91 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
       ? chatsRef.current.map((chat) => (chat.id === chatId ? nextChat : chat))
       : [nextChat, ...chatsRef.current];
 
-    void commitChats(nextList, chatId).then((ok) => {
+    const historyForAi = nextChat.messages
+      .slice(0, -1)
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .slice(-10)
+      .map((m) => ({ role: m.role, content: m.content }));
+
+    void commitChats(nextList, chatId).then(async (ok) => {
       if (!ok) return;
       setInputMessage("");
       setSelectedImage(null);
-      window.setTimeout(() => {
-        const aiReply = `Samajh gaya ${viewerName.split(" ")[0] || "there"}! **${startupName}** ke context me strategy execute karte hain.`;
+
+      try {
+        const response = await fetch("/api/ai/chat", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: userContent,
+            action: "chat",
+            workspaceName: startupName,
+            founderName: viewerName,
+            history: historyForAi,
+          }),
+        });
+
+        const payload = (await response.json()) as {
+          ok?: boolean;
+          reply?: string;
+          error?: string;
+          warning?: string;
+        };
+
+        dispatchCreditsUpdated();
+
+        if (!response.ok || !payload.ok || !payload.reply) {
+          const fallback =
+            payload.error ??
+            (response.status === 402
+              ? "You are out of credits. Open the credit meter to top up."
+              : "Mentor is temporarily unavailable. Try again in a moment.");
+          const withError = chatsRef.current.map((chat) =>
+            chat.id === chatId
+              ? {
+                  ...chat,
+                  messages: [
+                    ...chat.messages,
+                    { role: "assistant" as const, content: fallback },
+                  ],
+                }
+              : chat
+          );
+          void commitChats(withError, chatId);
+          return;
+        }
+
+        const prefix = payload.warning ? `${payload.warning}\n\n` : "";
         const withReply = chatsRef.current.map((chat) =>
           chat.id === chatId
             ? {
                 ...chat,
                 messages: [
                   ...chat.messages,
-                  { role: "assistant" as const, content: aiReply },
+                  { role: "assistant" as const, content: `${prefix}${payload.reply}` },
                 ],
               }
             : chat
         );
         void commitChats(withReply, chatId);
-      }, 600);
+      } catch {
+        const withError = chatsRef.current.map((chat) =>
+          chat.id === chatId
+            ? {
+                ...chat,
+                messages: [
+                  ...chat.messages,
+                  {
+                    role: "assistant" as const,
+                    content: "Network error while reaching the mentor. Please retry.",
+                  },
+                ],
+              }
+            : chat
+        );
+        void commitChats(withError, chatId);
+      }
     });
   };
 

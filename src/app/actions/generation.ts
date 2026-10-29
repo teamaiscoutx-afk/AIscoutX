@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { getCurrentProfile } from "@/app/actions/profile";
+import { deductCreditsForAction } from "@/lib/billing/credit-engine.server";
 import { checkBlueprintGeneration, incrementBlueprintUsage } from "@/app/actions/usage";
 import { UPGRADE_REQUIRED } from "@/lib/billing/paywall";
 import { toClientError, logServerError } from "@/lib/server/safe-action";
@@ -396,11 +397,6 @@ export async function generateVenturePack(
     };
   }
 
-  const gate = await checkBlueprintGeneration();
-  if (!gate.allowed) {
-    return { ok: false, error: gate.reason, code: UPGRADE_REQUIRED };
-  }
-
   const profile = await getCurrentProfile();
   const workspace: WorkspaceIdentity =
     (profile?.workspace_mode as WorkspaceIdentity | undefined) ?? "founder";
@@ -423,12 +419,26 @@ export async function generateVenturePack(
       data: { user },
     } = await supabase.auth.getUser();
 
-    const userId = user?.id ?? "local";
-    const { pack, source } = await buildPack(trimmed, userId, genContext);
-
     if (!user) {
+      const gate = await checkBlueprintGeneration();
+      if (!gate.allowed) {
+        return { ok: false, error: gate.reason, code: UPGRADE_REQUIRED };
+      }
+      const { pack, source } = await buildPack(trimmed, "local", genContext);
       return { ok: true, pack, storageMode: "local", source };
     }
+
+    const creditGate = await deductCreditsForAction(user.id, "blueprint");
+    if (!creditGate.ok) {
+      return {
+        ok: false,
+        error: creditGate.message,
+        code: creditGate.error === "insufficient_credits" ? UPGRADE_REQUIRED : undefined,
+      };
+    }
+
+    const userId = user.id;
+    const { pack, source } = await buildPack(trimmed, userId, genContext);
 
     const persisted = await persistVenturePack(user.id, trimmed, pack);
 

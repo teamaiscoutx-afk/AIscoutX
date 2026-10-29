@@ -10,7 +10,29 @@ const config: Config = {
   theme: {
   	extend: {
   		fontFamily: {
-  			sans: ["var(--font-urbanist)", "system-ui", "sans-serif"],
+  			sans: [
+  				"var(--font-inter)",
+  				"var(--font-plus-jakarta)",
+  				"ui-sans-serif",
+  				"system-ui",
+  				"-apple-system",
+  				"BlinkMacSystemFont",
+  				"Segoe UI",
+  				"Roboto",
+  				"Helvetica Neue",
+  				"Arial",
+  				"sans-serif",
+  			],
+  			mono: [
+  				"ui-monospace",
+  				"SFMono-Regular",
+  				"Menlo",
+  				"Monaco",
+  				"Consolas",
+  				"Liberation Mono",
+  				"Courier New",
+  				"monospace",
+  			],
   		},
   		colors: {
   			lime: {

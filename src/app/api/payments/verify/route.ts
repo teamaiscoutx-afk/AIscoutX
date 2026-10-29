@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import Razorpay from "razorpay";
 
+import { fetchOrderPlan } from "@/lib/billing/razorpay-checkout.server";
 import {
-  provisionProSubscription,
+  fulfillRazorpayPurchase,
   verifyPaymentSignature,
 } from "@/lib/billing/razorpay-server";
 import { logServerError } from "@/lib/server/safe-action";
@@ -63,34 +63,22 @@ export async function POST(request: Request) {
       );
     }
 
-    const keyId = process.env.RAZORPAY_KEY_ID?.trim();
-    const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim();
-    let purchasedPlan = "pro";
-    if (keyId && keySecret) {
-      const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
-      const order = await razorpay.orders.fetch(orderId);
-      const note = order.notes?.plan;
-      if (typeof note === "string" && note.length > 0) purchasedPlan = note;
-    }
-
-    if (purchasedPlan === "topup") {
-      return NextResponse.json({ ok: true, plan: "topup" });
-    }
-
-    const provisioned = await provisionProSubscription({
+    const orderMeta = await fetchOrderPlan(orderId);
+    const result = await fulfillRazorpayPurchase({
+      orderId,
       userId: user.id,
       email: user.email,
-      razorpayOrderId: orderId,
+      planHint: orderMeta.plan,
     });
 
-    if (!provisioned) {
+    if (!result.ok && result.error !== "already_fulfilled") {
       return NextResponse.json(
-        { ok: false, error: "Payment verified but provisioning failed." },
+        { ok: false, error: result.error ?? "Provisioning failed." },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ ok: true, plan: "pro" });
+    return NextResponse.json({ ok: true, plan: result.plan ?? orderMeta.plan });
   } catch (err) {
     logServerError("payments.verify", err);
     return NextResponse.json(

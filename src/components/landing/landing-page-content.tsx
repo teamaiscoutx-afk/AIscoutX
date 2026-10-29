@@ -277,7 +277,7 @@ export function LandingPageContent({ ctaHref }: LandingPageContentProps) {
                   whileHover={{ y: -4, transition: { duration: 0.3 } }}
                   className="glass-panel group relative h-full rounded-2xl p-6 transition-all duration-300 hover:border-[#deff9a]/20 sm:p-8"
                 >
-                  <span className="font-mono text-xs font-medium tracking-widest text-zinc-600">
+                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
                     Step {item.step}
                   </span>
                   <div className="mt-4 flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] transition-colors duration-300 group-hover:border-[#deff9a]/30 group-hover:bg-[#deff9a]/10">
@@ -415,7 +415,7 @@ export function LandingPageContent({ ctaHref }: LandingPageContentProps) {
                           strokeWidth={1.5}
                         />
                       </div>
-                      <span className="font-mono text-[11px] font-medium tracking-widest text-zinc-600 transition-colors group-hover:text-[#deff9a]/60">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500 transition-colors group-hover:text-[#deff9a]/70">
                         {feature.indicator}
                       </span>
                     </div>
@@ -455,8 +455,8 @@ export function LandingPageContent({ ctaHref }: LandingPageContentProps) {
             </p>
           </FadeIn>
 
-          <div className="mx-auto mt-12 max-w-6xl">
-            <PricingCards />
+          <div className="relative mx-auto mt-12 max-w-6xl">
+            <PricingCards ambient={false} />
           </div>
         </div>
       </section>

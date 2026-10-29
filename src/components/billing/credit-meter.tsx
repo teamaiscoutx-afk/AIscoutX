@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Zap } from "lucide-react";
 
 import { TOPUP_CREDITS, TOPUP_PRICE_USD } from "@/lib/billing/credit-plans";
+import { CREDITS_UPDATED_EVENT } from "@/lib/billing/credits-events";
 import { openRazorpayCheckout } from "@/lib/billing/razorpay";
 
 type CreditSnapshot = {
@@ -39,8 +40,13 @@ export function CreditMeter() {
 
   useEffect(() => {
     void load();
-    const timer = window.setInterval(() => void load(), 15000);
-    return () => window.clearInterval(timer);
+    const onCreditsUpdated = () => void load();
+    window.addEventListener(CREDITS_UPDATED_EVENT, onCreditsUpdated);
+    const timer = window.setInterval(() => void load(), 4000);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener(CREDITS_UPDATED_EVENT, onCreditsUpdated);
+    };
   }, [load]);
 
   const remaining = snapshot?.remaining ?? 200;
@@ -58,7 +64,7 @@ export function CreditMeter() {
     setPending(true);
     setError(null);
     try {
-      const response = await fetch("/api/checkout", {
+      const response = await fetch("/api/payments/razorpay-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -70,6 +76,7 @@ export function CreditMeter() {
         code?: string;
         orderId?: string;
         amount?: number;
+        currency?: string;
         description?: string;
         prefill?: { email?: string; name?: string };
       };
@@ -83,6 +90,7 @@ export function CreditMeter() {
       await openRazorpayCheckout({
         orderId: data.orderId,
         amount: data.amount,
+        currency: data.currency,
         description: data.description,
         prefill: data.prefill,
         onSuccess: () => {

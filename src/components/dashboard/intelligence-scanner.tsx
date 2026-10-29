@@ -77,15 +77,15 @@ export function IntelligenceScanner({
                 tick ? "opacity-100" : "opacity-30"
               }`}
             />
-            <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-[#deff9a]/90">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#deff9a]/90">
               Live intelligence scan
             </p>
-            <span className="ml-auto font-mono text-[10px] text-zinc-600">
+            <span className="ml-auto text-[10px] font-medium tabular-nums text-zinc-600">
               AIScoutX v1
             </span>
           </div>
 
-          <div className="rounded-xl border border-white/[0.06] bg-black/40 p-6 font-mono text-sm shadow-[inset_0_0_60px_rgba(0,0,0,0.5)] backdrop-blur-sm sm:p-8">
+          <div className="rounded-xl border border-white/[0.06] bg-black/40 p-6 text-sm shadow-[inset_0_0_60px_rgba(0,0,0,0.5)] backdrop-blur-sm sm:p-8">
             <p className="text-zinc-600">
               <span className="text-[#deff9a]/70">$</span> aiscoutx scan
               --live --niche=&quot;{nicheLabel}&quot;
@@ -124,7 +124,7 @@ export function IntelligenceScanner({
             {statuses.map((status, index) => (
               <li
                 key={status}
-                className={`font-mono text-[11px] transition-colors duration-300 ${
+                className={`text-[11px] font-medium transition-colors duration-300 ${
                   index <= activeIndex ? "text-zinc-500" : "text-zinc-800"
                 }`}
               >

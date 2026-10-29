@@ -179,7 +179,7 @@ export function DashboardTopbar({
             </button>
           )}
           <kbd
-            className="pointer-events-none hidden items-center rounded border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 font-mono text-[10px] font-medium text-zinc-500 lg:inline-flex"
+            className="pointer-events-none hidden items-center rounded border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-medium tabular-nums tracking-wide text-zinc-500 lg:inline-flex"
             aria-hidden
           >
             {shortcutLabel}

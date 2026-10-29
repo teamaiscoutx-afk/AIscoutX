@@ -1,18 +1,11 @@
 import type { Metadata } from "next";
-import { Urbanist } from "next/font/google";
 
 import { AppErrorBoundary } from "@/components/providers/app-error-boundary";
 import { AppProviders } from "@/components/providers/app-providers";
+import { rootFontVariables } from "@/lib/fonts";
 import { ACTIVE_WORKSPACE_BOOT_SCRIPT } from "@/lib/workspace/active-workspace";
 
 import "./globals.css";
-
-const urbanist = Urbanist({
-  subsets: ["latin"],
-  variable: "--font-urbanist",
-  display: "swap",
-  weight: ["300", "400", "500", "600", "700", "800"],
-});
 
 export const metadata: Metadata = {
   title: "AIscoutX — Discover the next big thing first",
@@ -26,9 +19,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="scroll-smooth" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${rootFontVariables} scroll-smooth font-sans antialiased`}
+      suppressHydrationWarning
+    >
       <body
-        className={`${urbanist.variable} min-h-screen bg-[#030308] font-sans antialiased`}
+        className="min-h-screen bg-[#030308] font-sans text-foreground antialiased"
         suppressHydrationWarning
       >
       <script dangerouslySetInnerHTML={{ __html: ACTIVE_WORKSPACE_BOOT_SCRIPT }} />

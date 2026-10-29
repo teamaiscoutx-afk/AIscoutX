@@ -129,6 +129,11 @@
     }
   }
 
+  .badge-text-shimmer {
+    transform: translateX(-100%);
+    animation: shimmer 2.8s ease-in-out infinite;
+  }
+
   .card-premium {
     @apply relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-md transition-all duration-500;
   }
@@ -228,10 +233,33 @@
   }
 
   html {
-    @apply bg-[#030308];
+    @apply bg-[#030308] font-sans antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
   body {
-    @apply bg-[#030308] text-foreground antialiased;
+    @apply bg-[#030308] font-sans text-foreground antialiased;
+    font-synthesis: none;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-sans tracking-tight text-balance;
+  }
+
+  p,
+  li,
+  label,
+  input,
+  textarea,
+  select,
+  button {
+    @apply font-sans;
   }
 }

@@ -65,6 +65,8 @@ export type VenturePackData = {
   launch: LaunchPack;
 };
 
+export type SubscriptionTier = "monthly" | "six_month" | "annual" | "free";
+
 export type ProfileRow = {
   id: string;
   email: string | null;
@@ -79,6 +81,11 @@ export type ProfileRow = {
   stripe_customer_id: string | null;
   subscription_renewal_at: string | null;
   last_renewal_warning_at: string | null;
+  credits_balance: number;
+  monthly_allowance: number;
+  buffer_used: boolean;
+  next_reset_date: string | null;
+  subscription_tier: SubscriptionTier;
   created_at: string;
   updated_at: string;
 };
@@ -227,6 +234,11 @@ export type Database = {
           stripe_customer_id?: string | null;
           subscription_renewal_at?: string | null;
           last_renewal_warning_at?: string | null;
+          credits_balance?: number;
+          monthly_allowance?: number;
+          buffer_used?: boolean;
+          next_reset_date?: string | null;
+          subscription_tier?: SubscriptionTier;
           created_at?: string;
           updated_at?: string;
         };
@@ -243,6 +255,11 @@ export type Database = {
           stripe_customer_id?: string | null;
           subscription_renewal_at?: string | null;
           last_renewal_warning_at?: string | null;
+          credits_balance?: number;
+          monthly_allowance?: number;
+          buffer_used?: boolean;
+          next_reset_date?: string | null;
+          subscription_tier?: SubscriptionTier;
           updated_at?: string;
         };
         Relationships: [];
@@ -425,9 +442,37 @@ export type Database = {
         };
         Relationships: [];
       };
+      razorpay_fulfilled_orders: {
+        Row: {
+          order_id: string;
+          user_id: string;
+          plan: string;
+          processed_at: string;
+        };
+        Insert: {
+          order_id: string;
+          user_id: string;
+          plan: string;
+          processed_at?: string;
+        };
+        Update: {
+          plan?: string;
+          processed_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      maybe_reset_user_credits: {
+        Args: { p_user_id: string };
+        Returns: undefined;
+      };
+      deduct_user_credits: {
+        Args: { p_user_id: string; p_amount: number };
+        Returns: Record<string, unknown>;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

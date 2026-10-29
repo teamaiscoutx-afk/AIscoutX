@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { getCreditSnapshotForUser } from "@/lib/billing/credit-engine.server";
 import { MONTHLY_CREDIT_ALLOWANCE } from "@/lib/billing/credit-plans";
 import {
   createServerSupabaseClient,
@@ -27,6 +28,22 @@ export async function GET() {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
+  const snapshot = await getCreditSnapshotForUser(user.id);
+
+  if (snapshot) {
+    return NextResponse.json({
+      ok: true,
+      remaining: snapshot.remaining,
+      allowance: snapshot.allowance,
+      used: snapshot.used,
+      bonus: 0,
+      resetAt: snapshot.resetAt,
+      bufferUsed: snapshot.bufferUsed,
+      subscriptionTier: snapshot.subscriptionTier,
+    });
+  }
+
+  // Legacy fallback when migration 010 is not applied yet
   let used = 0;
   const { data } = await supabase
     .from("usage_wallets")
@@ -47,5 +64,7 @@ export async function GET() {
     used,
     bonus: 0,
     resetAt: nextResetIso(),
+    bufferUsed: false,
+    subscriptionTier: "free",
   });
 }
