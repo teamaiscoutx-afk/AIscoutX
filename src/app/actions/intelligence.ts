@@ -11,6 +11,7 @@ import { DISCOVERY_IDEA_TARGET } from "@/lib/intelligence/discovery-config";
 import { generateStructuredFallbackDrafts } from "@/lib/intelligence/discovery-fallback";
 import { getIntelligenceEnvStatus, isIntelligenceEngineReady, getIntelligenceSetupMessage } from "@/lib/intelligence/env";
 import { resolveDiscoverySeeds } from "@/lib/intelligence/niche-seeds";
+import { generateAzureNicheOpportunityDrafts } from "@/lib/intelligence/azure-niche-feed";
 import {
   discoverOpportunityBatch,
   refreshOpportunityDeepDive,
@@ -83,6 +84,21 @@ export async function refreshLiveOpportunityFeed(
       }
     } else {
       liveError = getIntelligenceSetupMessage();
+    }
+
+    if (liveDrafts.length === 0 && isIntelligenceEngineReady()) {
+      try {
+        liveDrafts = await generateAzureNicheOpportunityDrafts({
+          workspace,
+          niche,
+          nicheLabel,
+          count: DISCOVERY_IDEA_TARGET,
+        });
+      } catch (err) {
+        liveError =
+          err instanceof Error ? err.message : "Azure niche synthesis failed";
+        console.error("[refreshLiveOpportunityFeed] azure niche fallback", err);
+      }
     }
 
     const liveNames = liveDrafts.map((d) => d.name);

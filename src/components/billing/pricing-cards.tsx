@@ -6,6 +6,7 @@ import { motion, useReducedMotion } from "framer-motion";
 
 import { PRICING_PLANS, type CatalogPlan } from "@/lib/billing/credit-plans";
 import { openRazorpayCheckout } from "@/lib/billing/razorpay";
+import { requestCheckoutOrder } from "@/lib/billing/request-checkout-order";
 import { cn } from "@/lib/utils";
 
 const GPU = { willChange: "transform, opacity" } as const;
@@ -22,28 +23,13 @@ const cardReveal = {
 };
 
 async function startPlanCheckout(planId: CatalogPlan["id"]) {
-  const response = await fetch("/api/payments/razorpay-checkout", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ plan: planId }),
-  });
-  const data = (await response.json()) as {
-    success?: boolean;
-    error?: string;
-    code?: string;
-    orderId?: string;
-    amount?: number;
-    currency?: string;
-    description?: string;
-    prefill?: { email?: string; name?: string };
-  };
+  const data = await requestCheckoutOrder(planId);
 
-  if (response.status === 401 || data.code === "AUTH_REQUIRED") {
+  if (data.code === "AUTH_REQUIRED") {
     window.location.href = `/login?next=/pricing`;
     return;
   }
-  if (!response.ok || !data.success || !data.orderId) {
+  if (!data.success || !data.orderId) {
     throw new Error(data.error ?? "Could not start checkout.");
   }
 

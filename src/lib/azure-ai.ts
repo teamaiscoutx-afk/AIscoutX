@@ -34,15 +34,42 @@ const DEFAULT_API_VERSION = "2024-02-15-preview";
 const DEFAULT_AZURE_SEARCH_INDEX = "aiscoutx-market";
 
 export function readAzureOpenAIConfig(): AzureOpenAIConfig | null {
-  const apiKey = readIntelligenceEnv("AZURE_OPENAI_API_KEY");
-  const endpoint = readIntelligenceEnv("AZURE_OPENAI_ENDPOINT")?.replace(/\/$/, "");
-  const deployment = readIntelligenceEnv("AZURE_OPENAI_DEPLOYMENT_NAME");
+  const apiKey =
+    readIntelligenceEnv("AZURE_OPENAI_API_KEY") ?? readServerEnv("AZURE_OPENAI_KEY");
+  const endpoint = (
+    readIntelligenceEnv("AZURE_OPENAI_ENDPOINT") ?? readServerEnv("AZURE_OPENAI_API_BASE")
+  )?.replace(/\/$/, "");
+  const deployment =
+    readIntelligenceEnv("AZURE_OPENAI_DEPLOYMENT_NAME") ??
+    readServerEnv("AZURE_OPENAI_DEPLOYMENT") ??
+    readServerEnv("AZURE_OPENAI_MODEL");
   const apiVersion =
     readIntelligenceEnv("AZURE_OPENAI_API_VERSION") || DEFAULT_API_VERSION;
 
   if (!apiKey || !endpoint || !deployment) return null;
 
   return { apiKey, endpoint, deployment, apiVersion };
+}
+
+/** Names of unset Azure OpenAI env vars (for API error messages). */
+export function missingAzureOpenAIEnvKeys(): string[] {
+  const missing: string[] = [];
+  if (!(readIntelligenceEnv("AZURE_OPENAI_API_KEY") ?? readServerEnv("AZURE_OPENAI_KEY"))) {
+    missing.push("AZURE_OPENAI_API_KEY");
+  }
+  if (!(readIntelligenceEnv("AZURE_OPENAI_ENDPOINT") ?? readServerEnv("AZURE_OPENAI_API_BASE"))) {
+    missing.push("AZURE_OPENAI_ENDPOINT");
+  }
+  if (
+    !(
+      readIntelligenceEnv("AZURE_OPENAI_DEPLOYMENT_NAME") ??
+      readServerEnv("AZURE_OPENAI_DEPLOYMENT") ??
+      readServerEnv("AZURE_OPENAI_MODEL")
+    )
+  ) {
+    missing.push("AZURE_OPENAI_DEPLOYMENT_NAME");
+  }
+  return missing;
 }
 
 export function readAzureSearchIndexName(): string | undefined {

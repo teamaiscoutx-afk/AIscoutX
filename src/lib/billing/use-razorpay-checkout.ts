@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 
 import { openRazorpayCheckout } from "@/lib/billing/razorpay";
+import { requestCheckoutOrder } from "@/lib/billing/request-checkout-order";
 
 export function useRazorpayCheckout() {
   const [loading, setLoading] = useState(false);
@@ -13,30 +14,14 @@ export function useRazorpayCheckout() {
     setError(null);
 
     try {
-      const res = await fetch("/api/payments/razorpay-checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ plan: "monthly" }),
-      });
+      const data = await requestCheckoutOrder("monthly");
 
-      const data = (await res.json()) as {
-        success?: boolean;
-        error?: string;
-        code?: string;
-        orderId?: string;
-        amount?: number;
-        currency?: string;
-        description?: string;
-        prefill?: { email?: string; name?: string };
-      };
-
-      if (res.status === 401 || data.code === "AUTH_REQUIRED") {
+      if (data.code === "AUTH_REQUIRED") {
         window.location.href = "/login?next=/dashboard/discover";
         return;
       }
 
-      if (!res.ok || !data.success || !data.orderId) {
+      if (!data.success || !data.orderId) {
         throw new Error(data.error ?? "Could not start checkout.");
       }
 

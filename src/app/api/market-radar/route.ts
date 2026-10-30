@@ -4,8 +4,8 @@ import {
   azureChatCompletion,
   fetchRealtimeMarketIntelligence,
   formatMarketContextBlock,
-  isAzureOpenAIConfigured,
 } from "@/lib/azure-ai";
+import { resolveServerAzureOpenAI } from "@/lib/server/azure-config.server";
 import { deductCreditsForAction } from "@/lib/billing/credit-engine.server";
 import { logServerError } from "@/lib/server/safe-action";
 import { createServerSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
@@ -24,9 +24,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Auth is not configured." }, { status: 503 });
   }
 
-  if (!isAzureOpenAIConfigured()) {
+  const azure = resolveServerAzureOpenAI();
+  if (!azure.ok) {
     return NextResponse.json(
-      { ok: false, error: "Azure OpenAI is not configured." },
+      { ok: false, error: azure.error, missingEnv: azure.missing },
       { status: 503 }
     );
   }

@@ -4,9 +4,9 @@ import {
   azureChatCompletion,
   buildMentorSystemPrompt,
   fetchRealtimeMarketIntelligence,
-  isAzureOpenAIConfigured,
   type ChatMessage,
 } from "@/lib/azure-ai";
+import { resolveServerAzureOpenAI } from "@/lib/server/azure-config.server";
 import { creditCostForAction } from "@/lib/billing/credit-costs";
 import { addBonusCredits, deductCreditsForAction } from "@/lib/billing/credit-engine.server";
 import { logServerError } from "@/lib/server/safe-action";
@@ -28,12 +28,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Auth is not configured." }, { status: 503 });
   }
 
-  if (!isAzureOpenAIConfigured()) {
+  const azure = resolveServerAzureOpenAI();
+  if (!azure.ok) {
     return NextResponse.json(
       {
         ok: false,
-        error:
-          "Azure OpenAI is not configured. Set AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, and AZURE_OPENAI_DEPLOYMENT_NAME.",
+        error: azure.error,
+        missingEnv: azure.missing,
       },
       { status: 503 }
     );

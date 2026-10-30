@@ -7,6 +7,7 @@ import { X, Zap } from "lucide-react";
 import { TOPUP_CREDITS, TOPUP_PRICE_USD } from "@/lib/billing/credit-plans";
 import { CREDITS_UPDATED_EVENT } from "@/lib/billing/credits-events";
 import { openRazorpayCheckout } from "@/lib/billing/razorpay";
+import { requestCheckoutOrder } from "@/lib/billing/request-checkout-order";
 
 type CreditSnapshot = {
   remaining: number;
@@ -64,27 +65,12 @@ export function CreditMeter() {
     setPending(true);
     setError(null);
     try {
-      const response = await fetch("/api/payments/razorpay-checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ plan: "topup" }),
-      });
-      const data = (await response.json()) as {
-        success?: boolean;
-        error?: string;
-        code?: string;
-        orderId?: string;
-        amount?: number;
-        currency?: string;
-        description?: string;
-        prefill?: { email?: string; name?: string };
-      };
-      if (response.status === 401 || data.code === "AUTH_REQUIRED") {
+      const data = await requestCheckoutOrder("topup");
+      if (data.code === "AUTH_REQUIRED") {
         window.location.href = "/login?next=/dashboard";
         return;
       }
-      if (!response.ok || !data.success || !data.orderId) {
+      if (!data.success || !data.orderId) {
         throw new Error(data.error ?? "Could not start the top-up.");
       }
       await openRazorpayCheckout({
