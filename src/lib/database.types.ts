@@ -86,6 +86,7 @@ export type ProfileRow = {
   buffer_used: boolean;
   next_reset_date: string | null;
   subscription_tier: SubscriptionTier;
+  welcome_credits_granted: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -239,6 +240,7 @@ export type Database = {
           buffer_used?: boolean;
           next_reset_date?: string | null;
           subscription_tier?: SubscriptionTier;
+          welcome_credits_granted?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -260,6 +262,7 @@ export type Database = {
           buffer_used?: boolean;
           next_reset_date?: string | null;
           subscription_tier?: SubscriptionTier;
+          welcome_credits_granted?: boolean;
           updated_at?: string;
         };
         Relationships: [];
@@ -471,6 +474,10 @@ export type Database = {
       deduct_user_credits: {
         Args: { p_user_id: string; p_amount: number };
         Returns: Record<string, unknown>;
+      };
+      grant_welcome_credits: {
+        Args: { p_user_id: string };
+        Returns: undefined;
       };
     };
     Enums: Record<string, never>;

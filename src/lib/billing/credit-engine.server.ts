@@ -1,4 +1,8 @@
 import type { SubscriptionTier } from "@/lib/database.types";
+import {
+  FREEMIUM_WELCOME_ALLOWANCE,
+  FREEMIUM_WELCOME_CREDITS,
+} from "@/lib/billing/freemium";
 import { createServerSupabaseClient, createServiceRoleSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
 import {
   creditCostForAction,
@@ -71,8 +75,8 @@ export async function getCreditSnapshotForUser(userId: string): Promise<CreditSn
   if (error || !data) return null;
 
   return snapshotFromRow({
-    credits_balance: data.credits_balance ?? 200,
-    monthly_allowance: data.monthly_allowance ?? 200,
+    credits_balance: data.credits_balance ?? FREEMIUM_WELCOME_CREDITS,
+    monthly_allowance: data.monthly_allowance ?? FREEMIUM_WELCOME_ALLOWANCE,
     next_reset_date: data.next_reset_date,
     buffer_used: data.buffer_used ?? false,
     subscription_tier: (data.subscription_tier ?? "free") as SubscriptionTier,
@@ -157,6 +161,46 @@ export async function deductCreditsForAction(
     snapshot,
     warning: payload.warning ?? undefined,
   };
+}
+
+/** Idempotent — grants 20 welcome credits once for new freemium accounts. */
+export async function ensureWelcomeCreditsForUser(userId: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+
+  const admin = createServiceRoleSupabaseClient();
+  if (!admin) return false;
+
+  const { error } = await admin.rpc("grant_welcome_credits", { p_user_id: userId });
+  if (error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes("does not exist") || msg.includes("grant_welcome_credits")) {
+      const { data: profile } = await admin
+        .from("profiles")
+        .select("welcome_credits_granted")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (profile?.welcome_credits_granted) return true;
+
+      const { error: updateError } = await admin
+        .from("profiles")
+        .update({
+          credits_balance: FREEMIUM_WELCOME_CREDITS,
+          monthly_allowance: FREEMIUM_WELCOME_ALLOWANCE,
+          subscription_tier: "free",
+          welcome_credits_granted: true,
+          buffer_used: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", userId)
+        .eq("welcome_credits_granted", false);
+
+      return !updateError;
+    }
+    return false;
+  }
+
+  return true;
 }
 
 export async function addBonusCredits(userId: string, amount: number): Promise<boolean> {

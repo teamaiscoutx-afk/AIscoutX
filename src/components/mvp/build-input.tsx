@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 
 export function BuildInput() {
   const router = useRouter();
-  const { openUpgradeModal } = useUpgradeModal();
+  const { openFreemiumPaywall, openUpgradeModal } = useUpgradeModal();
   const { trackPromise } = useLoading();
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +34,7 @@ export function BuildInput() {
       );
       if (!result.ok || !result.pack) {
         if (result.code === "UPGRADE_REQUIRED") {
-          openUpgradeModal(result.error);
+          openFreemiumPaywall();
           return;
         }
         setError(result.error ?? "Generation failed");

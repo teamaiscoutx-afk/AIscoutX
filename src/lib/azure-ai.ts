@@ -239,14 +239,62 @@ async function searchTavilyFallback(query: string, maxResults = 8): Promise<Mark
   }));
 }
 
+function mergeMarketContexts(contexts: LiveMarketContext[], query: string): LiveMarketContext {
+  const seen = new Set<string>();
+  const snippets: MarketSnippet[] = [];
+
+  for (const ctx of contexts) {
+    for (const snippet of ctx.snippets) {
+      const key = snippet.url || `${snippet.title}:${snippet.excerpt.slice(0, 80)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      snippets.push(snippet);
+    }
+  }
+
+  const provider =
+    contexts.find((c) => c.provider !== "synthetic")?.provider ?? "synthetic";
+
+  return {
+    query,
+    scannedAt: new Date().toISOString(),
+    provider,
+    snippets: snippets.slice(0, 18),
+  };
+}
+
+/** Multi-query 24/7 scan: trends, competitors, and news for a startup domain. */
+export async function fetchRealtimeMarketIntelligence(input: {
+  startupDomain: string;
+  nicheLabel?: string;
+}): Promise<LiveMarketContext> {
+  const domain = input.startupDomain.trim();
+  const niche = input.nicheLabel?.trim() ?? "";
+
+  const queries = [
+    `${domain} ${niche} market size trends TAM growth 2026`,
+    `${domain} ${niche} competitors pricing product launches funding 2026`,
+    `${domain} ${niche} industry news regulation customer demand signals 2026`,
+  ];
+
+  const contexts = await Promise.all(
+    queries.map((query) => fetchLiveMarketContext({ query, nicheLabel: niche }))
+  );
+
+  return mergeMarketContexts(
+    contexts,
+    `${domain} — live market intelligence (${niche || "general"})`
+  );
+}
+
 /** Live web context for mentor + blueprint prompts (Azure-first, then fallbacks). */
 export async function fetchLiveMarketContext(input: {
   query: string;
   nicheLabel?: string;
 }): Promise<LiveMarketContext> {
   const seed = input.nicheLabel
-    ? `${input.query} ${input.nicheLabel} startup trends market 2026`
-    : `${input.query} market trends competitors pricing 2026`;
+    ? `${input.query} ${input.nicheLabel} startup trends market 2026 latest news`
+    : `${input.query} market trends competitors pricing news 2026`;
 
   let snippets = await searchAzureAiSearch(seed);
   if (snippets.length) {
@@ -399,8 +447,8 @@ export async function generateVenturePackViaAzure(input: {
   query: string;
   nicheLabel?: string;
 }): Promise<{ analyze: AnalyzePack; blueprint: BlueprintPack; launch: LaunchPack }> {
-  const market = await fetchLiveMarketContext({
-    query: input.query,
+  const market = await fetchRealtimeMarketIntelligence({
+    startupDomain: input.query,
     nicheLabel: input.nicheLabel,
   });
 

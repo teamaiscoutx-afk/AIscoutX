@@ -11,6 +11,7 @@ import {
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Check, CheckCircle2, Sparkles, X } from "lucide-react";
 
+import { FreemiumPlanPicker } from "@/components/billing/freemium-plan-picker";
 import { PRO_MODAL_FEATURES, PRO_PRICE_DISPLAY } from "@/lib/billing/constants";
 import { useRazorpayCheckout } from "@/lib/billing/use-razorpay-checkout";
 import { Button } from "@/components/ui/button";
@@ -18,11 +19,13 @@ import { cn } from "@/lib/utils";
 
 type UpgradeModalContextValue = {
   openUpgradeModal: (reason?: string) => void;
+  openFreemiumPaywall: () => void;
   showSuccessModal: () => void;
 };
 
 const UpgradeModalContext = createContext<UpgradeModalContextValue>({
   openUpgradeModal: () => undefined,
+  openFreemiumPaywall: () => undefined,
   showSuccessModal: () => undefined,
 });
 
@@ -37,6 +40,8 @@ export function UpgradeModalProvider({
 }) {
   const [open, setOpen] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [freemiumMode, setFreemiumMode] = useState(false);
+  const [paywallBlocking, setPaywallBlocking] = useState(false);
   const [reason, setReason] = useState<string | null>(null);
   const { startCheckout, loading: redirecting, error: checkoutError, clearError } =
     useRazorpayCheckout();
@@ -45,20 +50,37 @@ export function UpgradeModalProvider({
     (triggerReason?: string) => {
       clearError();
       setIsSuccess(false);
-      setReason(triggerReason ?? null);
+      setFreemiumMode(true);
+      setPaywallBlocking(false);
+      setReason(
+        triggerReason ??
+          "Choose a plan to unlock more monthly credits, live market radar, and unlimited mentor depth."
+      );
       setOpen(true);
     },
     [clearError]
   );
 
+  const openFreemiumPaywall = useCallback(() => {
+    clearError();
+    setIsSuccess(false);
+    setFreemiumMode(true);
+    setPaywallBlocking(true);
+    setReason(
+      "You have used all 20 welcome credits. Choose a plan to keep building with live AI mentor + market radar."
+    );
+    setOpen(true);
+  }, [clearError]);
+
   const showSuccessModal = useCallback(() => {
     setIsSuccess(true);
+    setFreemiumMode(false);
     setOpen(true);
   }, []);
 
   const value = useMemo(
-    () => ({ openUpgradeModal, showSuccessModal }),
-    [openUpgradeModal, showSuccessModal]
+    () => ({ openUpgradeModal, openFreemiumPaywall, showSuccessModal }),
+    [openUpgradeModal, openFreemiumPaywall, showSuccessModal]
   );
 
   useEffect(() => {
@@ -101,10 +123,17 @@ export function UpgradeModalProvider({
 
           <DialogPrimitive.Content
             className={cn(
-              "fixed inset-0 z-[221] m-auto h-auto w-[min(94vw,28rem)] overflow-hidden",
+              "fixed inset-0 z-[221] m-auto h-auto max-h-[90vh] overflow-y-auto",
+              freemiumMode ? "w-[min(94vw,32rem)]" : "w-[min(94vw,28rem)]",
               "rounded-2xl border border-white/[0.12] bg-[#06060f]/98",
               "shadow-[0_0_80px_rgba(0,255,102,0.12)] backdrop-blur-xl outline-none"
             )}
+            onInteractOutside={(event) => {
+              if (freemiumMode && paywallBlocking) event.preventDefault();
+            }}
+            onEscapeKeyDown={(event) => {
+              if (freemiumMode && paywallBlocking) event.preventDefault();
+            }}
           >
             {isSuccess ? (
               /* 🎉 THANK YOU / PRO PLAN ACTIVE SUCCESS SCREEN */
@@ -137,8 +166,36 @@ export function UpgradeModalProvider({
                   Start Building
                 </Button>
               </div>
+            ) : freemiumMode ? (
+              <>
+                <div className="relative border-b border-white/[0.06] px-6 py-6 sm:px-8">
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_100%_at_50%_0%,rgba(163,230,53,0.12),transparent_70%)]"
+                  />
+                  <DialogPrimitive.Title className="relative text-xl font-semibold text-white sm:text-2xl">
+                    {paywallBlocking ? "Welcome credits used" : "Choose your plan"}
+                  </DialogPrimitive.Title>
+                  <DialogPrimitive.Description className="relative mt-2 text-sm leading-relaxed text-zinc-400">
+                    {reason}
+                  </DialogPrimitive.Description>
+                  {!paywallBlocking && (
+                    <DialogPrimitive.Close
+                      className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-zinc-400 transition-colors hover:border-white/[0.14] hover:text-white"
+                      aria-label="Close"
+                    >
+                      <X className="h-4 w-4" />
+                    </DialogPrimitive.Close>
+                  )}
+                </div>
+                <div className="px-6 py-6 sm:px-8">
+                  <FreemiumPlanPicker />
+                  <p className="mt-4 text-center text-[11px] text-zinc-500">
+                    Live market scans, mentor chat, and blueprints resume instantly after checkout.
+                  </p>
+                </div>
+              </>
             ) : (
-              /* 💳 DEFAULT UPGRADE TO PRO PAYMENT SCREEN */
               <>
                 <div className="relative border-b border-white/[0.06] px-6 py-6 pr-14 sm:px-8">
                   <div

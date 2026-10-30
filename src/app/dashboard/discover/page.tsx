@@ -58,6 +58,8 @@ export default async function DiscoverPage({ searchParams }: DiscoverPageProps) 
   }
 
   const profile = await getCurrentProfile();
+  const welcomeCredits = profile?.credits_balance ?? 20;
+  const hasActiveWelcomeCredits = welcomeCredits > 0;
 
   const initialWorkspace: WorkspaceIdentity =
     profile?.workspace_mode ?? "founder";
@@ -65,6 +67,10 @@ export default async function DiscoverPage({ searchParams }: DiscoverPageProps) 
     initialWorkspace,
     profile?.current_niche
   );
+
+  const workspaceHref = accountWorkspace
+    ? `/dashboard/workspace/${accountWorkspace.id}`
+    : null;
 
   const [cached, notifications] = await Promise.all([
     loadCachedOpportunities(initialWorkspace, initialNiche),
@@ -86,7 +92,10 @@ export default async function DiscoverPage({ searchParams }: DiscoverPageProps) 
           initialNotifications={notifications}
           initialWorkspace={initialWorkspace}
           initialNiche={initialNiche}
-          skipOnboarding={Boolean(profile?.onboarding_completed || accountWorkspace)}
+          workspaceHref={workspaceHref}
+          skipOnboarding={Boolean(
+            profile?.onboarding_completed || accountWorkspace || hasActiveWelcomeCredits
+          )}
         />
       </DiscoverRouteGuard>
     </Suspense>

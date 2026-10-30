@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import {
   azureChatCompletion,
   buildMentorSystemPrompt,
-  fetchLiveMarketContext,
+  fetchRealtimeMarketIntelligence,
   isAzureOpenAIConfigured,
   type ChatMessage,
 } from "@/lib/azure-ai";
@@ -89,8 +89,8 @@ export async function POST(request: Request) {
     : [];
 
   try {
-    const marketContext = await fetchLiveMarketContext({
-      query: `${workspaceName}: ${message}`,
+    const marketContext = await fetchRealtimeMarketIntelligence({
+      startupDomain: workspaceName,
       nicheLabel,
     });
 

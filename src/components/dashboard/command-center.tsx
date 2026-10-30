@@ -6,8 +6,8 @@ import nextDynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import { Zap } from "lucide-react";
 
-import { BuildInput } from "@/components/mvp/build-input";
-import { DashboardTopbar } from "@/components/dashboard/dashboard-topbar";
+import { DescribeIdeaMentor } from "@/components/dashboard/describe-idea-mentor";
+import { DashboardTopbarMinimal } from "@/components/dashboard/dashboard-topbar-minimal";
 import { LiveScanModal } from "@/components/dashboard/live-scan-modal";
 import { NicheSwitcher } from "@/components/dashboard/niche-switcher";
 import { OnboardingModal } from "@/components/dashboard/onboarding-modal";
@@ -21,7 +21,6 @@ import {
   loadNicheDiscoverCache,
   refreshDiscoverFeed,
 } from "@/app/actions/opportunities";
-import { PlanSelectorModal } from "@/components/billing/plan-selector-modal";
 import { completeOnboardingProfile, updateProfileWorkspace } from "@/app/actions/profile";
 import { buildFeedViewModel } from "@/lib/dashboard/feed-utils";
 import {
@@ -60,7 +59,6 @@ type ExperiencePhase =
   | "hydrating"
   | "onboarding"
   | "scanning"
-  | "plan-select"
   | "ready";
 
 type CommandCenterProps = {
@@ -70,6 +68,7 @@ type CommandCenterProps = {
   initialWorkspace: WorkspaceIdentity;
   initialNiche: NicheId;
   skipOnboarding?: boolean;
+  workspaceHref?: string | null;
 };
 
 function resolveActiveNiche(
@@ -107,6 +106,7 @@ export function CommandCenter({
   initialWorkspace,
   initialNiche,
   skipOnboarding = false,
+  workspaceHref = null,
 }: CommandCenterProps) {
   const { startLoading, stopLoading } = useLoading();
   const [phase, setPhase] = useState<ExperiencePhase>("hydrating");
@@ -323,6 +323,25 @@ export function CommandCenter({
 
   useEffect(() => {
     if (skipOnboarding) {
+      const saved = loadOnboardingProfile();
+      if (!saved) {
+        const label = getNicheLabel(initialWorkspace, initialNiche);
+        const seeded: UserOnboardingProfile = {
+          identity: initialWorkspace,
+          goal: "build-startup",
+          nicheFocus: "ai",
+          niche: initialNiche,
+          nicheLabel: label,
+          completedAt: new Date().toISOString(),
+        };
+        saveOnboardingProfile(seeded);
+        saveNicheByWorkspace({
+          ...loadNicheByWorkspace(),
+          [initialWorkspace]: { id: initialNiche, label },
+        });
+        setProfile(seeded);
+        setActiveWorkspace(initialWorkspace);
+      }
       setPhase("ready");
       return;
     }
@@ -354,7 +373,7 @@ export function CommandCenter({
     } else {
       setPhase("onboarding");
     }
-  }, [skipOnboarding]);
+  }, [skipOnboarding, initialWorkspace, initialNiche]);
 
   const openOpportunity = useCallback((opportunity: Opportunity) => {
     setSelectedOpportunity(opportunity);
@@ -431,7 +450,7 @@ export function CommandCenter({
       nicheFocus: draftNicheFocus,
       currentNiche: draftNiche,
     });
-    setPhase("plan-select");
+    setPhase("ready");
   }, [
     draftIdentity,
     draftGoal,
@@ -540,7 +559,6 @@ export function CommandCenter({
     const lockScroll =
       phase === "onboarding" ||
       phase === "scanning" ||
-      phase === "plan-select" ||
       Boolean(selectedOpportunity);
     document.body.style.overflow = lockScroll ? "hidden" : "";
     return () => {
@@ -578,11 +596,6 @@ export function CommandCenter({
         )}
       </AnimatePresence>
 
-      <PlanSelectorModal
-        open={phase === "plan-select"}
-        onSelectFree={() => setPhase("ready")}
-      />
-
       <LiveScanModal
         open={liveScanOpen}
         nicheLabel={liveScanNicheLabel}
@@ -594,16 +607,7 @@ export function CommandCenter({
         }
       />
 
-      {phase !== "hydrating" && (
-        <DashboardTopbar
-          activeWorkspace={activeWorkspace}
-          onActiveWorkspaceChange={handleActiveWorkspaceChange}
-          searchQuery={searchQuery}
-          onSearchQueryChange={handleSearchQueryChange}
-          onSearchSubmit={handleSearchSubmit}
-          initialNotifications={initialNotifications}
-        />
-      )}
+      {phase !== "hydrating" && <DashboardTopbarMinimal />}
 
       <AnimatePresence mode="wait">
         {showFeed && (
@@ -656,7 +660,10 @@ export function CommandCenter({
                   transition={{ duration: 0.3, ease: "easeOut" }}
                 >
                   <div className="mb-8">
-                    <BuildInput />
+                    <DescribeIdeaMentor
+                      nicheLabel={activeNicheLabel}
+                      workspaceHref={workspaceHref}
+                    />
                   </div>
 
                   {opportunityOfDay && (

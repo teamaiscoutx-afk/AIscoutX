@@ -3,9 +3,10 @@ import type { Metadata } from "next";
 import { fetchNotifications } from "@/app/actions/notifications";
 import { getSubscriptionRenewalAlert } from "@/app/actions/subscription-alerts";
 import { getUserWorkspaces } from "@/app/actions/workspaces";
+import { CreditGateListener } from "@/components/billing/credit-gate-listener";
 import { UpgradeModalProvider } from "@/components/billing/upgrade-modal";
 import { DashboardShellProvider } from "@/components/dashboard/dashboard-shell-provider";
-import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
+import { DashboardChrome } from "@/components/dashboard/dashboard-chrome";
 import { SubscriptionRenewalBanner } from "@/components/dashboard/subscription-renewal-banner";
 import { UserMenuProvider } from "@/components/layout/user-menu-provider";
 import { getUserMenuContext } from "@/lib/auth/user-menu";
@@ -63,6 +64,7 @@ export default async function DashboardLayout({
   return (
     <UserMenuProvider value={menu}>
       <UpgradeModalProvider>
+        <CreditGateListener />
         <DashboardShellProvider
           notifications={notifications}
           renewalAlert={renewalAlert}
@@ -77,13 +79,10 @@ export default async function DashboardLayout({
               className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_80%_50%_at_0%_0%,rgba(67,56,202,0.12),transparent_50%)]"
             />
 
-            <div className="relative z-10 flex min-h-screen w-full flex-col lg:flex-row">
-              <DashboardSidebar projects={projects} />
-              <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                <SubscriptionRenewalBanner />
-                {children}
-              </div>
-            </div>
+            <DashboardChrome projects={projects}>
+              <SubscriptionRenewalBanner />
+              {children}
+            </DashboardChrome>
           </div>
         </DashboardShellProvider>
       </UpgradeModalProvider>

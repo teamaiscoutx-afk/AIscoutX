@@ -44,6 +44,12 @@ export function AuthSessionProvider({ children }: { children: React.ReactNode })
         event === "TOKEN_REFRESHED" ||
         event === "USER_UPDATED"
       ) {
+        if (event === "SIGNED_IN") {
+          void fetch("/api/onboarding/welcome", {
+            method: "POST",
+            credentials: "same-origin",
+          }).catch(() => undefined);
+        }
         channel?.postMessage({ event, at: Date.now() });
         scheduleRefresh();
       }

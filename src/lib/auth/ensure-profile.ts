@@ -3,6 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { WorkspaceIdentity } from "@/lib/dashboard/onboarding";
 import type { Database } from "@/lib/database.types";
+import { ensureWelcomeCreditsForUser } from "@/lib/billing/credit-engine.server";
+import { FREEMIUM_WELCOME_CREDITS } from "@/lib/billing/freemium";
 import { sendWelcomeEmail } from "@/lib/email";
 import { logServerError } from "@/lib/server/safe-action";
 
@@ -35,6 +37,11 @@ export async function ensureUserProfile(
       goal: "build-startup",
       onboarding_completed: false,
       plan: "free",
+      credits_balance: FREEMIUM_WELCOME_CREDITS,
+      monthly_allowance: FREEMIUM_WELCOME_CREDITS,
+      subscription_tier: "free",
+      welcome_credits_granted: true,
+      buffer_used: false,
     });
 
     // Race with the DB signup trigger is fine — ignore duplicate key
@@ -57,8 +64,15 @@ export async function ensureUserProfile(
     }
   }
 
+  if (isNewUser) {
+    await ensureWelcomeCreditsForUser(user.id).catch((err) =>
+      logServerError("freemium.welcome", err)
+    );
+  } else {
+    await ensureWelcomeCreditsForUser(user.id).catch(() => undefined);
+  }
+
   if (isNewUser && user.email) {
-    // Fire-and-forget welcome email — never block the auth flow
     sendWelcomeEmail(user.email).catch((err) =>
       logServerError("email.welcome", err)
     );

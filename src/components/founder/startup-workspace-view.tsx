@@ -58,7 +58,12 @@ import {
 } from "@/lib/workspace/active-workspace";
 import { markWorkspaceActiveSession } from "@/app/actions/active-workspace";
 import { CreditMeter } from "@/components/billing/credit-meter";
+import {
+  clearMentorIdeaSeed,
+  readMentorIdeaSeed,
+} from "@/components/dashboard/describe-idea-mentor";
 import { dispatchCreditsUpdated } from "@/lib/billing/credits-events";
+import { dispatchOutOfCredits } from "@/lib/billing/freemium";
 import { signOut } from "@/app/actions/auth";
 import type { PersistedMentorChat } from "@/app/actions/workspace-chats";
 import { StartupRadarPanel } from "@/components/founder/startup-radar-panel";
@@ -357,6 +362,30 @@ export function StartupWorkspaceView({
     }
   }, [workspace.id]);
 
+  useEffect(() => {
+    if (!chatsReady) return;
+    const seed = readMentorIdeaSeed();
+    if (!seed) return;
+
+    clearMentorIdeaSeed();
+    setCanvas("chat");
+
+    const newChatId = `chat-${Date.now()}`;
+    const seededMessages: ChatSession["messages"] = [{ role: "user", content: seed.idea }];
+    const lastAssistant = [...seed.messages].reverse().find((m) => m.role === "assistant");
+    if (lastAssistant) {
+      seededMessages.push({ role: "assistant", content: lastAssistant.content });
+    }
+
+    const newChat: ChatSession = {
+      id: newChatId,
+      title: `${seed.idea.slice(0, 28)}…`,
+      messages: seededMessages,
+    };
+
+    void commitChats([newChat, ...chatsRef.current], newChatId);
+  }, [chatsReady, commitChats]);
+
   const blueprintUpdates = useMemo(() => buildStartupRadar(workspace), [workspace]);
   const radarUpdates = liveUpdates.length
     ? [...liveUpdates, ...blueprintUpdates]
@@ -622,10 +651,13 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
         dispatchCreditsUpdated();
 
         if (!response.ok || !payload.ok || !payload.reply) {
+          if (response.status === 402) {
+            dispatchOutOfCredits();
+          }
           const fallback =
             payload.error ??
             (response.status === 402
-              ? "You are out of credits. Open the credit meter to top up."
+              ? "You are out of credits. Choose a plan to continue mentor chat."
               : "Mentor is temporarily unavailable. Try again in a moment.");
           const withError = chatsRef.current.map((chat) =>
             chat.id === chatId

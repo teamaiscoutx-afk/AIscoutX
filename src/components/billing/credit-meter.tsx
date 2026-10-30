@@ -49,8 +49,8 @@ export function CreditMeter() {
     };
   }, [load]);
 
-  const remaining = snapshot?.remaining ?? 200;
-  const allowance = snapshot?.allowance ?? 200;
+  const remaining = snapshot?.remaining ?? 20;
+  const allowance = snapshot?.allowance ?? 20;
   const used = snapshot?.used ?? 0;
   const resetLabel = snapshot
     ? new Date(snapshot.resetAt).toLocaleDateString(undefined, {
