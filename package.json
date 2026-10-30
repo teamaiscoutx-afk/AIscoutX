@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "sync:vercel-env": "node scripts/sync-vercel-env.mjs",
-    "seed:opportunities": "tsx --tsconfig tsconfig.json src/scripts/seed-opportunities.ts"
+    "seed:opportunities": "tsx --tsconfig tsconfig.json src/scripts/seed-opportunities.ts",
+    "verify:env": "tsx --tsconfig tsconfig.json scripts/verify-env.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.82",
