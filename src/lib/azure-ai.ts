@@ -1,5 +1,5 @@
 import type { AnalyzePack, BlueprintPack, LaunchPack } from "@/lib/mvp/types";
-import { readIntelligenceEnv } from "@/lib/env";
+import { readIntelligenceEnv, readServerEnv } from "@/lib/env";
 
 export type ChatMessage = {
   role: "system" | "user" | "assistant";
@@ -24,22 +24,33 @@ export type MarketSnippet = {
 export type LiveMarketContext = {
   query: string;
   scannedAt: string;
-  provider: "azure_search" | "bing" | "tavily" | "serper" | "synthetic";
+  provider: "azure_search" | "azure_openai" | "synthetic";
   snippets: MarketSnippet[];
 };
 
 const DEFAULT_API_VERSION = "2024-02-15-preview";
 
+/** Default index when AZURE_SEARCH_INDEX_NAME is unset (override in .env.local). */
+const DEFAULT_AZURE_SEARCH_INDEX = "aiscoutx-market";
+
 export function readAzureOpenAIConfig(): AzureOpenAIConfig | null {
-  const apiKey = process.env.AZURE_OPENAI_API_KEY?.trim();
-  const endpoint = process.env.AZURE_OPENAI_ENDPOINT?.trim()?.replace(/\/$/, "");
-  const deployment = process.env.AZURE_OPENAI_DEPLOYMENT_NAME?.trim();
+  const apiKey = readIntelligenceEnv("AZURE_OPENAI_API_KEY");
+  const endpoint = readIntelligenceEnv("AZURE_OPENAI_ENDPOINT")?.replace(/\/$/, "");
+  const deployment = readIntelligenceEnv("AZURE_OPENAI_DEPLOYMENT_NAME");
   const apiVersion =
-    process.env.AZURE_OPENAI_API_VERSION?.trim() || DEFAULT_API_VERSION;
+    readIntelligenceEnv("AZURE_OPENAI_API_VERSION") || DEFAULT_API_VERSION;
 
   if (!apiKey || !endpoint || !deployment) return null;
 
   return { apiKey, endpoint, deployment, apiVersion };
+}
+
+export function readAzureSearchIndexName(): string | undefined {
+  return (
+    readIntelligenceEnv("AZURE_SEARCH_INDEX_NAME") ??
+    readServerEnv("AZURE_SEARCH_INDEX") ??
+    DEFAULT_AZURE_SEARCH_INDEX
+  );
 }
 
 export function isAzureOpenAIConfigured(): boolean {
@@ -48,16 +59,9 @@ export function isAzureOpenAIConfigured(): boolean {
 
 export function isAzureSearchConfigured(): boolean {
   return Boolean(
-    process.env.AZURE_SEARCH_ENDPOINT?.trim() &&
-      process.env.AZURE_SEARCH_API_KEY?.trim() &&
-      process.env.AZURE_SEARCH_INDEX_NAME?.trim()
-  );
-}
-
-export function isAzureBingSearchConfigured(): boolean {
-  return Boolean(
-    process.env.AZURE_BING_SEARCH_KEY?.trim() ||
-      process.env.BING_SEARCH_V7_SUBSCRIPTION_KEY?.trim()
+    readIntelligenceEnv("AZURE_SEARCH_ENDPOINT") &&
+      readIntelligenceEnv("AZURE_SEARCH_API_KEY") &&
+      readAzureSearchIndexName()
   );
 }
 
@@ -116,39 +120,11 @@ export async function azureChatCompletion(input: {
   return content;
 }
 
-async function searchAzureAiSearch(query: string, maxResults = 8): Promise<MarketSnippet[]> {
-  const endpoint = process.env.AZURE_SEARCH_ENDPOINT?.trim()?.replace(/\/$/, "");
-  const apiKey = process.env.AZURE_SEARCH_API_KEY?.trim();
-  const indexName = process.env.AZURE_SEARCH_INDEX_NAME?.trim();
-  const apiVersion = process.env.AZURE_SEARCH_API_VERSION?.trim() || "2023-11-01";
-
-  if (!endpoint || !apiKey || !indexName) return [];
-
-  const url = `${endpoint}/indexes/${encodeURIComponent(indexName)}/docs/search?api-version=${encodeURIComponent(apiVersion)}`;
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "api-key": apiKey,
-    },
-    body: JSON.stringify({
-      search: query,
-      top: maxResults,
-      queryType: "semantic",
-      semanticConfiguration: process.env.AZURE_SEARCH_SEMANTIC_CONFIG?.trim() || undefined,
-      captions: "extractive",
-    }),
-    cache: "no-store",
-  });
-
-  if (!response.ok) return [];
-
-  const data = (await response.json()) as {
-    value?: Record<string, unknown>[];
-  };
-
-  return (data.value ?? []).map((doc, i) => {
+function mapAzureSearchDocuments(
+  docs: Record<string, unknown>[],
+  maxResults: number
+): MarketSnippet[] {
+  return docs.slice(0, maxResults).map((doc, i) => {
     const title =
       (typeof doc.title === "string" && doc.title) ||
       (typeof doc.name === "string" && doc.name) ||
@@ -172,71 +148,114 @@ async function searchAzureAiSearch(query: string, maxResults = 8): Promise<Marke
   });
 }
 
-async function searchAzureBing(query: string, maxResults = 8): Promise<MarketSnippet[]> {
-  const apiKey =
-    process.env.AZURE_BING_SEARCH_KEY?.trim() ||
-    process.env.BING_SEARCH_V7_SUBSCRIPTION_KEY?.trim();
-  if (!apiKey) return [];
-
-  const endpoint =
-    process.env.AZURE_BING_SEARCH_ENDPOINT?.trim() ||
-    "https://api.bing.microsoft.com/v7.0/search";
-
-  const url = `${endpoint}?q=${encodeURIComponent(query)}&count=${maxResults}&mkt=en-US&freshness=Month`;
-
+async function postAzureSearch(
+  url: string,
+  apiKey: string,
+  body: Record<string, unknown>,
+  maxResults: number
+): Promise<MarketSnippet[]> {
   const response = await fetch(url, {
-    headers: { "Ocp-Apim-Subscription-Key": apiKey },
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "api-key": apiKey,
+    },
+    body: JSON.stringify(body),
     cache: "no-store",
   });
 
   if (!response.ok) return [];
 
   const data = (await response.json()) as {
-    webPages?: {
-      value?: { name?: string; url?: string; snippet?: string; dateLastCrawled?: string }[];
-    };
+    value?: Record<string, unknown>[];
   };
 
-  return (data.webPages?.value ?? []).map((page) => ({
-    title: page.name ?? "Web result",
-    url: page.url ?? "",
-    excerpt: (page.snippet ?? "").slice(0, 600),
-    source: "Bing Web Search",
-    publishedAt: page.dateLastCrawled,
-  }));
+  return mapAzureSearchDocuments(data.value ?? [], maxResults);
 }
 
-async function searchTavilyFallback(query: string, maxResults = 8): Promise<MarketSnippet[]> {
-  const apiKey = readIntelligenceEnv("TAVILY_API_KEY");
-  if (!apiKey) return [];
+async function searchAzureAiSearch(query: string, maxResults = 8): Promise<MarketSnippet[]> {
+  const endpoint = readIntelligenceEnv("AZURE_SEARCH_ENDPOINT")?.replace(/\/$/, "");
+  const apiKey = readIntelligenceEnv("AZURE_SEARCH_API_KEY");
+  const indexName = readAzureSearchIndexName();
+  const apiVersion = readIntelligenceEnv("AZURE_SEARCH_API_VERSION") || "2023-11-01";
 
-  const res = await fetch("https://api.tavily.com/search", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      api_key: apiKey,
-      query,
-      search_depth: "advanced",
-      max_results: maxResults,
-      include_answer: false,
-      days: 30,
-    }),
-    cache: "no-store",
+  if (!endpoint || !apiKey || !indexName) return [];
+
+  const url = `${endpoint}/indexes/${encodeURIComponent(indexName)}/docs/search?api-version=${encodeURIComponent(apiVersion)}`;
+
+  const semanticConfig = readIntelligenceEnv("AZURE_SEARCH_SEMANTIC_CONFIG");
+  let snippets = await postAzureSearch(
+    url,
+    apiKey,
+    {
+      search: query,
+      top: maxResults,
+      ...(semanticConfig
+        ? {
+            queryType: "semantic",
+            semanticConfiguration: semanticConfig,
+            captions: "extractive",
+          }
+        : {}),
+    },
+    maxResults
+  );
+
+  if (!snippets.length) {
+    snippets = await postAzureSearch(
+      url,
+      apiKey,
+      {
+        search: query,
+        top: maxResults,
+        queryType: "simple",
+      },
+      maxResults
+    );
+  }
+
+  return snippets.slice(0, maxResults);
+}
+
+/** When the search index returns no hits, synthesize market snippets via Azure OpenAI (2026-aware). */
+async function synthesizeMarketSnippetsViaAzure(input: {
+  query: string;
+  nicheLabel?: string;
+}): Promise<MarketSnippet[]> {
+  if (!isAzureOpenAIConfigured()) return [];
+
+  const raw = await azureChatCompletion({
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are a market intelligence analyst. Output ONLY valid JSON: { \"snippets\": [{ \"title\", \"url\", \"excerpt\", \"source\" }] }. Ground in realistic 2026 startup/market patterns. URLs may be empty if unknown.",
+      },
+      {
+        role: "user",
+        content: `Generate 6 concise live-style market intelligence snippets for query: "${input.query}"${input.nicheLabel ? ` in niche: ${input.nicheLabel}` : ""}.`,
+      },
+    ],
+    temperature: 0.35,
+    maxTokens: 1400,
+    jsonMode: true,
   });
 
-  if (!res.ok) return [];
-
-  const data = (await res.json()) as {
-    results?: { title: string; url: string; content: string; published_date?: string }[];
-  };
-
-  return (data.results ?? []).map((r) => ({
-    title: r.title,
-    url: r.url,
-    excerpt: r.content.slice(0, 600),
-    source: "Tavily",
-    publishedAt: r.published_date,
-  }));
+  try {
+    const parsed = JSON.parse(raw) as {
+      snippets?: { title?: string; url?: string; excerpt?: string; source?: string }[];
+    };
+    return (parsed.snippets ?? [])
+      .filter((s) => s.title && s.excerpt)
+      .map((s) => ({
+        title: s.title!,
+        url: s.url ?? "",
+        excerpt: s.excerpt!.slice(0, 600),
+        source: s.source ?? "Azure OpenAI market synthesis",
+      }));
+  } catch {
+    return [];
+  }
 }
 
 function mergeMarketContexts(contexts: LiveMarketContext[], query: string): LiveMarketContext {
@@ -306,22 +325,15 @@ export async function fetchLiveMarketContext(input: {
     };
   }
 
-  snippets = await searchAzureBing(seed);
+  snippets = await synthesizeMarketSnippetsViaAzure({
+    query: input.query,
+    nicheLabel: input.nicheLabel,
+  });
   if (snippets.length) {
     return {
       query: seed,
       scannedAt: new Date().toISOString(),
-      provider: "bing",
-      snippets,
-    };
-  }
-
-  snippets = await searchTavilyFallback(seed);
-  if (snippets.length) {
-    return {
-      query: seed,
-      scannedAt: new Date().toISOString(),
-      provider: "tavily",
+      provider: "azure_openai",
       snippets,
     };
   }
@@ -334,8 +346,8 @@ export async function fetchLiveMarketContext(input: {
       {
         title: `Market scan: ${input.query}`,
         url: "",
-        excerpt: `No live search keys returned data. Synthesize using current 2026 SaaS patterns for "${input.query}" and validate with founder interviews.`,
-        source: "AIscoutX fallback",
+        excerpt: `Azure AI Search returned no indexed documents for "${seed}". Configure AZURE_SEARCH_INDEX_NAME and index startup/market content, or rely on Azure OpenAI synthesis above.`,
+        source: "AIscoutX",
       },
     ],
   };

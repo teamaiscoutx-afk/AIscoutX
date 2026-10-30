@@ -86,8 +86,8 @@ export type LiveOpportunityDraft = {
 export type IntelligenceConfig = {
   hasWebSearch: boolean;
   hasLlm: boolean;
-  webProvider: "tavily" | "serper" | "perplexity" | null;
-  llmProvider: "openai" | "anthropic" | null;
+  webProvider: "azure_search" | "azure_openai" | null;
+  llmProvider: "azure" | "openai" | "anthropic" | null;
 };
 
 export type WorkspaceSignalDelta = {

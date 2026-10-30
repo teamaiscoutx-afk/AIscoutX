@@ -1,3 +1,4 @@
+import { azureChatCompletion, isAzureOpenAIConfigured } from "@/lib/azure-ai";
 import {
   BANNED_VOCABULARY,
   HUMAN_COPY_SYSTEM_PROMPT,
@@ -5,9 +6,10 @@ import {
 } from "@/lib/intelligence/copy-engine";
 import { readIntelligenceEnv } from "@/lib/env";
 
-export type LlmProvider = "openai" | "anthropic";
+export type LlmProvider = "azure" | "openai" | "anthropic";
 
 export function getLlmProvider(): LlmProvider | null {
+  if (isAzureOpenAIConfigured()) return "azure";
   if (readIntelligenceEnv("OPENAI_API_KEY")) return "openai";
   if (readIntelligenceEnv("ANTHROPIC_API_KEY")) return "anthropic";
   return null;
@@ -15,6 +17,18 @@ export function getLlmProvider(): LlmProvider | null {
 
 export function isLlmConfigured(): boolean {
   return getLlmProvider() !== null;
+}
+
+async function callAzureOpenAi(system: string, user: string): Promise<string> {
+  return azureChatCompletion({
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+    temperature: 0.2,
+    maxTokens: 4096,
+    jsonMode: true,
+  });
 }
 
 async function callOpenAi(system: string, user: string): Promise<string> {
@@ -89,16 +103,18 @@ export async function synthesizeJson<T>(
   const provider = getLlmProvider();
   if (!provider) {
     throw new Error(
-      "No LLM configured. Set OPENAI_API_KEY or ANTHROPIC_API_KEY."
+      "No LLM configured. Set AZURE_OPENAI_* or OPENAI_API_KEY or ANTHROPIC_API_KEY."
     );
   }
 
   const user = `${taskPrompt}\n\n${evidenceBlock}\n\nBanned words: ${BANNED_VOCABULARY.join(", ")}`;
 
   const raw =
-    provider === "openai"
-      ? await callOpenAi(HUMAN_COPY_SYSTEM_PROMPT, user)
-      : await callAnthropic(HUMAN_COPY_SYSTEM_PROMPT, user);
+    provider === "azure"
+      ? await callAzureOpenAi(HUMAN_COPY_SYSTEM_PROMPT, user)
+      : provider === "openai"
+        ? await callOpenAi(HUMAN_COPY_SYSTEM_PROMPT, user)
+        : await callAnthropic(HUMAN_COPY_SYSTEM_PROMPT, user);
 
   const cleaned = scrubBannedVocabulary(raw.trim());
 

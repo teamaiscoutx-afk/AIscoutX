@@ -6,7 +6,7 @@ import { Loader2, Radar } from "lucide-react";
 
 const STATUS_LINES = [
   "Scanning Live Opportunities across Reddit, X, and Product Hunt…",
-  "Finding demanding business ideas in real-time with Tavily web search…",
+  "Finding demanding business ideas via Azure AI Search & OpenAI…",
   "Computing demand, growth, and momentum scores from live signals…",
   "Structuring top SaaS opportunities with OpenAI intelligence…",
   "Saving verified opportunities to your Supabase intelligence DB…",

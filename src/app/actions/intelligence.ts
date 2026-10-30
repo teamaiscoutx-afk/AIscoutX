@@ -37,7 +37,9 @@ export async function getIntelligenceStatus(): Promise<IntelligenceStatus> {
       ready: true,
       webProvider: env.webProvider,
       llmProvider: env.llmProvider,
-      message: `Live engine active via ${env.webProvider} + ${env.llmProvider}.`,
+      message: env.webProvider
+        ? `Live engine active via ${env.webProvider} + ${env.llmProvider}.`
+        : `Live engine active via ${env.llmProvider} (Azure OpenAI market synthesis).`,
     };
   }
 
@@ -98,7 +100,7 @@ export async function refreshLiveOpportunityFeed(
         opportunities: [],
         error:
           liveError ??
-          "Live discovery failed for all niche seeds. Check Tavily and OpenAI keys, then restart the dev server.",
+          "Live discovery failed for all niche seeds. Check Azure OpenAI and Azure AI Search, then restart the dev server.",
       };
     }
 

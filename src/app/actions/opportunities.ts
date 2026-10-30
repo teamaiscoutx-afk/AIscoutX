@@ -116,7 +116,7 @@ export async function refreshDiscoverFeed(
     source: "live",
     statusMessage:
       live.error ??
-      "Live discovery scan completed. Check Tavily / OpenAI API connections for deeper search fetching.",
+      "Live discovery scan completed. Verify Azure OpenAI and Azure AI Search configuration.",
   };
 }
 

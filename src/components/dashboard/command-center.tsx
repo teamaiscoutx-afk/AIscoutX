@@ -141,6 +141,7 @@ export function CommandCenter({
   const [feedError, setFeedError] = useState<string | undefined>();
   const feedRequestRef = useRef(0);
   const onboardingScanRef = useRef(false);
+  const initialLiveScanRef = useRef(false);
 
   const [draftIdentity, setDraftIdentity] = useState<WorkspaceIdentity | null>(
     null
@@ -568,6 +569,13 @@ export function CommandCenter({
     if (phase !== "ready") return;
     loadCachedFeed(activeWorkspace, activeNiche);
   }, [phase, activeWorkspace, activeNiche, loadCachedFeed]);
+
+  useEffect(() => {
+    if (phase !== "ready") return;
+    if (initialLiveScanRef.current) return;
+    initialLiveScanRef.current = true;
+    void runDiscoverRefresh(undefined, activeWorkspace, activeNiche);
+  }, [phase, activeWorkspace, activeNiche, runDiscoverRefresh]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {

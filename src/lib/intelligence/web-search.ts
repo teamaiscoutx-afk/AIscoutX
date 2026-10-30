@@ -200,7 +200,7 @@ function generateSyntheticFallbackHits(query: string): RawHit[] {
 
 async function runQuery(query: string, maxResults = 8): Promise<RawHit[]> {
   const azureScan = await fetchLiveMarketContext({ query });
-  if (azureScan.provider !== "synthetic" && azureScan.snippets.length > 0) {
+  if (azureScan.snippets.length > 0) {
     return azureScan.snippets.slice(0, maxResults).map((s) => ({
       title: s.title,
       url: s.url,
@@ -209,55 +209,24 @@ async function runQuery(query: string, maxResults = 8): Promise<RawHit[]> {
     }));
   }
 
-  // Try Provider 1: Tavily
-  if (readIntelligenceEnv("TAVILY_API_KEY")) {
-    const hits = await searchTavily(query, maxResults);
-    if (hits.length) return hits;
-  }
-
-  // Try Provider 2: Serper
-  if (readIntelligenceEnv("SERPER_API_KEY")) {
-    const hits = await searchSerper(query, maxResults);
-    if (hits.length) return hits;
-  }
-
-  // Try Provider 3: Perplexity
-  if (readIntelligenceEnv("PERPLEXITY_API_KEY")) {
-    const hits = await searchPerplexity(query);
-    if (hits.length) return hits;
-  }
-
-  // Fallback to internal AI intelligence synthesis if all search keys fail/exhaust
   return generateSyntheticFallbackHits(query);
 }
 
-export function getWebSearchProvider():
-  | "azure_search"
-  | "bing"
-  | "tavily"
-  | "serper"
-  | "perplexity"
-  | "fallback" {
+export function getWebSearchProvider(): "azure_search" | "azure_openai" | "fallback" {
   if (
     readIntelligenceEnv("AZURE_SEARCH_ENDPOINT") &&
     readIntelligenceEnv("AZURE_SEARCH_API_KEY")
   ) {
     return "azure_search";
   }
-  if (
-    readIntelligenceEnv("AZURE_BING_SEARCH_KEY") ||
-    readIntelligenceEnv("BING_SEARCH_V7_SUBSCRIPTION_KEY")
-  ) {
-    return "bing";
+  if (readIntelligenceEnv("AZURE_OPENAI_API_KEY")) {
+    return "azure_openai";
   }
-  if (readIntelligenceEnv("TAVILY_API_KEY")) return "tavily";
-  if (readIntelligenceEnv("SERPER_API_KEY")) return "serper";
-  if (readIntelligenceEnv("PERPLEXITY_API_KEY")) return "perplexity";
   return "fallback";
 }
 
 export function isWebSearchConfigured(): boolean {
-  return true; // Always return true so application features run seamlessly with fallback
+  return getWebSearchProvider() !== "fallback";
 }
 
 export async function searchChannel(

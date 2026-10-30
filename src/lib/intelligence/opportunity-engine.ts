@@ -1,3 +1,4 @@
+import { isAzureOpenAIConfigured } from "@/lib/azure-ai";
 import { buildEvidencePromptBlock } from "@/lib/intelligence/copy-engine";
 import { synthesizeJson } from "@/lib/intelligence/llm-router";
 import { computeMetrics, computeScores } from "@/lib/intelligence/score-engine";
@@ -145,9 +146,9 @@ export async function discoverLiveOpportunity(
   context?: Partial<DiscoveryContext>
 ): Promise<LiveOpportunityDraft> {
   const config = getIntelligenceConfig();
-  if (!config.hasWebSearch || !config.hasLlm) {
+  if (!config.hasLlm && !isAzureOpenAIConfigured()) {
     throw new Error(
-      "Intelligence engine requires TAVILY_API_KEY or SERPER_API_KEY or PERPLEXITY_API_KEY plus OPENAI_API_KEY or ANTHROPIC_API_KEY."
+      "Intelligence engine requires Azure OpenAI (AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_DEPLOYMENT_NAME)."
     );
   }
 

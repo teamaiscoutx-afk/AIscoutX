@@ -86,21 +86,52 @@ export async function createRazorpayCheckoutOrder(input: {
 
   const currency = priced.currency;
   const razorpay = getRazorpayClient();
-  const order = await razorpay.orders.create({
-    amount: priced.amountCents,
-    currency: currency === "INR" ? "INR" : PRO_CURRENCY,
-    receipt: `${input.plan}_${input.user.id.slice(0, 8)}_${Date.now()}`,
-    notes: {
-      user_id: input.user.id,
-      plan: input.plan,
-      email: input.user.email ?? "",
-    },
-  });
+  const receipt = `ax_${Date.now().toString(36)}`.slice(0, 40);
+  const orderCurrency = currency === "INR" ? "INR" : PRO_CURRENCY;
+
+  let order: Awaited<ReturnType<typeof razorpay.orders.create>>;
+  let chargeAmount = priced.amountCents;
+  let chargeCurrency: CheckoutCurrency = currency;
+
+  try {
+    order = await razorpay.orders.create({
+      amount: chargeAmount,
+      currency: orderCurrency,
+      receipt,
+      notes: {
+        user_id: input.user.id,
+        plan: input.plan,
+        email: input.user.email ?? "",
+      },
+    });
+  } catch (firstError) {
+    if (orderCurrency !== "INR") {
+      const usdCatalogCents =
+        input.plan === "pro"
+          ? PRO_PRICE_AMOUNT_CENTS
+          : (catalogAmount(input.plan)?.amountCents ?? priced.amountCents);
+      chargeAmount = toRazorpayAmount(usdCatalogCents);
+      chargeCurrency = "INR";
+      order = await razorpay.orders.create({
+        amount: chargeAmount,
+        currency: "INR",
+        receipt,
+        notes: {
+          user_id: input.user.id,
+          plan: input.plan,
+          email: input.user.email ?? "",
+          currency_fallback: "INR",
+        },
+      });
+    } else {
+      throw firstError;
+    }
+  }
 
   return {
     orderId: order.id,
-    amount: priced.amountCents,
-    currency,
+    amount: chargeAmount,
+    currency: chargeCurrency,
     description: priced.description,
     prefill: buildCheckoutPrefill(input.user),
   };
