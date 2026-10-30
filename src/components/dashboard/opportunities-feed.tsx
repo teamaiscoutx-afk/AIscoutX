@@ -37,7 +37,7 @@ export function OpportunitiesFeed({
   return (
     <div
       id="opportunities"
-      className="glass-panel overflow-hidden rounded-2xl border-white/[0.08]"
+      className="glass-panel overflow-hidden rounded-2xl border-white/[0.08] transition-[border-color,box-shadow] duration-300 hover:border-white/[0.12] hover:shadow-[0_24px_64px_rgba(0,0,0,0.35)]"
     >
       {(hasSearch || activeKeyword) && (
         <div className="border-b border-white/[0.06] bg-[#deff9a]/[0.04] px-4 py-2.5 sm:px-6">

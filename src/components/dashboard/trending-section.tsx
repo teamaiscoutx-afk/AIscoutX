@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 
 import { CopyToast } from "@/components/dashboard/copy-toast";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ export function TrendingSection({
   trendingKeywords,
   viralHooks,
 }: TrendingSectionProps) {
+  const reduceMotion = useReducedMotion();
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [showCopiedToast, setShowCopiedToast] = useState(false);
 
@@ -48,8 +50,16 @@ export function TrendingSection({
   return (
     <>
       <CopyToast visible={showCopiedToast} />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="glass-panel rounded-2xl p-4 sm:p-5">
+      <motion.div
+        className="grid gap-4 lg:grid-cols-2"
+        initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
+      >
+        <motion.div
+          whileHover={reduceMotion ? undefined : { y: -2 }}
+          className="glass-panel rounded-2xl p-4 transition-[border-color,box-shadow] duration-300 hover:border-[#A3E635]/20 hover:shadow-[0_0_36px_rgba(163,230,53,0.08)] sm:p-5"
+        >
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
               High-Demand Market Signals
@@ -84,9 +94,12 @@ export function TrendingSection({
           <p className="mt-3 text-[11px] text-zinc-600">
             Select a keyword tag to isolate specific niche opportunities below.
           </p>
-        </div>
+        </motion.div>
 
-        <div className="glass-panel rounded-2xl p-4 sm:p-5">
+        <motion.div
+          whileHover={reduceMotion ? undefined : { y: -2 }}
+          className="glass-panel rounded-2xl p-4 transition-[border-color,box-shadow] duration-300 hover:border-[#A3E635]/20 hover:shadow-[0_0_36px_rgba(163,230,53,0.08)] sm:p-5"
+        >
           <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
             Target Pain Points & Value Props
           </p>
@@ -94,7 +107,7 @@ export function TrendingSection({
             {viralHooks.map((hook, index) => (
               <li
                 key={hook}
-                className="group flex items-start gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 transition-colors hover:border-white/[0.1]"
+                className="group flex items-start gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#A3E635]/20 hover:bg-white/[0.04] hover:shadow-[0_8px_24px_rgba(0,0,0,0.2)]"
               >
                 <p className="flex-1 text-xs leading-relaxed text-zinc-400 group-hover:text-zinc-300">
                   &ldquo;{hook}&rdquo;
@@ -119,8 +132,8 @@ export function TrendingSection({
               </li>
             ))}
           </ul>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </>
   );
 }

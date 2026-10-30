@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion, useReducedMotion } from "framer-motion";
 import { Loader2, MessageSquare, Rocket, Sparkles } from "lucide-react";
 
 import { dispatchCreditsUpdated } from "@/lib/billing/credits-events";
@@ -21,6 +22,7 @@ export function DescribeIdeaMentor({
   nicheLabel = "Startup",
   workspaceHref,
 }: DescribeIdeaMentorProps) {
+  const reduceMotion = useReducedMotion();
   const router = useRouter();
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState<ChatLine[]>([]);
@@ -98,7 +100,17 @@ export function DescribeIdeaMentor({
   const canEnterWorkspace = Boolean(workspaceHref);
 
   return (
-    <div className="glass-panel relative overflow-hidden rounded-2xl border border-[#A3E635]/25 p-6 sm:p-8">
+    <motion.div
+      initial={reduceMotion ? false : { opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      whileHover={
+        reduceMotion
+          ? undefined
+          : { boxShadow: "0 0 48px rgba(163,230,53,0.12), 0 24px 64px rgba(0,0,0,0.35)" }
+      }
+      className="glass-panel relative overflow-hidden rounded-2xl border border-[#A3E635]/25 p-6 transition-[border-color,box-shadow] duration-300 hover:border-[#A3E635]/35 sm:p-8"
+    >
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_0%,rgba(163,230,53,0.1),transparent_70%)]"
@@ -119,7 +131,7 @@ export function DescribeIdeaMentor({
         </p>
 
         {messages.length > 0 && (
-          <div className="mt-5 max-h-64 space-y-3 overflow-y-auto rounded-xl border border-white/[0.06] bg-black/30 p-4 scrollbar-thin">
+          <div className="mt-5 max-h-64 space-y-3 overflow-y-auto rounded-xl border border-white/[0.06] bg-black/30 p-4 scrollbar-thin sm:p-5">
             {messages.map((line, index) => (
               <div
                 key={`${line.role}-${index}`}
@@ -138,14 +150,16 @@ export function DescribeIdeaMentor({
         )}
 
         <div className="mt-5 flex flex-col gap-3">
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            disabled={pending}
-            rows={3}
-            placeholder="Describe the problem, audience, and what you want to build…"
-            className="w-full resize-none rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A3E635]/30"
-          />
+          <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-1 transition-colors duration-300 focus-within:border-[#A3E635]/35 focus-within:bg-[#A3E635]/[0.04]">
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              disabled={pending}
+              rows={4}
+              placeholder="Describe the problem, audience, and what you want to build…"
+              className="glass-input block min-h-[7.25rem] w-full resize-none rounded-[10px] border-0 bg-transparent p-4 text-left text-sm leading-relaxed text-zinc-100 placeholder:text-zinc-500 focus-visible:outline-none focus-visible:ring-0 sm:px-5 sm:py-4"
+            />
+          </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Button
               type="button"
@@ -193,7 +207,7 @@ export function DescribeIdeaMentor({
           </p>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 

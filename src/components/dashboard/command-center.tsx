@@ -61,6 +61,18 @@ type ExperiencePhase =
   | "scanning"
   | "ready";
 
+const dashEase = [0.22, 1, 0.36, 1] as const;
+
+const statGridVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.09, delayChildren: 0.15 } },
+};
+
+const statCardVariants = {
+  hidden: { opacity: 0, y: 14 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.42, ease: dashEase } },
+};
+
 type CommandCenterProps = {
   initialOpportunities: Opportunity[];
   dataSource: OpportunitiesDataSource;
@@ -620,38 +632,94 @@ export function CommandCenter({
           >
             <div className="flex min-h-0 flex-1 flex-col">
               <main className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-                <div className="mb-6 flex flex-wrap items-center gap-3">
-                  <h1 className="text-lg font-semibold text-white sm:text-xl">
-                    Market Intelligence Radar
-                  </h1>
-                  <NicheSwitcher
-                    activeWorkspace={activeWorkspace}
-                    activeNiche={activeNiche}
-                    activeNicheLabel={activeNicheLabel}
-                    onNicheChange={handleNicheSwap}
+                <motion.header
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.55, ease: dashEase }}
+                  className="relative mb-8 overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.25)] sm:p-6"
+                >
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_80%_at_0%_0%,rgba(163,230,53,0.14),transparent_55%)]"
                   />
-                  <button
-                    type="button"
-                    onClick={() => void runDiscoverRefresh()}
-                    className="rounded-lg border border-white/10 bg-zinc-900 px-3 py-1.5 text-[11px] font-semibold text-zinc-200 transition-colors hover:border-[#A3E635]/40 hover:text-white"
-                  >
-                    Scan Market
-                  </button>
-                  <Badge
-                    variant="outline"
-                    className="border-[#deff9a]/30 bg-[#deff9a]/10 text-[10px] uppercase tracking-wider text-[#deff9a]"
-                  >
-                    <span className="mr-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#deff9a]" />
-                    {feedLoading
-                      ? `Scanning ${activeNicheLabel}...`
-                      : resolveFeedSourceLabel(feedSource)}
-                  </Badge>
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_100%_100%,rgba(51,65,85,0.35),transparent_60%)]"
+                  />
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-[#A3E635]/35 to-transparent"
+                  />
+
+                  <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="min-w-0 space-y-1.5">
+                      <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.08, duration: 0.4 }}
+                        className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500"
+                      >
+                        Discover · Live signals
+                      </motion.p>
+                      <motion.h1
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.12, duration: 0.45, ease: dashEase }}
+                        className="text-xl font-semibold tracking-tight text-white sm:text-2xl"
+                      >
+                        Market Intelligence Radar
+                      </motion.h1>
+                      <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.18, duration: 0.4 }}
+                        className="max-w-xl text-sm leading-relaxed text-zinc-500"
+                      >
+                        Filter by niche, rescan the market, and track validation momentum in real time.
+                      </motion.p>
+                    </div>
+
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.22, duration: 0.45, ease: dashEase }}
+                      className="flex flex-wrap items-center gap-2.5 sm:gap-3"
+                    >
+                      <NicheSwitcher
+                        activeWorkspace={activeWorkspace}
+                        activeNiche={activeNiche}
+                        activeNicheLabel={activeNicheLabel}
+                        onNicheChange={handleNicheSwap}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void runDiscoverRefresh()}
+                        className="rounded-xl border border-white/[0.1] bg-zinc-950/60 px-3.5 py-2 text-[11px] font-semibold text-zinc-200 shadow-[0_0_24px_rgba(0,0,0,0.2)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#A3E635]/45 hover:text-white hover:shadow-[0_0_28px_rgba(163,230,53,0.15)]"
+                      >
+                        Scan Market
+                      </button>
+                      <Badge
+                        variant="outline"
+                        className="border-[#A3E635]/35 bg-[#A3E635]/10 px-2.5 py-1 text-[10px] uppercase tracking-wider text-[#D9F99D] shadow-[0_0_20px_rgba(163,230,53,0.08)]"
+                      >
+                        <span className="mr-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#A3E635]" />
+                        {feedLoading
+                          ? `Scanning ${activeNicheLabel}...`
+                          : resolveFeedSourceLabel(feedSource)}
+                      </Badge>
+                    </motion.div>
+                  </div>
+
                   {feedError && !feedLoading && allOpportunities.length === 0 && (
-                    <p className="w-full text-xs text-amber-400/90 sm:w-auto">
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="relative mt-4 text-xs text-amber-400/90"
+                    >
                       {feedError}
-                    </p>
+                    </motion.p>
                   )}
-                </div>
+                </motion.header>
 
                 <motion.div
                   key={`${activeWorkspace}-${activeNiche}-${feedSource}-${allOpportunities.map((o) => o.id).join(",")}`}
@@ -673,21 +741,35 @@ export function CommandCenter({
                     />
                   )}
 
-                  <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+                  <motion.div
+                    className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4"
+                    variants={statGridVariants}
+                    initial="hidden"
+                    animate="show"
+                  >
                     {stats.map((stat) => (
-                      <div
+                      <motion.div
                         key={stat.label}
-                        className="glass-panel rounded-xl px-5 py-4 transition-all duration-300 hover:border-white/[0.12]"
+                        variants={statCardVariants}
+                        whileHover={{
+                          y: -3,
+                          transition: { duration: 0.25, ease: dashEase },
+                        }}
+                        className="group glass-panel relative overflow-hidden rounded-xl px-5 py-4 transition-[border-color,box-shadow] duration-300 hover:border-[#A3E635]/25 hover:shadow-[0_0_32px_rgba(163,230,53,0.1),0_16px_40px_rgba(0,0,0,0.35)]"
                       >
-                        <p className="text-2xl font-bold tabular-nums tracking-tight text-white sm:text-3xl">
+                        <div
+                          aria-hidden
+                          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_0%,rgba(163,230,53,0.08),transparent_55%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                        />
+                        <p className="relative text-2xl font-bold tabular-nums tracking-tight text-white sm:text-3xl">
                           {stat.value}
                         </p>
-                        <p className="mt-1 text-[11px] font-medium text-zinc-500 sm:text-xs">
+                        <p className="relative mt-1.5 text-[11px] font-medium leading-snug text-zinc-500 sm:text-xs">
                           {stat.label}
                         </p>
-                      </div>
+                      </motion.div>
                     ))}
-                  </div>
+                  </motion.div>
 
                   <div className="mt-6">
                     <TrendingSection

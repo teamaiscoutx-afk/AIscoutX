@@ -1,5 +1,6 @@
 "use client";
 
+import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 
 import type { Opportunity } from "@/lib/dashboard/opportunities";
@@ -15,8 +16,20 @@ export function OpportunityOfDay({
   opportunity,
   onActNow,
 }: OpportunityOfDayProps) {
+  const reduceMotion = useReducedMotion();
+
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-[#deff9a]/25 bg-gradient-to-br from-[#deff9a]/[0.08] via-white/[0.02] to-transparent p-5 shadow-[0_0_48px_rgba(222,255,154,0.08)] sm:p-6">
+    <motion.div
+      initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      whileHover={
+        reduceMotion
+          ? undefined
+          : { y: -2, boxShadow: "0 0 56px rgba(163,230,53,0.14)" }
+      }
+      className="relative overflow-hidden rounded-2xl border border-[#A3E635]/25 bg-gradient-to-br from-[#A3E635]/[0.08] via-white/[0.02] to-transparent p-5 shadow-[0_0_48px_rgba(163,230,53,0.08)] transition-[border-color] duration-300 hover:border-[#A3E635]/40 sm:p-6"
+    >
       <div
         aria-hidden
         className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-[#deff9a]/10 blur-3xl"
@@ -55,6 +68,6 @@ export function OpportunityOfDay({
           <ArrowRight className="h-4 w-4" />
         </Button>
       </div>
-    </div>
+    </motion.div>
   );
 }
