@@ -45,8 +45,8 @@ export function UpgradeToPro({ compact }: UpgradeToProProps) {
       )}
     >
       <Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} />
-      <span className="hidden sm:inline">Upgrade to Pro</span>
-      <span className="sm:hidden">Pro</span>
+      <span className="hidden sm:inline">Upgrade Credits</span>
+      <span className="sm:hidden">Credits</span>
     </button>
   );
 }

@@ -6,6 +6,7 @@ import { motion, useReducedMotion } from "framer-motion";
 
 import { PRICING_PLANS, type CatalogPlan } from "@/lib/billing/credit-plans";
 import { openRazorpayCheckout } from "@/lib/billing/razorpay";
+import { cn } from "@/lib/utils";
 
 const GPU = { willChange: "transform, opacity" } as const;
 const ease = [0.22, 1, 0.36, 1] as const;
@@ -114,7 +115,13 @@ function PlanBadge({ label, featured }: { label: string; featured?: boolean }) {
   );
 }
 
-function PlanCard({ plan }: { plan: CatalogPlan }) {
+function PlanCard({
+  plan,
+  elevateFeatured = true,
+}: {
+  plan: CatalogPlan;
+  elevateFeatured?: boolean;
+}) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hovered, setHovered] = useState(false);
@@ -137,7 +144,10 @@ function PlanCard({ plan }: { plan: CatalogPlan }) {
           : undefined
       }
       whileHover={reduceMotion ? undefined : { scale: 1.02, y: plan.featured ? -8 : -4 }}
-      className={`relative flex h-full flex-col rounded-3xl ${plan.featured ? "md:-mt-3 md:mb-3" : ""}`}
+      className={cn(
+        "relative flex h-full flex-col rounded-3xl",
+        plan.featured && elevateFeatured && "md:-mt-3 md:mb-3"
+      )}
     >
       {plan.featured && (
         <span
@@ -223,6 +233,44 @@ function PlanCard({ plan }: { plan: CatalogPlan }) {
   );
 }
 
+type PricingPlanGridProps = {
+  className?: string;
+  /** Featured plan vertical lift (pricing page). Off in modals. */
+  elevateFeatured?: boolean;
+  motionTrigger?: "inView" | "mount";
+};
+
+export function PricingPlanGrid({
+  className,
+  elevateFeatured = true,
+  motionTrigger = "inView",
+}: PricingPlanGridProps) {
+  const reduceMotion = useReducedMotion();
+
+  const grid = (
+    <motion.div
+      className={cn(
+        "relative z-10 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 lg:gap-6",
+        className
+      )}
+      variants={list}
+      initial={reduceMotion ? false : "hidden"}
+      {...(motionTrigger === "mount"
+        ? { animate: reduceMotion ? undefined : "show" }
+        : {
+            whileInView: "show",
+            viewport: { once: true, margin: "-40px" },
+          })}
+    >
+      {PRICING_PLANS.map((plan) => (
+        <PlanCard key={plan.id} plan={plan} elevateFeatured={elevateFeatured} />
+      ))}
+    </motion.div>
+  );
+
+  return grid;
+}
+
 type PricingCardsProps = {
   /** Show breathing mesh behind cards (off on homepage section). */
   ambient?: boolean;
@@ -230,22 +278,10 @@ type PricingCardsProps = {
 };
 
 export function PricingCards({ ambient = false, className }: PricingCardsProps) {
-  const reduceMotion = useReducedMotion();
-
   return (
     <div className={`relative ${className ?? ""}`}>
       {ambient && <PricingAmbient />}
-      <motion.div
-        className="relative z-10 grid gap-5 md:grid-cols-3 md:gap-6"
-        variants={list}
-        initial={reduceMotion ? false : "hidden"}
-        whileInView="show"
-        viewport={{ once: true, margin: "-40px" }}
-      >
-        {PRICING_PLANS.map((plan) => (
-          <PlanCard key={plan.id} plan={plan} />
-        ))}
-      </motion.div>
+      <PricingPlanGrid />
     </div>
   );
 }
