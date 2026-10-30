@@ -1,5 +1,6 @@
 "use client";
 
+import { motion, useReducedMotion } from "framer-motion";
 import { TrendingUp } from "lucide-react";
 
 import type { Opportunity } from "@/lib/dashboard/opportunities";
@@ -33,11 +34,20 @@ export function OpportunitiesFeed({
   searchQuery = "",
   onSelect,
 }: OpportunitiesFeedProps) {
+  const reduceMotion = useReducedMotion();
   const hasSearch = searchQuery.trim().length > 0;
   return (
-    <div
+    <motion.div
       id="opportunities"
-      className="glass-panel overflow-hidden rounded-2xl border-white/[0.08] transition-[border-color,box-shadow] duration-300 hover:border-white/[0.12] hover:shadow-[0_24px_64px_rgba(0,0,0,0.35)]"
+      initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      whileHover={
+        reduceMotion
+          ? undefined
+          : { boxShadow: "0 0 40px rgba(163,230,53,0.08), 0 24px 64px rgba(0,0,0,0.35)" }
+      }
+      className="glass-panel overflow-hidden rounded-2xl border-white/[0.08] transition-[border-color,box-shadow] duration-300 hover:border-[#A3E635]/20"
     >
       {(hasSearch || activeKeyword) && (
         <div className="border-b border-white/[0.06] bg-[#deff9a]/[0.04] px-4 py-2.5 sm:px-6">
@@ -175,6 +185,6 @@ export function OpportunitiesFeed({
           </tbody>
         </table>
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -101,9 +101,9 @@ export function DescribeIdeaMentor({
 
   return (
     <motion.div
-      initial={reduceMotion ? false : { opacity: 0, y: 14 }}
+      initial={reduceMotion ? false : { opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
       whileHover={
         reduceMotion
           ? undefined

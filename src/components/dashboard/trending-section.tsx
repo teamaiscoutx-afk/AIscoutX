@@ -52,15 +52,18 @@ export function TrendingSection({
       <CopyToast visible={showCopiedToast} />
       <motion.div
         className="grid gap-4 lg:grid-cols-2"
-        initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+        initial={false}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
       >
         <motion.div
           whileHover={reduceMotion ? undefined : { y: -2 }}
-          className="glass-panel rounded-2xl p-4 transition-[border-color,box-shadow] duration-300 hover:border-[#A3E635]/20 hover:shadow-[0_0_36px_rgba(163,230,53,0.08)] sm:p-5"
+          className="glass-panel group/panel relative overflow-hidden rounded-2xl p-4 transition-[border-color,box-shadow] duration-300 hover:border-[#A3E635]/25 hover:shadow-[0_0_40px_rgba(163,230,53,0.1)] sm:p-5"
         >
-          <div className="flex items-center justify-between gap-2">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 ring-1 ring-inset ring-[#A3E635]/0 transition-all duration-300 group-hover/panel:opacity-100 group-hover/panel:ring-[#A3E635]/20"
+          />
+          <div className="relative flex items-center justify-between gap-2">
             <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
               High-Demand Market Signals
             </p>
@@ -98,9 +101,13 @@ export function TrendingSection({
 
         <motion.div
           whileHover={reduceMotion ? undefined : { y: -2 }}
-          className="glass-panel rounded-2xl p-4 transition-[border-color,box-shadow] duration-300 hover:border-[#A3E635]/20 hover:shadow-[0_0_36px_rgba(163,230,53,0.08)] sm:p-5"
+          className="glass-panel group/panel relative overflow-hidden rounded-2xl p-4 transition-[border-color,box-shadow] duration-300 hover:border-[#A3E635]/25 hover:shadow-[0_0_40px_rgba(163,230,53,0.1)] sm:p-5"
         >
-          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 ring-1 ring-inset ring-[#A3E635]/0 transition-all duration-300 group-hover/panel:opacity-100 group-hover/panel:ring-[#A3E635]/20"
+          />
+          <p className="relative text-xs font-semibold uppercase tracking-wider text-zinc-500">
             Target Pain Points & Value Props
           </p>
           <ul className="mt-3 space-y-2">

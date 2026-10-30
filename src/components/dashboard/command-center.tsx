@@ -73,6 +73,16 @@ const statCardVariants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.42, ease: dashEase } },
 };
 
+const dashboardFlowVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.07, delayChildren: 0.04 } },
+};
+
+const dashboardSectionVariants = {
+  hidden: { opacity: 0, y: 18 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.48, ease: dashEase } },
+};
+
 type CommandCenterProps = {
   initialOpportunities: Opportunity[];
   dataSource: OpportunitiesDataSource;
@@ -723,64 +733,67 @@ export function CommandCenter({
 
                 <motion.div
                   key={`${activeWorkspace}-${activeNiche}-${feedSource}-${allOpportunities.map((o) => o.id).join(",")}`}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  variants={dashboardFlowVariants}
+                  initial="hidden"
+                  animate="show"
+                  className="space-y-6 sm:space-y-8"
                 >
-                  <div className="mb-8">
-                    <DescribeIdeaMentor
-                      nicheLabel={activeNicheLabel}
-                      workspaceHref={workspaceHref}
-                    />
-                  </div>
-
-                  {opportunityOfDay && (
-                    <OpportunityOfDay
-                      opportunity={opportunityOfDay}
-                      onActNow={() => openOpportunity(opportunityOfDay)}
-                    />
-                  )}
-
-                  <motion.div
-                    className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4"
-                    variants={statGridVariants}
-                    initial="hidden"
-                    animate="show"
-                  >
-                    {stats.map((stat) => (
-                      <motion.div
-                        key={stat.label}
-                        variants={statCardVariants}
-                        whileHover={{
-                          y: -3,
-                          transition: { duration: 0.25, ease: dashEase },
-                        }}
-                        className="group glass-panel relative overflow-hidden rounded-xl px-5 py-4 transition-[border-color,box-shadow] duration-300 hover:border-[#A3E635]/25 hover:shadow-[0_0_32px_rgba(163,230,53,0.1),0_16px_40px_rgba(0,0,0,0.35)]"
-                      >
-                        <div
-                          aria-hidden
-                          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_0%,rgba(163,230,53,0.08),transparent_55%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-                        />
-                        <p className="relative text-2xl font-bold tabular-nums tracking-tight text-white sm:text-3xl">
-                          {stat.value}
-                        </p>
-                        <p className="relative mt-1.5 text-[11px] font-medium leading-snug text-zinc-500 sm:text-xs">
-                          {stat.label}
-                        </p>
-                      </motion.div>
-                    ))}
+                  <motion.div variants={dashboardSectionVariants}>
+                    <motion.div
+                      className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4"
+                      variants={statGridVariants}
+                    >
+                      {stats.map((stat) => (
+                        <motion.div
+                          key={stat.label}
+                          variants={statCardVariants}
+                          whileHover={{
+                            y: -3,
+                            transition: { duration: 0.25, ease: dashEase },
+                          }}
+                          className="group glass-panel relative overflow-hidden rounded-xl px-5 py-4 transition-[border-color,box-shadow] duration-300 hover:border-[#A3E635]/30 hover:shadow-[0_0_36px_rgba(163,230,53,0.12),0_16px_40px_rgba(0,0,0,0.35)]"
+                        >
+                          <div
+                            aria-hidden
+                            className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-transparent transition-[box-shadow] duration-300 group-hover:shadow-[inset_0_0_24px_rgba(163,230,53,0.06)]"
+                          />
+                          <div
+                            aria-hidden
+                            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_0%,rgba(163,230,53,0.1),transparent_55%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                          />
+                          <p className="relative text-2xl font-bold tabular-nums tracking-tight text-white sm:text-3xl">
+                            {stat.value}
+                          </p>
+                          <p className="relative mt-1.5 text-[11px] font-medium leading-snug text-zinc-500 sm:text-xs">
+                            {stat.label}
+                          </p>
+                        </motion.div>
+                      ))}
+                    </motion.div>
                   </motion.div>
 
-                  <div className="mt-6">
+                  <motion.div variants={dashboardSectionVariants}>
                     <TrendingSection
                       activeKeyword={keywordFilter}
                       onKeywordChange={setKeywordFilter}
                       trendingKeywords={contextFeed.trendingKeywords}
                       viralHooks={contextFeed.viralHooks}
                     />
-                  </div>
+                  </motion.div>
 
-                  <div className="mt-8 flex flex-col gap-3 sm:mt-10 sm:flex-row sm:items-end sm:justify-between">
+                  {opportunityOfDay && (
+                    <motion.div variants={dashboardSectionVariants}>
+                      <OpportunityOfDay
+                        opportunity={opportunityOfDay}
+                        onActNow={() => openOpportunity(opportunityOfDay)}
+                      />
+                    </motion.div>
+                  )}
+
+                  <motion.div
+                    variants={dashboardSectionVariants}
+                    className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
+                  >
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
                         Ranked by market demand momentum
@@ -790,12 +803,12 @@ export function CommandCenter({
                       </h2>
                     </div>
                     <p className="flex items-center gap-1.5 text-xs text-zinc-600">
-                      <Zap className="h-3.5 w-3.5 text-[#deff9a]" />
+                      <Zap className="h-3.5 w-3.5 text-[#A3E635]" />
                       Click any row to open full AI Blueprint & Market Analysis
                     </p>
-                  </div>
+                  </motion.div>
 
-                  <div className="mt-5">
+                  <motion.div variants={dashboardSectionVariants}>
                     <OpportunitiesFeed
                       key={`feed-${activeWorkspace}-${activeNiche}-${searchQuery}-${keywordFilter ?? "all"}`}
                       opportunities={filteredOpportunities}
@@ -804,7 +817,25 @@ export function CommandCenter({
                       searchQuery={searchQuery}
                       onSelect={openOpportunity}
                     />
-                  </div>
+                  </motion.div>
+
+                  <motion.section
+                    id="describe-your-idea"
+                    variants={dashboardSectionVariants}
+                    className="relative scroll-mt-8 pt-4 sm:pt-6"
+                  >
+                    <div
+                      aria-hidden
+                      className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#A3E635]/25 to-transparent"
+                    />
+                    <p className="mb-4 text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+                      Next step · Your idea
+                    </p>
+                    <DescribeIdeaMentor
+                      nicheLabel={activeNicheLabel}
+                      workspaceHref={workspaceHref}
+                    />
+                  </motion.section>
                 </motion.div>
 
                 <p className="mt-10 border-t border-white/[0.04] pt-6 text-center text-[11px] text-zinc-600">
