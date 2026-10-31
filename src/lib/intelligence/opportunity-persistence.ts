@@ -1,4 +1,5 @@
 import { mapOpportunityToInsertRow } from "@/lib/dashboard/opportunity-mapper";
+import { stableOpportunityId } from "@/lib/intelligence/stable-opportunity-id";
 import type { Opportunity } from "@/lib/dashboard/opportunities";
 import type { LiveOpportunityDraft } from "@/lib/intelligence/types";
 import type { NicheId, WorkspaceIdentity } from "@/lib/dashboard/onboarding";
@@ -29,8 +30,10 @@ export function liveDraftToOpportunity(
     catalogSource,
   };
 
+  const ws = workspace ?? "founder";
+  const nc = niche ?? "b2b-saas";
   return {
-    id: `${catalogSource}-${draft.name.toLowerCase().replace(/\s+/g, "-").slice(0, 40)}-${Date.now()}`,
+    id: stableOpportunityId(draft.name, ws, nc, catalogSource),
     name: draft.name,
     category: draft.category,
     score: draft.scores.overallScore,
@@ -83,55 +86,17 @@ export async function upsertLiveOpportunities(
   );
 
   for (const opp of opportunities) {
-    const row = mapOpportunityToInsertRow(opp);
-    const workspaceMode = workspace ?? "founder";
-    const currentNiche = niche ?? "b2b-saas";
+    const row = {
+      ...mapOpportunityToInsertRow(opp),
+      id: opp.id,
+    };
 
-    const { data: existing, error: lookupError } = await supabase
+    const { error: upsertError } = await supabase
       .from("opportunities")
-      .select("id")
-      .eq("title", opp.name)
-      .eq("category", opp.category)
-      .eq("workspace_mode", workspaceMode)
-      .eq("current_niche", currentNiche)
-      .maybeSingle();
+      .upsert(row, { onConflict: "id" });
 
-    if (lookupError) {
-      logServerError("opportunities.upsert.lookup", lookupError);
-      continue;
-    }
-
-    if (existing?.id) {
-      const { error: updateError } = await supabase
-        .from("opportunities")
-        .update({
-          score: row.score,
-          growth: row.growth,
-          demand: row.demand,
-          competition: row.competition,
-          mode_data: row.mode_data,
-          workspace_mode: row.workspace_mode,
-          current_niche: row.current_niche,
-        })
-        .eq("id", existing.id);
-
-      if (updateError) {
-        logServerError("opportunities.upsert.update", updateError);
-        continue;
-      }
-      opp.id = existing.id;
-    } else {
-      const { data: inserted, error: insertError } = await supabase
-        .from("opportunities")
-        .insert(row)
-        .select("id")
-        .single();
-
-      if (insertError) {
-        logServerError("opportunities.upsert.insert", insertError);
-        continue;
-      }
-      if (inserted?.id) opp.id = inserted.id;
+    if (upsertError) {
+      logServerError("opportunities.upsert", upsertError);
     }
   }
 

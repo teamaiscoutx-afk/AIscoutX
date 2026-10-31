@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { generateVenturePackViaAzure } from "@/lib/azure-ai";
+import { generateFounderBlueprintDeepDive } from "@/lib/intelligence/founder-blueprint-azure";
 import { resolveServerAzureOpenAI } from "@/lib/server/azure-config.server";
 import { creditCostForAction } from "@/lib/billing/credit-costs";
 import { addBonusCredits, deductCreditsForAction } from "@/lib/billing/credit-engine.server";
@@ -13,6 +14,17 @@ export const dynamic = "force-dynamic";
 type BlueprintBody = {
   query?: string;
   nicheLabel?: string;
+  mode?: "venture" | "founder";
+  opportunity?: {
+    id?: string;
+    name?: string;
+    category?: string;
+    keywords?: string[];
+    revenuePotential?: string;
+    founderProblem?: string;
+    founderSolution?: string;
+    founderMvp?: string;
+  };
 };
 
 export async function POST(request: Request) {
@@ -44,9 +56,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const query = body.query?.trim();
+  const mode = body.mode ?? (body.opportunity?.name ? "founder" : "venture");
+  const query =
+    body.query?.trim() ||
+    body.opportunity?.name?.trim() ||
+    "";
+
   if (!query) {
-    return NextResponse.json({ ok: false, error: "Query is required." }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "Query or opportunity name is required." }, { status: 400 });
   }
 
   const deduction = await deductCreditsForAction(user.id, "blueprint");
@@ -63,11 +80,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    const pack = await generateVenturePackViaAzure({
-      query,
-      nicheLabel: body.nicheLabel?.trim(),
-    });
-
     const headers = new Headers();
     headers.set("X-Credits-Remaining", String(deduction.snapshot.remaining));
     headers.set("X-Credits-Allowance", String(deduction.snapshot.allowance));
@@ -75,9 +87,39 @@ export async function POST(request: Request) {
       headers.set("X-Credits-Warning", deduction.warning);
     }
 
+    if (mode === "founder") {
+      const deepDive = await generateFounderBlueprintDeepDive({
+        name: body.opportunity?.name ?? query,
+        category: body.opportunity?.category ?? "Startup",
+        keywords: body.opportunity?.keywords ?? [],
+        nicheLabel: body.nicheLabel?.trim(),
+        founderProblem: body.opportunity?.founderProblem,
+        founderSolution: body.opportunity?.founderSolution,
+        founderMvp: body.opportunity?.founderMvp,
+        revenuePotential: body.opportunity?.revenuePotential,
+      });
+
+      return NextResponse.json(
+        {
+          ok: true,
+          mode: "founder",
+          deepDive,
+          credits: deduction.snapshot,
+          warning: deduction.warning,
+        },
+        { headers }
+      );
+    }
+
+    const pack = await generateVenturePackViaAzure({
+      query,
+      nicheLabel: body.nicheLabel?.trim(),
+    });
+
     return NextResponse.json(
       {
         ok: true,
+        mode: "venture",
         analyze: pack.analyze,
         blueprint: pack.blueprint,
         launch: pack.launch,

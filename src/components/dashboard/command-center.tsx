@@ -574,8 +574,19 @@ export function CommandCenter({
     if (phase !== "ready") return;
     if (initialLiveScanRef.current) return;
     initialLiveScanRef.current = true;
+    if (initialOpportunities.length > 0) {
+      setAllOpportunities(initialOpportunities);
+      setFeedSource("cache");
+      return;
+    }
     void runDiscoverRefresh(undefined, activeWorkspace, activeNiche);
-  }, [phase, activeWorkspace, activeNiche, runDiscoverRefresh]);
+  }, [
+    phase,
+    activeWorkspace,
+    activeNiche,
+    initialOpportunities,
+    runDiscoverRefresh,
+  ]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {

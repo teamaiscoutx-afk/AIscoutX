@@ -5,6 +5,10 @@ import { revalidatePath } from "next/cache";
 import { getCurrentProfile } from "@/app/actions/profile";
 import { mapOpportunityRowToClient } from "@/lib/dashboard/opportunity-mapper";
 import type { Opportunity, OpportunityDeepDive } from "@/lib/dashboard/opportunities";
+import {
+  generateFounderBlueprintDeepDive,
+  isFounderUiDeepDive,
+} from "@/lib/intelligence/founder-blueprint-azure";
 import type { NicheId, WorkspaceIdentity } from "@/lib/dashboard/onboarding";
 import { getNicheLabel } from "@/lib/dashboard/onboarding";
 import { DISCOVERY_IDEA_TARGET } from "@/lib/intelligence/discovery-config";
@@ -12,10 +16,7 @@ import { generateStructuredFallbackDrafts } from "@/lib/intelligence/discovery-f
 import { getIntelligenceEnvStatus, isIntelligenceEngineReady, getIntelligenceSetupMessage } from "@/lib/intelligence/env";
 import { resolveDiscoverySeeds } from "@/lib/intelligence/niche-seeds";
 import { generateAzureNicheOpportunityDrafts } from "@/lib/intelligence/azure-niche-feed";
-import {
-  discoverOpportunityBatch,
-  refreshOpportunityDeepDive,
-} from "@/lib/intelligence/opportunity-engine";
+import { discoverOpportunityBatch } from "@/lib/intelligence/opportunity-engine";
 import {
   liveDraftToOpportunity,
   upsertLiveOpportunities,
@@ -184,47 +185,20 @@ export async function refreshLiveOpportunityFeed(
   }
 }
 
-/**
- * Ensures Risk Radar, Playbook, & Economics are completely dynamic for ANY idea
- */
-function sanitizeDeepDiveForBeginners(seed: string, deepDive: OpportunityDeepDive): OpportunityDeepDive {
-  const enhancedValueProp = deepDive.valueProp && !deepDive.valueProp.includes("replaces slow manual")
-    ? deepDive.valueProp
-    : `${seed} gives target users an automated solution to eliminate manual execution and high operational overhead.`;
-
-  const dynamicRiskRadar = deepDive.riskRadar || {
-    whyFoundersFail: `Founders building in ${seed} often over-engineer complex features before validating willingness-to-pay from their initial target customers.`,
-    scopeFreezeSkip: [
-      `Custom white-label domain routing & team permissions`,
-      `Multi-tenant enterprise analytics dashboard`
-    ],
-    scopeFreezeBuild: `Focus purely on 1 core pain point: simple input-to-output workflow with instant delivery.`,
-  };
-
-  const dynamicPlaybook = deepDive.playbook || {
-    days1To3: `Cold DM 20 target users in relevant Twitter/LinkedIn communities discussing ${seed} issues with a free preview offer.`,
-    days4To7: `Offer 10 early users 14-day free access in exchange for a video testimonial or detailed feedback session.`,
-    days8To14: `Launch publicly on ProductHunt & Reddit with customer proof and real case studies.`,
-  };
-
-  const dynamicEconomics = deepDive.techAndEconomics || {
-    techStack: `Next.js + Tailwind, Supabase DB, Serverless APIs.`,
-    pricingAndMargins: `$29/mo Starter & $79/mo Pro. ~70-85% Gross Margin.`,
-    breakeven: `Just 10-15 paying subscribers needed to hit profitability.`,
-  };
-
-  return {
-    ...deepDive,
-    valueProp: enhancedValueProp,
-    riskRadar: dynamicRiskRadar,
-    playbook: dynamicPlaybook,
-    techAndEconomics: dynamicEconomics,
-  };
-}
-
 export async function fetchOpportunityDeepDive(
-  opportunityId: string,
-  seed: string
+  opportunity: Pick<
+    Opportunity,
+    | "id"
+    | "name"
+    | "category"
+    | "keywords"
+    | "intelligence"
+    | "revenuePotential"
+    | "drawer"
+    | "deepDive"
+    | "workspace"
+    | "niche"
+  >
 ): Promise<{
   ok: boolean;
   deepDive?: OpportunityDeepDive;
@@ -236,22 +210,38 @@ export async function fetchOpportunityDeepDive(
   }
 
   try {
-    let existing: OpportunityDeepDive | undefined;
+    if (isFounderUiDeepDive(opportunity.deepDive)) {
+      return { ok: true, deepDive: opportunity.deepDive };
+    }
 
     if (isSupabaseConfigured()) {
       const supabase = createServerSupabaseClient();
       const { data } = await supabase
         .from("opportunities")
         .select("mode_data")
-        .eq("id", opportunityId)
+        .eq("id", opportunity.id)
         .maybeSingle();
 
-      const modeData = data?.mode_data as { deepDive?: OpportunityDeepDive } | null;
-      existing = modeData?.deepDive;
+      const modeData = data?.mode_data as { deepDive?: unknown } | null;
+      if (isFounderUiDeepDive(modeData?.deepDive)) {
+        return { ok: true, deepDive: modeData!.deepDive as OpportunityDeepDive };
+      }
     }
 
-    const rawDeepDive = await refreshOpportunityDeepDive(seed, existing);
-    const deepDive = sanitizeDeepDiveForBeginners(seed, rawDeepDive);
+    const workspace = opportunity.workspace ?? "founder";
+    const niche = opportunity.niche ?? "b2b-saas";
+    const nicheLabel = getNicheLabel(workspace, niche);
+
+    const deepDive = await generateFounderBlueprintDeepDive({
+      name: opportunity.name,
+      category: opportunity.category,
+      keywords: opportunity.keywords,
+      nicheLabel,
+      founderProblem: opportunity.intelligence.founder.problem,
+      founderSolution: opportunity.intelligence.founder.solution,
+      founderMvp: opportunity.intelligence.founder.mvp,
+      revenuePotential: opportunity.revenuePotential,
+    });
 
     if (isSupabaseConfigured()) {
       const supabase = createCatalogWriterClient();
@@ -259,14 +249,14 @@ export async function fetchOpportunityDeepDive(
         const { data: row } = await supabase
           .from("opportunities")
           .select("mode_data")
-          .eq("id", opportunityId)
+          .eq("id", opportunity.id)
           .maybeSingle();
 
         const modeData = (row?.mode_data ?? {}) as Record<string, unknown>;
         await supabase
           .from("opportunities")
           .update({ mode_data: { ...modeData, deepDive } })
-          .eq("id", opportunityId);
+          .eq("id", opportunity.id);
       }
     }
 

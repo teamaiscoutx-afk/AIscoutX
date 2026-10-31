@@ -8,6 +8,7 @@ export type OpportunityDeepDive = {
   painPoints: string[];
   solutionFeatures: string[];
   targetAudience: string[];
+  synthesizedAt?: string;
   riskRadar?: {
     whyFoundersFail: string;
     scopeFreezeSkip: string[];

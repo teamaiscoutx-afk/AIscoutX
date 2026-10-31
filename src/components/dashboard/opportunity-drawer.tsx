@@ -27,6 +27,7 @@ ChevronRight,
 } from "lucide-react";
 
 import { fetchOpportunityDeepDive } from "@/app/actions/intelligence";
+import { isFounderUiDeepDive } from "@/lib/intelligence/founder-blueprint-azure";
 import { saveOpportunity } from "@/app/actions/opportunities";
 import { persistActiveWorkspace } from "@/lib/workspace/active-workspace";
 import { useUpgradeModal } from "@/components/billing/upgrade-modal";
@@ -78,15 +79,13 @@ return;
 
 setEnrichedOpportunity(selectedOpportunity);
 
-if (selectedOpportunity.deepDive) return;
+if (isFounderUiDeepDive(selectedOpportunity.deepDive)) {
+  return;
+}
 
 setDeepDiveLoading(true);
 void (async () => {
-const seed = selectedOpportunity.keywords[0] ?? selectedOpportunity.name;
-const result = await fetchOpportunityDeepDive(
-selectedOpportunity.id,
-seed
-);
+const result = await fetchOpportunityDeepDive(selectedOpportunity);
 if (result.ok && result.deepDive) {
 setEnrichedOpportunity({
 ...selectedOpportunity,
@@ -136,35 +135,40 @@ if (!mounted || !selectedOpportunity) return null;
 const currentOp = enrichedOpportunity ?? selectedOpportunity;
 const deepDive = currentOp?.deepDive;
 
-const defaultPainPoints = [
-{
-title: "🎙️ High Production & Recording Effort",
-desc: "Creating professional media or audio manually requires expensive studio gear, room soundproofing, and endless re-recordings when mistakes happen.",
-},
-{
-title: "💰 Expensive Freelancer / Agency Fees",
-desc: "Hiring voiceover artists or digital agencies costs $50 to $200 per single task, quickly draining small operational budgets.",
-},
-{
-title: "⏳ Slow Delivery & Bottlenecks",
-desc: "Waiting days for freelancers to deliver edits halts marketing schedules and delays key product launches.",
-},
-];
+const insightText =
+  deepDive?.valueProp ??
+  (deepDiveLoading
+    ? "Generating a bespoke blueprint for this concept…"
+    : currentOp.drawer.whyThisMatters);
 
-const defaultSolutionSteps = [
-{
-step: "Step 1: Paste Your Script or Input",
-desc: "Paste your text script into the simple web dashboard. No technical coding, microphone, or software setup required.",
-},
-{
-step: "Step 2: AI Enhances & Renders Studio Audio",
-desc: "The AI engine selects human-like voices, removes background noise automatically, and balances speech tone instantly.",
-},
-{
-step: "Step 3: Instant 1-Click Export",
-desc: "Download high-definition ready-to-use audio files immediately or publish directly to your YouTube and video platforms.",
-},
-];
+const painPoints =
+  deepDive?.painPoints?.length
+    ? deepDive.painPoints
+    : deepDiveLoading
+      ? []
+      : [
+          currentOp.intelligence.founder.problem,
+          `Manual workflows in ${currentOp.category} drain time and budget.`,
+          "Incumbent tools are too generic for this niche ICP.",
+        ];
+
+const solutionSteps =
+  deepDive?.solutionFeatures?.length
+    ? deepDive.solutionFeatures
+    : deepDiveLoading
+      ? []
+      : [
+          currentOp.intelligence.founder.solution,
+          currentOp.intelligence.founder.mvp,
+          `Launch window: ${currentOp.intelligence.founder.launchTime}`,
+        ];
+
+const targetAudience =
+  deepDive?.targetAudience?.length
+    ? deepDive.targetAudience
+    : deepDiveLoading
+      ? []
+      : [currentOp.drawer.targetClients, currentOp.intelligence.agency.icp].filter(Boolean);
 
 return createPortal(
 <AnimatePresence>
@@ -270,7 +274,7 @@ Category: {selectedOpportunity.category}
 </h1>
 
 <p className="mt-4 text-base md:text-lg text-zinc-300 font-normal leading-relaxed max-w-3xl">
-{selectedOpportunity.description}
+{currentOp.drawer.whyThisMatters}
 </p>
 
 <div className="mt-6 rounded-2xl border border-amber-400/40 bg-amber-950/20 p-5 flex items-start gap-3.5 backdrop-blur-sm shadow-[0_0_20px_rgba(251,191,36,0.1)]">
@@ -280,7 +284,7 @@ Category: {selectedOpportunity.category}
 💡 Co-Founder Insight (In Simple Terms)
 </p>
 <p className="text-sm font-semibold text-amber-100 mt-1 leading-relaxed">
-{deepDive?.valueProp || `${selectedOpportunity.name} allows anyone to create professional studio voiceovers by simply pasting text, saving thousands on voice actors.`}
+{insightText}
 </p>
 </div>
 </div>
@@ -300,7 +304,9 @@ Category: {selectedOpportunity.category}
 </div>
 <div>
 <p className="text-xs text-zinc-500 uppercase font-semibold">Time To Build MVP</p>
-<p className="text-xl font-bold text-amber-400 mt-1">2–3 Weeks</p>
+<p className="text-xl font-bold text-amber-400 mt-1">
+{currentOp.intelligence.founder.launchTime}
+</p>
 </div>
 </div>
 </div>
@@ -334,7 +340,10 @@ Mentor's Risk Radar <span className="text-xs font-semibold px-2 py-0.5 rounded-f
 <AlertTriangle className="h-4 w-4" /> Why Most Founders Fail Here
 </div>
 <p className="text-xs text-zinc-300 leading-relaxed">
-Underpricing API usage. Running heavy AI voice generation without usage caps will drain your margin. High churn occurs if output audio lacks natural inflection.
+{deepDive?.riskRadar?.whyFoundersFail ??
+  (deepDiveLoading
+    ? "Analyzing risk patterns for this market…"
+    : `Validate willingness-to-pay for ${selectedOpportunity.name} before expanding scope.`)}
 </p>
 </div>
 
@@ -343,18 +352,23 @@ Underpricing API usage. Running heavy AI voice generation without usage caps wil
 <X className="h-4 w-4" /> What NOT to Build in V1 (Scope Freeze)
 </div>
 <ul className="text-xs text-zinc-300 space-y-2">
-<li className="flex items-center gap-2">
+{(deepDive?.riskRadar?.scopeFreezeSkip?.length
+  ? deepDive.riskRadar.scopeFreezeSkip
+  : deepDiveLoading
+    ? ["Loading scope guidance…"]
+    : ["Enterprise multi-tenant admin", "Custom integrations marketplace"]
+).map((item) => (
+<li key={item} className="flex items-center gap-2">
 <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-<span><strong>Skip:</strong> Custom Voice Cloning (High API complexity)</span>
+<span><strong>Skip:</strong> {item}</span>
 </li>
-<li className="flex items-center gap-2">
-<span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-<span><strong>Skip:</strong> Multi-user Workspace Roles & Teams</span>
+))}
+{deepDive?.riskRadar?.scopeFreezeBuild && (
+<li className="flex items-center gap-2 pt-1">
+<span className="h-1.5 w-1.5 rounded-full bg-[#deff9a]" />
+<span><strong>Build:</strong> {deepDive.riskRadar.scopeFreezeBuild}</span>
 </li>
-<li className="flex items-center gap-2">
-<span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-<span><strong>Build Instead:</strong> Clean Text-to-Speech + 3 Core Avatars</span>
-</li>
+)}
 </ul>
 </div>
 </div>
@@ -373,17 +387,10 @@ Underpricing API usage. Running heavy AI voice generation without usage caps wil
 </div>
 
 <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-2">
-{deepDive?.painPoints?.length
-? deepDive.painPoints.map((pain, idx) => (
+{painPoints.map((pain, idx) => (
 <div key={idx} className="rounded-2xl border border-red-500/15 bg-black/50 p-6 space-y-2.5">
 <div className="text-xs font-bold text-red-400 uppercase tracking-wide">Pain Point #{idx + 1}</div>
 <p className="text-xs text-zinc-300 leading-relaxed">{pain}</p>
-</div>
-))
-: defaultPainPoints.map((item, idx) => (
-<div key={idx} className="rounded-2xl border border-red-500/15 bg-black/50 p-6 space-y-2.5">
-<div className="text-xs font-bold text-red-400 uppercase tracking-wide">{item.title}</div>
-<p className="text-xs text-zinc-300 leading-relaxed">{item.desc}</p>
 </div>
 ))}
 </div>
@@ -402,21 +409,12 @@ Underpricing API usage. Running heavy AI voice generation without usage caps wil
 </div>
 
 <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-2">
-{deepDive?.solutionFeatures?.length
-? deepDive.solutionFeatures.map((feat, idx) => (
+{solutionSteps.map((feat, idx) => (
 <div key={idx} className="rounded-2xl border border-[#deff9a]/15 bg-black/50 p-6 space-y-2.5">
 <div className="flex items-center gap-2 text-xs font-bold text-[#deff9a] uppercase tracking-wide">
 <CheckCircle2 className="h-4 w-4" /> Workflow Step #{idx + 1}
 </div>
 <p className="text-xs text-zinc-300 leading-relaxed">{feat}</p>
-</div>
-))
-: defaultSolutionSteps.map((item, idx) => (
-<div key={idx} className="rounded-2xl border border-[#deff9a]/15 bg-black/50 p-6 space-y-2.5">
-<div className="flex items-center gap-2 text-xs font-bold text-[#deff9a] uppercase tracking-wide">
-<CheckCircle2 className="h-4 w-4 text-[#deff9a]" /> {item.step}
-</div>
-<p className="text-xs text-zinc-300 leading-relaxed">{item.desc}</p>
 </div>
 ))}
 </div>
@@ -435,8 +433,7 @@ Underpricing API usage. Running heavy AI voice generation without usage caps wil
 </div>
 
 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-{deepDive?.targetAudience?.length ? (
-deepDive.targetAudience.map((aud, idx) => (
+{targetAudience.map((aud, idx) => (
 <div key={idx} className="flex items-start gap-3.5 rounded-2xl border border-sky-500/15 bg-black/50 p-6">
 <Target className="h-5 w-5 text-sky-400 shrink-0 mt-0.5" />
 <div>
@@ -444,25 +441,7 @@ deepDive.targetAudience.map((aud, idx) => (
 <p className="text-xs text-zinc-300 mt-1.5 leading-relaxed">{aud}</p>
 </div>
 </div>
-))
-) : (
-<>
-<div className="flex items-start gap-3.5 rounded-2xl border border-sky-500/15 bg-black/50 p-6">
-<Target className="h-5 w-5 text-sky-400 shrink-0 mt-0.5" />
-<div>
-<p className="text-xs font-bold text-sky-400 uppercase tracking-wide">YouTube Creators & Podcasters</p>
-<p className="text-xs text-zinc-300 mt-1.5 leading-relaxed">Publishers making 3–5 videos a week who want fast voiceovers without hiring expensive talent.</p>
-</div>
-</div>
-<div className="flex items-start gap-3.5 rounded-2xl border border-sky-500/15 bg-black/50 p-6">
-<Target className="h-5 w-5 text-sky-400 shrink-0 mt-0.5" />
-<div>
-<p className="text-xs font-bold text-sky-400 uppercase tracking-wide">E-Learning & Course Creators</p>
-<p className="text-xs text-zinc-300 mt-1.5 leading-relaxed">Educators building online courses who need clean, consistent audio explanation across dozens of modules.</p>
-</div>
-</div>
-</>
-)}
+))}
 </div>
 </div>
 
@@ -479,26 +458,21 @@ deepDive.targetAudience.map((aud, idx) => (
 </div>
 
 <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-<div className="rounded-2xl border border-emerald-500/15 bg-black/50 p-6 space-y-2">
-<div className="text-xs font-bold text-emerald-400 uppercase tracking-wide">Days 1–3: Direct Outreach</div>
+{[
+{ label: "Days 1–3", text: deepDive?.playbook?.days1To3 },
+{ label: "Days 4–7", text: deepDive?.playbook?.days4To7 },
+{ label: "Days 8–14", text: deepDive?.playbook?.days8To14 },
+].map((block) => (
+<div key={block.label} className="rounded-2xl border border-emerald-500/15 bg-black/50 p-6 space-y-2">
+<div className="text-xs font-bold text-emerald-400 uppercase tracking-wide">{block.label}</div>
 <p className="text-xs text-zinc-300 leading-relaxed">
-Cold DM 20 mid-tier YouTube creators (10k-50k subs) on Twitter/X with a pre-rendered 30s sample of their recent script.
+{block.text ??
+  (deepDiveLoading
+    ? "Generating playbook…"
+    : `Execute focused outreach for ${selectedOpportunity.name} in ${selectedOpportunity.category}.`)}
 </p>
 </div>
-
-<div className="rounded-2xl border border-emerald-500/15 bg-black/50 p-6 space-y-2">
-<div className="text-xs font-bold text-emerald-400 uppercase tracking-wide">Days 4–7: The Trial Hook</div>
-<p className="text-xs text-zinc-300 leading-relaxed">
-Offer 14-day free Pro access in exchange for 1 video review or tweet thread. Target 5 active video testimonials.
-</p>
-</div>
-
-<div className="rounded-2xl border border-emerald-500/15 bg-black/50 p-6 space-y-2">
-<div className="text-xs font-bold text-emerald-400 uppercase tracking-wide">Days 8–14: Launch & Scale</div>
-<p className="text-xs text-zinc-300 leading-relaxed">
-Launch on ProductHunt using customer video reviews as proof. Post a "How I Built This" breakdown on Reddit r/SaaS.
-</p>
-</div>
+))}
 </div>
 </div>
 
@@ -520,7 +494,8 @@ Launch on ProductHunt using customer video reviews as proof. Post a "How I Built
 <Layers className="h-4 w-4" /> Recommended Tech
 </div>
 <p className="text-xs text-zinc-300 leading-relaxed">
-Next.js + Tailwind CSS, Supabase DB, OpenAI / ElevenLabs Audio API endpoints.
+{deepDive?.techAndEconomics?.techStack ??
+  (deepDiveLoading ? "Mapping stack…" : "Next.js, Supabase, Azure OpenAI — tuned to this product surface.")}
 </p>
 </div>
 
@@ -529,7 +504,7 @@ Next.js + Tailwind CSS, Supabase DB, OpenAI / ElevenLabs Audio API endpoints.
 <DollarSign className="h-4 w-4" /> Margins & Pricing
 </div>
 <p className="text-xs text-zinc-300 leading-relaxed">
-$29/mo Starter & $79/mo Pro. Estimated <strong>75% Gross Margin</strong> (API cost ~$0.05/minute).
+{deepDive?.techAndEconomics?.pricingAndMargins ?? selectedOpportunity.revenuePotential}
 </p>
 </div>
 
@@ -538,7 +513,8 @@ $29/mo Starter & $79/mo Pro. Estimated <strong>75% Gross Margin</strong> (API co
 <TrendingUp className="h-4 w-4" /> Breakeven Point
 </div>
 <p className="text-xs text-zinc-300 leading-relaxed">
-Just <strong>12 paying users at $29/mo</strong> covers fixed hosting, domain, and API overhead.
+{deepDive?.techAndEconomics?.breakeven ??
+  "Model breakeven after first 10–15 paying customers at starter pricing."}
 </p>
 </div>
 </div>

@@ -60,9 +60,9 @@ STRICT GUIDELINES:
    - Frontend: Modern framework (e.g., Next.js 15 App Router, Tailwind CSS, Shadcn UI)
    - Backend: Modern API/Serverless (e.g., Next.js Server Actions, Supabase Edge Functions, Fastify)
    - Database: Real DB (e.g., Supabase Postgres, Prisma ORM, Redis for caching)
-   - Specialized APIs: Exact domain APIs (e.g., ElevenLabs API for Voice Cloning, Whisper AI, OpenAI GPT-4o, Stripe/Razorpay SDK)
-3. REVENUE & PRICING: Provide exact realistic SaaS tiers (e.g. Starter: $29/mo - 50 mins voice; Agency: $99/mo - Unlimited) instead of vague "$1k-$5k".
-4. MVP FEATURES: Detail specific technical capabilities (e.g. "Instant 5-sec voice sample noise reduction & cloning pipeline" instead of "voice cloning").
+   - Specialized APIs: Exact domain APIs for THIS niche (e.g., Stripe/Razorpay SDK, Azure OpenAI, sector-specific data APIs)
+3. REVENUE & PRICING: Provide exact realistic SaaS tiers for THIS product (e.g. Starter: $29/mo; Pro: $79/mo) instead of vague "$1k-$5k".
+4. MVP FEATURES: Detail specific technical capabilities tied to the evidence seed — never reuse a template from unrelated products.
 
 FORMAT (STRICT JSON ONLY):
 {
@@ -84,29 +84,15 @@ FORMAT (STRICT JSON ONLY):
     "risks": ["Specific technical or market adoption risks & mitigation"]
   },
   "mvpAnatomy": {
-    "coreFlow": [
-      "User uploads audio sample & selects target campaign template",
-      "AI engine executes voice cloning synthesis & noise removal",
-      "Dynamic ad transcript generated & synchronized with cloned audio",
-      "Export high-bitrate MP3/WAV with 1-click publishing hook"
-    ],
+    "coreFlow": ["Step 1 tied to user job-to-be-done", "Step 2 automation/core value", "Step 3 output/delivery", "Step 4 retention loop"],
     "techStack": [
-      { "layer": "Frontend", "tool": "Next.js 15 (App Router) + Tailwind + Shadcn UI", "rationale": "High SEO, instant server-rendering, and sleek dark UI" },
-      { "layer": "Backend & Auth", "tool": "Supabase Postgres + Auth + Row Level Security", "rationale": "Instant real-time database, auth, and secure tenant data isolation" },
-      { "layer": "AI Voice Engine", "tool": "ElevenLabs API + OpenAI GPT-4o", "rationale": "Industry standard low-latency voice cloning and script generation" },
-      { "layer": "Payments & Subscriptions", "tool": "Stripe / Razorpay SDK + Webhooks", "rationale": "Automated recurring billing, invoice management, and plan gating" }
+      { "layer": "Frontend", "tool": "Next.js 15 (App Router) + Tailwind + Shadcn UI", "rationale": "Fast shipping + SEO" },
+      { "layer": "Backend & Auth", "tool": "Supabase Postgres + Auth + RLS", "rationale": "Secure multi-tenant data" },
+      { "layer": "AI", "tool": "Azure OpenAI gpt-4o", "rationale": "Domain-specific copilots and workflows" },
+      { "layer": "Payments", "tool": "Razorpay / Stripe SDK + Webhooks", "rationale": "Subscription billing" }
     ],
-    "mustHave": [
-      "Secure Auth & User Workspace Isolation",
-      "Instant 5-second Audio Voice Sampling & Cloning Pipeline",
-      "Dynamic Ad Script Generator with Niche Templates",
-      "Export Studio with High-Quality Audio Rendering"
-    ],
-    "niceToHave": [
-      "Multi-lingual Voice Translation & Accent Matching",
-      "Direct Integration with Meta & TikTok Ad Managers",
-      "Team Collaboration & Shared Brand Workspaces"
-    ]
+    "mustHave": ["Auth + workspace", "Core workflow loop", "Billing gate", "Export/share deliverable"],
+    "niceToHave": ["Integrations", "Team seats", "Analytics"]
   }
 }
 Ground every gap in a cited URL from evidence. No invented generic competitors.`;
