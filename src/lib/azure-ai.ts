@@ -6,6 +6,16 @@ export type ChatMessage = {
   content: string;
 };
 
+export type AzureMessageContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string; detail?: "low" | "high" | "auto" } };
+
+/** Messages for Azure chat/completions (text or multimodal user turns). */
+export type AzureCompletionMessage = {
+  role: "system" | "user" | "assistant";
+  content: string | AzureMessageContentPart[];
+};
+
 export type AzureOpenAIConfig = {
   endpoint: string;
   apiKey: string;
@@ -94,7 +104,7 @@ export function isAzureSearchConfigured(): boolean {
 
 /** Azure OpenAI chat completions (deployment-scoped). */
 export async function azureChatCompletion(input: {
-  messages: ChatMessage[];
+  messages: ChatMessage[] | AzureCompletionMessage[];
   temperature?: number;
   maxTokens?: number;
   jsonMode?: boolean;

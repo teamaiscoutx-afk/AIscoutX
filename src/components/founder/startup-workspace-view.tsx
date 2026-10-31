@@ -64,6 +64,13 @@ import {
 } from "@/components/dashboard/describe-idea-mentor";
 import { dispatchCreditsUpdated } from "@/lib/billing/credits-events";
 import { dispatchOutOfCredits } from "@/lib/billing/freemium";
+import { useBrowserSpeechInput } from "@/hooks/use-browser-speech-input";
+
+type PendingImageAttachment = {
+  previewUrl: string;
+  base64: string;
+  mimeType: string;
+};
 import { signOut } from "@/app/actions/auth";
 import type { PersistedMentorChat } from "@/app/actions/workspace-chats";
 import { StartupRadarPanel } from "@/components/founder/startup-radar-panel";
@@ -215,13 +222,16 @@ export function StartupWorkspaceView({
   const chatsRef = useRef<ChatSession[]>(initialChats);
   const activeChatRef = useRef(initialActiveChatId);
   const writingRef = useRef(false);
+  const mentorBusyRef = useRef(false);
   const fetchSeq = useRef(0);
   const [canvas, setCanvas] = useState<"chat" | "radar">("chat");
   const [liveUpdates, setLiveUpdates] = useState<StartupRadarUpdate[]>([]);
   const [radarLoading, setRadarLoading] = useState(false);
   const [inputMessage, setInputMessage] = useState("");
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [pendingImage, setPendingImage] = useState<PendingImageAttachment | null>(null);
   const [isVoiceActive, setIsVoiceActive] = useState(false);
+  const [isMentorThinking, setIsMentorThinking] = useState(false);
+  const voiceBaseRef = useRef("");
 
   // Blueprint, Context & Settings State
   const [showBlueprintModal, setShowBlueprintModal] = useState(false);
@@ -248,7 +258,7 @@ export function StartupWorkspaceView({
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activeChat?.messages]);
+  }, [activeChat?.messages, isMentorThinking]);
 
   useEffect(() => {
     const closeMenu = () => setChatMenu(null);
@@ -289,21 +299,21 @@ export function StartupWorkspaceView({
   }, []);
 
   const fetchChats = useCallback(async () => {
-    if (writingRef.current) return;
+    if (writingRef.current || mentorBusyRef.current) return;
     const seq = ++fetchSeq.current;
     try {
       const response = await fetch(
         `/api/chats?workspaceId=${encodeURIComponent(workspace.id)}`,
         { cache: "no-store", credentials: "same-origin" }
       );
-      if (seq !== fetchSeq.current || writingRef.current) return;
+      if (seq !== fetchSeq.current || writingRef.current || mentorBusyRef.current) return;
       const snapshot = (await response.json()) as {
         ok?: boolean;
         chats?: PersistedMentorChat[];
         activeChatId?: string;
       };
       if (!response.ok || !snapshot.ok || !Array.isArray(snapshot.chats)) return;
-      if (seq !== fetchSeq.current || writingRef.current) return;
+      if (seq !== fetchSeq.current || writingRef.current || mentorBusyRef.current) return;
       applyServerChats({
         chats: snapshot.chats,
         activeChatId: snapshot.activeChatId ?? "",
@@ -491,10 +501,64 @@ export function StartupWorkspaceView({
     void commitChats(next, nextActive);
   };
 
+  const clearPendingImage = useCallback(() => {
+    setPendingImage((prev) => {
+      if (prev?.previewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(prev.previewUrl);
+      }
+      return null;
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (pendingImage?.previewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(pendingImage.previewUrl);
+      }
+    };
+  }, [pendingImage]);
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) setSelectedImage(URL.createObjectURL(file));
+    if (!file || !file.type.startsWith("image/")) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === "string" ? reader.result : "";
+      const comma = dataUrl.indexOf(",");
+      const base64 = comma >= 0 ? dataUrl.slice(comma + 1) : "";
+      if (!base64) return;
+      clearPendingImage();
+      setPendingImage({
+        previewUrl: dataUrl,
+        base64,
+        mimeType: file.type || "image/png",
+      });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
   };
+
+  const composerTextRef = useRef(inputMessage);
+  composerTextRef.current = inputMessage;
+
+  useEffect(() => {
+    if (isVoiceActive) {
+      voiceBaseRef.current = composerTextRef.current.trim();
+    }
+  }, [isVoiceActive]);
+
+  useBrowserSpeechInput({
+    active: isVoiceActive,
+    onTranscript: (text, isFinal) => {
+      const base = voiceBaseRef.current;
+      const combined = base ? `${base} ${text}`.trim() : text.trim();
+      setInputMessage(combined);
+      if (isFinal) voiceBaseRef.current = combined;
+    },
+    onError: () => setIsVoiceActive(false),
+    onEnd: () => setIsVoiceActive(false),
+  });
 
   const handleLogout = () => {
     clearActiveWorkspace();
@@ -560,83 +624,83 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
     a.click();
   };
 
-  const insertPrompt = (prompt: string) => {
-    setCanvas("chat");
-    setInputMessage(prompt);
-    requestAnimationFrame(() => composerRef.current?.focus());
-  };
+  const sendMentorMessage = useCallback(
+    async (promptOverride?: string) => {
+      if (mentorBusyRef.current || writingRef.current) return;
 
-  const discussUpdate = (update: StartupRadarUpdate) => {
-    const existing = chatsRef.current.find(
-      (chat) => chat.id === activeChatRef.current && !chat.isDeleted
-    );
-    if (!existing) {
-      const newChatId = `chat-${Date.now()}`;
-      void commitChats(
-        [{ id: newChatId, title: "New Conversation", messages: [] }, ...chatsRef.current],
-        newChatId
-      );
-    }
-    insertPrompt(
-      `How can we capitalize on ${update.title} for ${startupName}?`
-    );
-  };
+      const draft = (promptOverride ?? inputMessage).trim();
+      const imagePayload = pendingImage;
+      if (!draft && !imagePayload) return;
 
-  const handleSendMessage = () => {
-    if (writingRef.current) return;
-    if (!inputMessage.trim() && !selectedImage) return;
+      mentorBusyRef.current = true;
+      setIsMentorThinking(true);
+      fetchSeq.current += 1;
 
-    const userContent = selectedImage
-      ? `[Screenshot Attached]\n${inputMessage}`
-      : inputMessage;
-    const draft = inputMessage.trim();
-    let chatId = chatsRef.current.some(
-      (chat) => chat.id === activeChatRef.current && !chat.isDeleted
-    )
-      ? activeChatRef.current
-      : "";
-    if (!chatId) chatId = `chat-${Date.now()}`;
+      const userContent = imagePayload
+        ? draft
+          ? `${draft}\n\n[Screenshot attached]`
+          : "[Screenshot attached]"
+        : draft;
 
-    const current = chatsRef.current.find((chat) => chat.id === chatId);
-    const base: ChatSession = current ?? {
-      id: chatId,
-      title: "New Conversation",
-      messages: [],
-    };
-    const updatedTitle =
-      base.title === "New Conversation" && draft.length > 0
-        ? `${draft.slice(0, 25)}...`
-        : base.title;
-    const nextChat: ChatSession = {
-      ...base,
-      title: updatedTitle,
-      messages: [...base.messages, { role: "user", content: userContent }],
-    };
-    const nextList = current
-      ? chatsRef.current.map((chat) => (chat.id === chatId ? nextChat : chat))
-      : [nextChat, ...chatsRef.current];
+      let chatId = chatsRef.current.some(
+        (chat) => chat.id === activeChatRef.current && !chat.isDeleted
+      )
+        ? activeChatRef.current
+        : "";
+      if (!chatId) chatId = `chat-${Date.now()}`;
 
-    const historyForAi = nextChat.messages
-      .slice(0, -1)
-      .filter((m) => m.role === "user" || m.role === "assistant")
-      .slice(-10)
-      .map((m) => ({ role: m.role, content: m.content }));
+      const current = chatsRef.current.find((chat) => chat.id === chatId);
+      const base: ChatSession = current ?? {
+        id: chatId,
+        title: "New Conversation",
+        messages: [],
+      };
+      const titleSeed = draft || "Screenshot review";
+      const updatedTitle =
+        base.title === "New Conversation" && titleSeed.length > 0
+          ? `${titleSeed.slice(0, 25)}...`
+          : base.title;
+      const nextChat: ChatSession = {
+        ...base,
+        title: updatedTitle,
+        messages: [...base.messages, { role: "user", content: userContent }],
+      };
+      const nextList = current
+        ? chatsRef.current.map((chat) => (chat.id === chatId ? nextChat : chat))
+        : [nextChat, ...chatsRef.current];
 
-    void commitChats(nextList, chatId).then(async (ok) => {
-      if (!ok) return;
-      setInputMessage("");
-      setSelectedImage(null);
+      const historyForAi = nextChat.messages
+        .slice(0, -1)
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .slice(-10)
+        .map((m) => ({ role: m.role, content: m.content }));
+
+      const apiMessage =
+        draft ||
+        (imagePayload
+          ? "Analyze this screenshot for my startup and give actionable mentor advice."
+          : "");
 
       try {
+        const ok = await commitChats(nextList, chatId);
+        if (!ok) return;
+
+        if (!promptOverride) {
+          setInputMessage("");
+          clearPendingImage();
+        }
+
         const response = await fetch("/api/ai/chat", {
           method: "POST",
           credentials: "same-origin",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            message: userContent,
-            action: "chat",
+            message: apiMessage,
+            imageBase64: imagePayload?.base64,
+            imageMimeType: imagePayload?.mimeType,
             workspaceName: startupName,
             founderName: viewerName,
+            nicheLabel: workspace.nicheFocus ?? undefined,
             history: historyForAi,
           }),
         });
@@ -670,7 +734,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
                 }
               : chat
           );
-          void commitChats(withError, chatId);
+          await commitChats(withError, chatId);
           return;
         }
 
@@ -686,7 +750,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
               }
             : chat
         );
-        void commitChats(withReply, chatId);
+        await commitChats(withReply, chatId);
       } catch {
         const withError = chatsRef.current.map((chat) =>
           chat.id === chatId
@@ -702,9 +766,53 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
               }
             : chat
         );
-        void commitChats(withError, chatId);
+        await commitChats(withError, chatId);
+      } finally {
+        mentorBusyRef.current = false;
+        setIsMentorThinking(false);
       }
-    });
+    },
+    [
+      inputMessage,
+      pendingImage,
+      commitChats,
+      startupName,
+      viewerName,
+      workspace.nicheFocus,
+      clearPendingImage,
+    ]
+  );
+
+  const insertPrompt = (prompt: string) => {
+    setCanvas("chat");
+    void sendMentorMessage(prompt);
+  };
+
+  const discussUpdate = (update: StartupRadarUpdate) => {
+    const existing = chatsRef.current.find(
+      (chat) => chat.id === activeChatRef.current && !chat.isDeleted
+    );
+    if (!existing) {
+      const newChatId = `chat-${Date.now()}`;
+      void commitChats(
+        [{ id: newChatId, title: "New Conversation", messages: [] }, ...chatsRef.current],
+        newChatId
+      ).then(() => {
+        setCanvas("chat");
+        void sendMentorMessage(
+          `How can we capitalize on ${update.title} for ${startupName}?`
+        );
+      });
+      return;
+    }
+    setCanvas("chat");
+    void sendMentorMessage(
+      `How can we capitalize on ${update.title} for ${startupName}?`
+    );
+  };
+
+  const handleSendMessage = () => {
+    void sendMentorMessage();
   };
 
   if (!chatsReady) {
@@ -1038,8 +1146,8 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
             <div className="flex items-center gap-3">
               <Volume2 className="h-4 w-4 animate-bounce text-[#A3E635]" />
               <div>
-                <p className="text-xs font-bold text-white">Live Voice Call Active</p>
-                <p className="text-[10px] text-zinc-400">Listening to microphone...</p>
+                <p className="text-xs font-bold text-white">Voice input active</p>
+                <p className="text-[10px] text-zinc-400">Speak — transcript fills the chat box</p>
               </div>
             </div>
             <div className="flex h-5 items-center gap-1">
@@ -1192,6 +1300,16 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
                   )}
                 </div>
               ))}
+              {isMentorThinking && (
+                <div className="flex gap-3.5 justify-start">
+                  <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#A3E635]/25 bg-zinc-900 text-[#A3E635]">
+                    <Bot className="h-4 w-4" />
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-zinc-900 px-5 py-3.5 text-sm text-zinc-400">
+                    Mentor is thinking…
+                  </div>
+                </div>
+              )}
               <div ref={chatEndRef} />
             </motion.div>
           )}
@@ -1201,7 +1319,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
         {/* INPUT BAR */}
         {canvas === "chat" && (
         <motion.div
-          className="relative z-10 shrink-0 px-4 pb-5 pt-2 md:px-6"
+          className="relative z-10 shrink-0 space-y-2 px-4 pb-5 pt-2 md:px-6"
           style={GPU}
           initial={
             reduceMotion
@@ -1211,6 +1329,25 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
           animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
           transition={{ duration: 0.45, delay: 0.16, ease: [0.22, 1, 0.36, 1] }}
         >
+          {pendingImage && (
+            <div className="mx-auto flex max-w-3xl items-center gap-3 rounded-2xl border border-white/[0.08] bg-zinc-950/80 px-3 py-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={pendingImage.previewUrl}
+                alt="Attachment preview"
+                className="h-12 w-12 rounded-lg border border-white/10 object-cover"
+              />
+              <p className="flex-1 truncate text-xs text-zinc-400">Screenshot ready to send with your message</p>
+              <button
+                type="button"
+                onClick={clearPendingImage}
+                className="cursor-pointer rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white"
+                title="Remove attachment"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
           <div className="mx-auto flex h-[60px] max-w-3xl items-center gap-2 rounded-[28px] border border-white/[0.08] bg-zinc-950/70 p-2.5 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-[box-shadow,border-color] duration-200 focus-within:border-[#A3E635]/55 focus-within:shadow-[0_0_0_1px_rgba(163,230,53,0.35),0_0_40px_rgba(132,204,22,0.18)]">
             <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
 
@@ -1248,15 +1385,19 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
               type="text"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !isMentorThinking) handleSendMessage();
+              }}
               placeholder="Ask Mentor anything or attach a screenshot…"
-              className="flex-1 bg-transparent px-2 py-1.5 text-sm text-white placeholder:text-zinc-500 focus:outline-none"
+              disabled={isMentorThinking}
+              className="flex-1 bg-transparent px-2 py-1.5 text-sm text-white placeholder:text-zinc-500 focus:outline-none disabled:opacity-60"
             />
 
             <motion.button
               type="button"
               onClick={handleSendMessage}
-              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-[#A3E635] text-zinc-950 hover:bg-[#84CC16] hover:shadow-[0_0_20px_rgba(163,230,53,0.35)]"
+              disabled={isMentorThinking}
+              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-[#A3E635] text-zinc-950 hover:bg-[#84CC16] hover:shadow-[0_0_20px_rgba(163,230,53,0.35)] disabled:cursor-not-allowed disabled:opacity-50"
               style={GPU}
               whileHover={iconHover}
               whileTap={iconTap}

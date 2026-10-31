@@ -4,7 +4,7 @@ import {
   azureChatCompletion,
   buildMentorSystemPrompt,
   fetchRealtimeMarketIntelligence,
-  type ChatMessage,
+  type AzureCompletionMessage,
 } from "@/lib/azure-ai";
 import { resolveServerAzureOpenAI } from "@/lib/server/azure-config.server";
 import { creditCostForAction } from "@/lib/billing/credit-costs";
@@ -17,11 +17,40 @@ export const dynamic = "force-dynamic";
 
 type ChatBody = {
   message?: string;
+  imageBase64?: string;
+  imageMimeType?: string;
   workspaceName?: string;
   founderName?: string;
   nicheLabel?: string;
   history?: { role: "user" | "assistant"; content: string }[];
 };
+
+const MAX_IMAGE_BASE64_CHARS = 6_000_000;
+
+function buildUserTurn(input: {
+  message: string;
+  imageBase64?: string;
+  imageMimeType?: string;
+}): AzureCompletionMessage {
+  const text = input.message.trim();
+  if (!input.imageBase64) {
+    return { role: "user", content: text };
+  }
+
+  const mime =
+    input.imageMimeType?.trim().startsWith("image/") === true
+      ? input.imageMimeType.trim()
+      : "image/png";
+  const dataUrl = `data:${mime};base64,${input.imageBase64}`;
+
+  return {
+    role: "user",
+    content: [
+      { type: "text", text: text || "Analyze this screenshot for my startup and give actionable mentor advice." },
+      { type: "image_url", image_url: { url: dataUrl, detail: "auto" } },
+    ],
+  };
+}
 
 export async function POST(request: Request) {
   if (!isSupabaseConfigured()) {
@@ -56,9 +85,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const message = body.message?.trim();
-  if (!message) {
-    return NextResponse.json({ ok: false, error: "Message is required." }, { status: 400 });
+  const message = body.message?.trim() ?? "";
+  const imageBase64 = body.imageBase64?.trim();
+  const imageMimeType = body.imageMimeType?.trim();
+
+  if (!message && !imageBase64) {
+    return NextResponse.json(
+      { ok: false, error: "Message or image attachment is required." },
+      { status: 400 }
+    );
+  }
+
+  if (imageBase64 && imageBase64.length > MAX_IMAGE_BASE64_CHARS) {
+    return NextResponse.json({ ok: false, error: "Image is too large." }, { status: 413 });
   }
 
   const workspaceName = body.workspaceName?.trim() || "your startup";
@@ -95,7 +134,7 @@ export async function POST(request: Request) {
       nicheLabel,
     });
 
-    const messages: ChatMessage[] = [
+    const messages: AzureCompletionMessage[] = [
       {
         role: "system",
         content: buildMentorSystemPrompt({ workspaceName, founderName, marketContext }),
@@ -104,7 +143,7 @@ export async function POST(request: Request) {
         role: entry.role,
         content: entry.content,
       })),
-      { role: "user", content: message },
+      buildUserTurn({ message, imageBase64, imageMimeType }),
     ];
 
     const reply = await azureChatCompletion({ messages, temperature: 0.65, maxTokens: 1400 });
