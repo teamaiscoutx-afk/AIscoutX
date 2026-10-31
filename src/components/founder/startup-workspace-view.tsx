@@ -65,6 +65,7 @@ import {
 import { dispatchCreditsUpdated } from "@/lib/billing/credits-events";
 import { dispatchOutOfCredits } from "@/lib/billing/freemium";
 import { useBrowserSpeechInput } from "@/hooks/use-browser-speech-input";
+import { prepareImageAttachment } from "@/lib/client/compress-image";
 
 type PendingImageAttachment = {
   previewUrl: string;
@@ -230,8 +231,12 @@ export function StartupWorkspaceView({
   const [inputMessage, setInputMessage] = useState("");
   const [pendingImage, setPendingImage] = useState<PendingImageAttachment | null>(null);
   const [isVoiceActive, setIsVoiceActive] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [isImageProcessing, setIsImageProcessing] = useState(false);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [isMentorThinking, setIsMentorThinking] = useState(false);
-  const voiceBaseRef = useRef("");
+  const voiceSessionBaseRef = useRef("");
+  const pendingImageRef = useRef<PendingImageAttachment | null>(null);
 
   // Blueprint, Context & Settings State
   const [showBlueprintModal, setShowBlueprintModal] = useState(false);
@@ -520,45 +525,47 @@ export function StartupWorkspaceView({
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith("image/")) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = typeof reader.result === "string" ? reader.result : "";
-      const comma = dataUrl.indexOf(",");
-      const base64 = comma >= 0 ? dataUrl.slice(comma + 1) : "";
-      if (!base64) return;
-      clearPendingImage();
-      setPendingImage({
-        previewUrl: dataUrl,
-        base64,
-        mimeType: file.type || "image/png",
-      });
-    };
-    reader.readAsDataURL(file);
     e.target.value = "";
+    if (!file) return;
+
+    setAttachmentError(null);
+    setIsImageProcessing(true);
+    void prepareImageAttachment(file)
+      .then((attachment) => {
+        clearPendingImage();
+        setPendingImage(attachment);
+      })
+      .catch(() => {
+        setAttachmentError("Could not attach image — try a smaller PNG or JPG.");
+      })
+      .finally(() => setIsImageProcessing(false));
   };
 
   const composerTextRef = useRef(inputMessage);
   composerTextRef.current = inputMessage;
-
-  useEffect(() => {
-    if (isVoiceActive) {
-      voiceBaseRef.current = composerTextRef.current.trim();
-    }
-  }, [isVoiceActive]);
+  pendingImageRef.current = pendingImage;
 
   useBrowserSpeechInput({
     active: isVoiceActive,
-    onTranscript: (text, isFinal) => {
-      const base = voiceBaseRef.current;
-      const combined = base ? `${base} ${text}`.trim() : text.trim();
-      setInputMessage(combined);
-      if (isFinal) voiceBaseRef.current = combined;
+    getSessionBaseText: () => voiceSessionBaseRef.current,
+    onTranscript: (text) => setInputMessage(text),
+    onError: (message) => {
+      setVoiceError(message);
+      setIsVoiceActive(false);
     },
-    onError: () => setIsVoiceActive(false),
     onEnd: () => setIsVoiceActive(false),
   });
+
+  const handleToggleVoice = () => {
+    if (isVoiceActive) {
+      setIsVoiceActive(false);
+      setVoiceError(null);
+      return;
+    }
+    setVoiceError(null);
+    voiceSessionBaseRef.current = composerTextRef.current.trim();
+    setIsVoiceActive(true);
+  };
 
   const handleLogout = () => {
     clearActiveWorkspace();
@@ -626,15 +633,21 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
 
   const sendMentorMessage = useCallback(
     async (promptOverride?: string) => {
-      if (mentorBusyRef.current || writingRef.current) return;
+      if (mentorBusyRef.current || writingRef.current || isImageProcessing) return;
 
-      const draft = (promptOverride ?? inputMessage).trim();
-      const imagePayload = pendingImage;
+      const draft = (promptOverride ?? composerTextRef.current).trim();
+      const imagePayload = pendingImageRef.current;
       if (!draft && !imagePayload) return;
 
       mentorBusyRef.current = true;
       setIsMentorThinking(true);
       fetchSeq.current += 1;
+
+      if (!promptOverride) {
+        setInputMessage("");
+        clearPendingImage();
+        pendingImageRef.current = null;
+      }
 
       const userContent = imagePayload
         ? draft
@@ -669,6 +682,11 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
         ? chatsRef.current.map((chat) => (chat.id === chatId ? nextChat : chat))
         : [nextChat, ...chatsRef.current];
 
+      chatsRef.current = nextList;
+      setChats(nextList);
+      setActiveChatId(chatId);
+      activeChatRef.current = chatId;
+
       const historyForAi = nextChat.messages
         .slice(0, -1)
         .filter((m) => m.role === "user" || m.role === "assistant")
@@ -682,13 +700,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
           : "");
 
       try {
-        const ok = await commitChats(nextList, chatId);
-        if (!ok) return;
-
-        if (!promptOverride) {
-          setInputMessage("");
-          clearPendingImage();
-        }
+        await commitChats(nextList, chatId);
 
         const response = await fetch("/api/ai/chat", {
           method: "POST",
@@ -698,6 +710,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
             message: apiMessage,
             imageBase64: imagePayload?.base64,
             imageMimeType: imagePayload?.mimeType,
+            workspaceId: workspace.id,
             workspaceName: startupName,
             founderName: viewerName,
             nicheLabel: workspace.nicheFocus ?? undefined,
@@ -773,15 +786,23 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
       }
     },
     [
-      inputMessage,
-      pendingImage,
+      isImageProcessing,
       commitChats,
       startupName,
       viewerName,
+      workspace.id,
       workspace.nicheFocus,
       clearPendingImage,
     ]
   );
+
+  const sendMentorMessageRef = useRef(sendMentorMessage);
+  sendMentorMessageRef.current = sendMentorMessage;
+
+  const handleComposerSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    void sendMentorMessageRef.current();
+  };
 
   const insertPrompt = (prompt: string) => {
     setCanvas("chat");
@@ -809,10 +830,6 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
     void sendMentorMessage(
       `How can we capitalize on ${update.title} for ${startupName}?`
     );
-  };
-
-  const handleSendMessage = () => {
-    void sendMentorMessage();
   };
 
   if (!chatsReady) {
@@ -1141,20 +1158,46 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
         <div className="relative z-20 flex justify-end px-4 pt-3 sm:px-6">
           <CreditMeter />
         </div>
-        {isVoiceActive && (
-          <div className="flex shrink-0 items-center justify-between border-b border-[#A3E635]/20 bg-zinc-900 px-6 py-2.5">
+        {(isVoiceActive || voiceError) && (
+          <div
+            className={`flex shrink-0 items-center justify-between border-b px-6 py-2.5 ${
+              voiceError
+                ? "border-red-500/30 bg-red-950/40"
+                : "border-[#A3E635]/20 bg-zinc-900"
+            }`}
+          >
             <div className="flex items-center gap-3">
-              <Volume2 className="h-4 w-4 animate-bounce text-[#A3E635]" />
+              {voiceError ? (
+                <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+              ) : (
+                <Volume2 className="h-4 w-4 animate-bounce text-[#A3E635]" />
+              )}
               <div>
-                <p className="text-xs font-bold text-white">Voice input active</p>
-                <p className="text-[10px] text-zinc-400">Speak — transcript fills the chat box</p>
+                <p className="text-xs font-bold text-white">
+                  {voiceError ? "Microphone unavailable" : "Voice input active"}
+                </p>
+                <p className="text-[10px] text-zinc-400">
+                  {voiceError ?? "Speak — transcript fills the chat box in real time"}
+                </p>
               </div>
             </div>
-            <div className="flex h-5 items-center gap-1">
-              <span className="h-3 w-1 animate-pulse rounded-full bg-[#A3E635]" />
-              <span className="h-5 w-1 animate-pulse rounded-full bg-[#84CC16] delay-75" />
-              <span className="h-3 w-1 animate-pulse rounded-full bg-[#A3E635] delay-150" />
-            </div>
+            {isVoiceActive && !voiceError && (
+              <div className="flex h-5 items-center gap-1">
+                <span className="h-3 w-1 animate-pulse rounded-full bg-[#A3E635]" />
+                <span className="h-5 w-1 animate-pulse rounded-full bg-[#84CC16] delay-75" />
+                <span className="h-3 w-1 animate-pulse rounded-full bg-[#A3E635] delay-150" />
+              </div>
+            )}
+            {voiceError && (
+              <button
+                type="button"
+                onClick={() => setVoiceError(null)}
+                className="cursor-pointer rounded-lg p-1 text-zinc-400 hover:text-white"
+                aria-label="Dismiss"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
         )}
 
@@ -1329,32 +1372,51 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
           animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
           transition={{ duration: 0.45, delay: 0.16, ease: [0.22, 1, 0.36, 1] }}
         >
-          {pendingImage && (
+          {attachmentError && (
+            <p className="mx-auto max-w-3xl text-xs text-red-400">{attachmentError}</p>
+          )}
+          {(pendingImage || isImageProcessing) && (
             <div className="mx-auto flex max-w-3xl items-center gap-3 rounded-2xl border border-white/[0.08] bg-zinc-950/80 px-3 py-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={pendingImage.previewUrl}
-                alt="Attachment preview"
-                className="h-12 w-12 rounded-lg border border-white/10 object-cover"
-              />
-              <p className="flex-1 truncate text-xs text-zinc-400">Screenshot ready to send with your message</p>
-              <button
-                type="button"
-                onClick={clearPendingImage}
-                className="cursor-pointer rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white"
-                title="Remove attachment"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              {pendingImage ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={pendingImage.previewUrl}
+                  alt="Attachment preview"
+                  className="h-12 w-12 rounded-lg border border-white/10 object-cover"
+                />
+              ) : (
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-white/10 bg-zinc-900 text-[10px] text-zinc-500">
+                  …
+                </div>
+              )}
+              <p className="flex-1 truncate text-xs text-zinc-400">
+                {isImageProcessing
+                  ? "Processing image…"
+                  : "Screenshot ready — add a message and send"}
+              </p>
+              {pendingImage && !isImageProcessing && (
+                <button
+                  type="button"
+                  onClick={clearPendingImage}
+                  className="cursor-pointer rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white"
+                  title="Remove attachment"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
           )}
-          <div className="mx-auto flex h-[60px] max-w-3xl items-center gap-2 rounded-[28px] border border-white/[0.08] bg-zinc-950/70 p-2.5 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-[box-shadow,border-color] duration-200 focus-within:border-[#A3E635]/55 focus-within:shadow-[0_0_0_1px_rgba(163,230,53,0.35),0_0_40px_rgba(132,204,22,0.18)]">
+          <form
+            onSubmit={handleComposerSubmit}
+            className="mx-auto flex h-[60px] max-w-3xl items-center gap-2 rounded-[28px] border border-white/[0.08] bg-zinc-950/70 p-2.5 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-[box-shadow,border-color] duration-200 focus-within:border-[#A3E635]/55 focus-within:shadow-[0_0_0_1px_rgba(163,230,53,0.35),0_0_40px_rgba(132,204,22,0.18)]"
+          >
             <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
 
             <motion.button
               type="button"
+              disabled={isMentorThinking || isImageProcessing}
               onClick={() => fileInputRef.current?.click()}
-              className="cursor-pointer rounded-xl p-2.5 text-zinc-400 hover:bg-zinc-800 hover:text-[#A3E635]"
+              className="cursor-pointer rounded-xl p-2.5 text-zinc-400 hover:bg-zinc-800 hover:text-[#A3E635] disabled:cursor-not-allowed disabled:opacity-50"
               title="Attach Screenshot"
               style={GPU}
               whileHover={iconHover}
@@ -1366,8 +1428,9 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
 
             <motion.button
               type="button"
-              onClick={() => setIsVoiceActive(!isVoiceActive)}
-              className={`cursor-pointer rounded-xl p-2.5 ${
+              onClick={handleToggleVoice}
+              disabled={isMentorThinking}
+              className={`cursor-pointer rounded-xl p-2.5 disabled:cursor-not-allowed disabled:opacity-50 ${
                 isVoiceActive
                   ? "bg-[#A3E635] text-zinc-950 shadow-[0_0_12px_rgba(163,230,53,0.45)]"
                   : "text-zinc-400 hover:bg-zinc-800 hover:text-[#A3E635]"
@@ -1385,18 +1448,16 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
               type="text"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !isMentorThinking) handleSendMessage();
-              }}
               placeholder="Ask Mentor anything or attach a screenshot…"
               disabled={isMentorThinking}
+              autoComplete="off"
+              aria-label="Message mentor"
               className="flex-1 bg-transparent px-2 py-1.5 text-sm text-white placeholder:text-zinc-500 focus:outline-none disabled:opacity-60"
             />
 
             <motion.button
-              type="button"
-              onClick={handleSendMessage}
-              disabled={isMentorThinking}
+              type="submit"
+              disabled={isMentorThinking || isImageProcessing}
               className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-[#A3E635] text-zinc-950 hover:bg-[#84CC16] hover:shadow-[0_0_20px_rgba(163,230,53,0.35)] disabled:cursor-not-allowed disabled:opacity-50"
               style={GPU}
               whileHover={iconHover}
@@ -1405,7 +1466,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
             >
               <Send className="h-4 w-4" />
             </motion.button>
-          </div>
+          </form>
         </motion.div>
         )}
       </div>

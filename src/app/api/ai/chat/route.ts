@@ -19,6 +19,7 @@ type ChatBody = {
   message?: string;
   imageBase64?: string;
   imageMimeType?: string;
+  workspaceId?: string;
   workspaceName?: string;
   founderName?: string;
   nicheLabel?: string;
