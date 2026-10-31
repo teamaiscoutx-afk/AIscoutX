@@ -23,7 +23,15 @@ export async function GET(request: Request) {
 
   const snapshot = await loadWorkspaceChats(workspaceId);
   if (!snapshot.ok) {
-    return NextResponse.json({ ok: false, chats: [], activeChatId: "" }, { status: 401 });
+    return NextResponse.json(
+      {
+        ok: false,
+        chats: [],
+        activeChatId: "",
+        error: snapshot.error ?? "Failed to load chats.",
+      },
+      { status: snapshot.error === "Sign in required." ? 401 : 500 }
+    );
   }
 
   return NextResponse.json(snapshot);
@@ -50,7 +58,13 @@ export async function POST(request: Request) {
 
   const saved = await saveWorkspaceChats(workspaceId, chats, activeChatId);
   if (!saved.ok) {
-    return NextResponse.json({ ok: false }, { status: 401 });
+    const unauthorized =
+      saved.error === "Sign in required." ||
+      saved.error?.includes("Workspace not found");
+    return NextResponse.json(
+      { ok: false, error: saved.error ?? "Failed to save chats." },
+      { status: unauthorized ? 401 : 500 }
+    );
   }
 
   return NextResponse.json({ ok: true });

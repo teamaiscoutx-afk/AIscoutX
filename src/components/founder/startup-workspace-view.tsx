@@ -216,13 +216,24 @@ export function StartupWorkspaceView({
   const [workspace] = useState(initialWorkspace);
   const startupName = resolveStartupName(workspace);
 
-  const [chats, setChats] = useState<ChatSession[]>(() =>
-    initialChats.filter((chat) => !isPlaceholderChat(chat))
+  const initialPersistedChats = useMemo(
+    () => initialChats.filter((chat) => !isPlaceholderChat(chat)),
+    [initialChats]
   );
-  const [activeChatId, setActiveChatId] = useState(initialActiveChatId);
+  const [chats, setChats] = useState<ChatSession[]>(() => initialPersistedChats);
+  const [activeChatId, setActiveChatId] = useState(() => {
+    if (
+      initialActiveChatId &&
+      initialPersistedChats.some((c) => c.id === initialActiveChatId && !c.isDeleted)
+    ) {
+      return initialActiveChatId;
+    }
+    return initialPersistedChats.find((c) => !c.isDeleted)?.id ?? "";
+  });
   const [chatsReady, setChatsReady] = useState(false);
-  const chatsRef = useRef<ChatSession[]>(initialChats);
-  const activeChatRef = useRef(initialActiveChatId);
+  const [chatSaveError, setChatSaveError] = useState<string | null>(null);
+  const chatsRef = useRef<ChatSession[]>(initialPersistedChats);
+  const activeChatRef = useRef(activeChatId);
   const writingRef = useRef(false);
   const mentorBusyRef = useRef(false);
   const fetchSeq = useRef(0);
@@ -255,9 +266,13 @@ export function StartupWorkspaceView({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const composerRef = useRef<HTMLInputElement>(null);
 
-  const activeChats = chats
-    .filter((c) => !c.isDeleted)
-    .sort((a, b) => Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned)));
+  const activeChats = useMemo(
+    () =>
+      chats
+        .filter((c) => !c.isDeleted)
+        .sort((a, b) => Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned))),
+    [chats]
+  );
   const binChats = chats.filter((c) => c.isDeleted);
   const activeChat = chats.find((c) => c.id === activeChatId) || activeChats[0];
 
@@ -313,18 +328,35 @@ export function StartupWorkspaceView({
         chats?: PersistedMentorChat[];
         activeChatId?: string;
       };
-      if (!response.ok || !snapshot.ok || !Array.isArray(snapshot.chats)) return;
+      if (!response.ok || !snapshot.ok || !Array.isArray(snapshot.chats)) {
+        if (seq === fetchSeq.current) {
+          setChatSaveError(
+            (snapshot as { error?: string }).error ?? "Could not refresh chat history."
+          );
+        }
+        return;
+      }
       if (seq !== fetchSeq.current || writingRef.current || mentorBusyRef.current) return;
+      setChatSaveError(null);
       applyServerChats({
         chats: snapshot.chats,
         activeChatId: snapshot.activeChatId ?? "",
       });
     } catch {
-      // Keep the last server snapshot on screen.
+      if (seq === fetchSeq.current) {
+        setChatSaveError("Could not refresh chat history.");
+      }
     } finally {
       if (seq === fetchSeq.current) setChatsReady(true);
     }
   }, [applyServerChats, workspace.id]);
+
+  useEffect(() => {
+    if (initialPersistedChats.length > 0) {
+      chatsRef.current = initialPersistedChats;
+      setChats(initialPersistedChats);
+    }
+  }, [initialPersistedChats]);
 
   useEffect(() => {
     persistActiveWorkspace({ id: workspace.id, name: startupName });
@@ -384,19 +416,38 @@ export function StartupWorkspaceView({
           activeChatId: nextActiveId,
         }),
       });
-      const saved = (await response.json()) as { ok?: boolean };
-      if (!response.ok || !saved.ok) return false;
+      const saved = (await response.json()) as { ok?: boolean; error?: string };
+      if (!response.ok || !saved.ok) {
+        setChatSaveError(saved.error ?? "Could not save chat to your workspace.");
+        return { ok: false as const, error: saved.error };
+      }
+      setChatSaveError(null);
       chatsRef.current = next;
       activeChatRef.current = nextActiveId;
       setChats(next);
       setActiveChatId(nextActiveId);
-      return true;
+      return { ok: true as const };
     } catch {
-      return false;
+      setChatSaveError("Network error while saving chat history.");
+      return { ok: false as const, error: "Network error while saving chat history." };
     } finally {
       writingRef.current = false;
     }
   }, [workspace.id]);
+
+  const selectChatSession = useCallback(
+    (chatId: string) => {
+      if (mentorBusyRef.current || writingRef.current) return;
+      const target = chatsRef.current.find((chat) => chat.id === chatId && !chat.isDeleted);
+      if (!target) return;
+      activeChatRef.current = chatId;
+      setActiveChatId(chatId);
+      setCanvas("chat");
+      setChatMenu(null);
+      void commitChats(chatsRef.current, chatId);
+    },
+    [commitChats]
+  );
 
   useEffect(() => {
     if (!chatsReady) return;
@@ -460,8 +511,10 @@ export function StartupWorkspaceView({
       title: "New Conversation",
       messages: [],
     };
-    void commitChats([newChat, ...chatsRef.current], newChatId).then((ok) => {
-      if (ok) setCanvas("chat");
+    void commitChats([newChat, ...chatsRef.current], newChatId).then((result) => {
+      if (result.ok) {
+        setCanvas("chat");
+      }
     });
   };
 
@@ -718,7 +771,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
           : "");
 
       try {
-        void commitChats(nextList, chatId);
+        await commitChats(nextList, chatId);
 
         const result = await requestMentorChatReply(
           {
@@ -765,7 +818,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
             : chat
         );
         applyLocalChats(withReply, chatId);
-        void commitChats(withReply, chatId);
+        await commitChats(withReply, chatId);
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "Network error while reaching the mentor. Please retry.";
@@ -773,8 +826,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
           dispatchOutOfCredits();
         }
         upsertAssistantMessage(chatId, message);
-        const withError = chatsRef.current;
-        void commitChats(withError, chatId);
+        await commitChats(chatsRef.current, chatId);
       } finally {
         mentorBusyRef.current = false;
         setIsMentorThinking(false);
@@ -937,6 +989,11 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
 
           <div className="space-y-1 border-t border-white/[0.06] pt-1">
             <span className="block px-2 text-[10px] font-bold uppercase tracking-wider text-zinc-500">Recent Chats</span>
+            {chatSaveError && (
+              <p className="px-2 text-[10px] leading-4 text-amber-400/90" title={chatSaveError}>
+                Save sync issue — retry by sending a message or refresh.
+              </p>
+            )}
             <motion.div
               className="max-h-[calc(100vh-470px)] space-y-1 overflow-y-auto"
               variants={staggerContainer}
@@ -976,11 +1033,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
                     >
                       <button
                         type="button"
-                        onClick={() => {
-                          setActiveChatId(chat.id);
-                          setCanvas("chat");
-                          setChatMenu(null);
-                        }}
+                        onClick={() => selectChatSession(chat.id)}
                         className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 truncate px-3 py-2 text-left text-xs font-medium"
                       >
                         {chat.isPinned ? (
