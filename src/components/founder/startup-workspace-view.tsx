@@ -66,6 +66,7 @@ import { dispatchCreditsUpdated } from "@/lib/billing/credits-events";
 import { dispatchOutOfCredits } from "@/lib/billing/freemium";
 import { useBrowserSpeechInput } from "@/hooks/use-browser-speech-input";
 import { prepareImageAttachment } from "@/lib/client/compress-image";
+import { requestMentorChatReply } from "@/lib/client/mentor-chat-transport";
 
 type PendingImageAttachment = {
   previewUrl: string;
@@ -348,6 +349,31 @@ export function StartupWorkspaceView({
       window.clearInterval(poll);
     };
   }, [fetchChats, startupName, workspace.id]);
+
+  const applyLocalChats = useCallback((next: ChatSession[], nextActiveId: string) => {
+    chatsRef.current = next;
+    setChats(next);
+    setActiveChatId(nextActiveId);
+    activeChatRef.current = nextActiveId;
+  }, []);
+
+  const upsertAssistantMessage = useCallback(
+    (chatId: string, content: string) => {
+      const next = chatsRef.current.map((chat) => {
+        if (chat.id !== chatId) return chat;
+        const messages = [...chat.messages];
+        const last = messages[messages.length - 1];
+        if (last?.role === "assistant") {
+          messages[messages.length - 1] = { role: "assistant", content };
+        } else {
+          messages.push({ role: "assistant", content });
+        }
+        return { ...chat, messages };
+      });
+      applyLocalChats(next, chatId);
+    },
+    [applyLocalChats]
+  );
 
   const commitChats = useCallback(async (next: ChatSession[], nextActiveId: string) => {
     writingRef.current = true;
@@ -682,10 +708,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
         ? chatsRef.current.map((chat) => (chat.id === chatId ? nextChat : chat))
         : [nextChat, ...chatsRef.current];
 
-      chatsRef.current = nextList;
-      setChats(nextList);
-      setActiveChatId(chatId);
-      activeChatRef.current = chatId;
+      applyLocalChats(nextList, chatId);
 
       const historyForAi = nextChat.messages
         .slice(0, -1)
@@ -700,13 +723,10 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
           : "");
 
       try {
-        await commitChats(nextList, chatId);
+        void commitChats(nextList, chatId);
 
-        const response = await fetch("/api/ai/chat", {
-          method: "POST",
-          credentials: "same-origin",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        const result = await requestMentorChatReply(
+          {
             message: apiMessage,
             imageBase64: imagePayload?.base64,
             imageMimeType: imagePayload?.mimeType,
@@ -715,71 +735,50 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
             founderName: viewerName,
             nicheLabel: workspace.nicheFocus ?? undefined,
             history: historyForAi,
-          }),
-        });
-
-        const payload = (await response.json()) as {
-          ok?: boolean;
-          reply?: string;
-          error?: string;
-          warning?: string;
-        };
+          },
+          {
+            onDelta: (_chunk, fullSoFar) => {
+              setIsMentorThinking(false);
+              upsertAssistantMessage(chatId, fullSoFar);
+            },
+          }
+        );
 
         dispatchCreditsUpdated();
+        setIsMentorThinking(false);
+        upsertAssistantMessage(chatId, result.reply);
 
-        if (!response.ok || !payload.ok || !payload.reply) {
-          if (response.status === 402) {
-            dispatchOutOfCredits();
-          }
-          const fallback =
-            payload.error ??
-            (response.status === 402
-              ? "You are out of credits. Choose a plan to continue mentor chat."
-              : "Mentor is temporarily unavailable. Try again in a moment.");
-          const withError = chatsRef.current.map((chat) =>
-            chat.id === chatId
-              ? {
-                  ...chat,
-                  messages: [
-                    ...chat.messages,
-                    { role: "assistant" as const, content: fallback },
-                  ],
-                }
-              : chat
-          );
-          await commitChats(withError, chatId);
-          return;
-        }
-
-        const prefix = payload.warning ? `${payload.warning}\n\n` : "";
         const withReply = chatsRef.current.map((chat) =>
           chat.id === chatId
             ? {
                 ...chat,
-                messages: [
-                  ...chat.messages,
-                  { role: "assistant" as const, content: `${prefix}${payload.reply}` },
-                ],
+                messages: (() => {
+                  const messages = [...chat.messages];
+                  const last = messages[messages.length - 1];
+                  if (last?.role === "assistant") {
+                    messages[messages.length - 1] = {
+                      role: "assistant" as const,
+                      content: result.reply,
+                    };
+                  } else {
+                    messages.push({ role: "assistant" as const, content: result.reply });
+                  }
+                  return messages;
+                })(),
               }
             : chat
         );
-        await commitChats(withReply, chatId);
-      } catch {
-        const withError = chatsRef.current.map((chat) =>
-          chat.id === chatId
-            ? {
-                ...chat,
-                messages: [
-                  ...chat.messages,
-                  {
-                    role: "assistant" as const,
-                    content: "Network error while reaching the mentor. Please retry.",
-                  },
-                ],
-              }
-            : chat
-        );
-        await commitChats(withError, chatId);
+        applyLocalChats(withReply, chatId);
+        void commitChats(withReply, chatId);
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Network error while reaching the mentor. Please retry.";
+        if (message.includes("out of credits")) {
+          dispatchOutOfCredits();
+        }
+        upsertAssistantMessage(chatId, message);
+        const withError = chatsRef.current;
+        void commitChats(withError, chatId);
       } finally {
         mentorBusyRef.current = false;
         setIsMentorThinking(false);
@@ -787,6 +786,8 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
     },
     [
       isImageProcessing,
+      applyLocalChats,
+      upsertAssistantMessage,
       commitChats,
       startupName,
       viewerName,

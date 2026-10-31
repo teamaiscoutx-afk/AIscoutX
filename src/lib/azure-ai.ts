@@ -1,5 +1,6 @@
 import type { AnalyzePack, BlueprintPack, LaunchPack } from "@/lib/mvp/types";
 import { readIntelligenceEnv, readServerEnv } from "@/lib/env";
+import { withTimeout } from "@/lib/server/with-timeout";
 
 export type ChatMessage = {
   role: "system" | "user" | "assistant";
@@ -34,7 +35,7 @@ export type MarketSnippet = {
 export type LiveMarketContext = {
   query: string;
   scannedAt: string;
-  provider: "azure_search" | "azure_openai" | "synthetic";
+  provider: "azure_search" | "azure_openai" | "synthetic" | "skipped";
   snippets: MarketSnippet[];
 };
 
@@ -108,6 +109,7 @@ export async function azureChatCompletion(input: {
   temperature?: number;
   maxTokens?: number;
   jsonMode?: boolean;
+  signal?: AbortSignal;
 }): Promise<string> {
   const config = readAzureOpenAIConfig();
   if (!config) {
@@ -135,6 +137,7 @@ export async function azureChatCompletion(input: {
       "api-key": config.apiKey,
     },
     body: JSON.stringify(body),
+    signal: input.signal,
   });
 
   const raw = await response.text();
@@ -155,6 +158,49 @@ export async function azureChatCompletion(input: {
   }
 
   return content;
+}
+
+/** Stream token deltas from Azure OpenAI chat completions (`stream: true`). */
+export async function azureChatCompletionStream(input: {
+  messages: ChatMessage[] | AzureCompletionMessage[];
+  temperature?: number;
+  maxTokens?: number;
+  signal?: AbortSignal;
+}): Promise<Response> {
+  const config = readAzureOpenAIConfig();
+  if (!config) {
+    throw new Error(
+      "Azure OpenAI is not configured. Set AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, and AZURE_OPENAI_DEPLOYMENT_NAME."
+    );
+  }
+
+  const url = `${config.endpoint}/openai/deployments/${encodeURIComponent(config.deployment)}/chat/completions?api-version=${encodeURIComponent(config.apiVersion)}`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "api-key": config.apiKey,
+    },
+    body: JSON.stringify({
+      messages: input.messages,
+      temperature: input.temperature ?? 0.65,
+      max_tokens: input.maxTokens ?? 1200,
+      stream: true,
+    }),
+    signal: input.signal,
+  });
+
+  if (!response.ok) {
+    const raw = await response.text();
+    throw new Error(`Azure OpenAI stream error ${response.status}: ${raw.slice(0, 400)}`);
+  }
+
+  if (!response.body) {
+    throw new Error("Azure OpenAI returned an empty stream body.");
+  }
+
+  return response;
 }
 
 function mapAzureSearchDocuments(
@@ -319,6 +365,33 @@ function mergeMarketContexts(contexts: LiveMarketContext[], query: string): Live
   };
 }
 
+/** Fast single-query market context for mentor chat (hard cap ~4s). */
+export async function fetchMentorMarketContextFast(input: {
+  startupDomain: string;
+  nicheLabel?: string;
+}): Promise<LiveMarketContext> {
+  const domain = input.startupDomain.trim();
+  const niche = input.nicheLabel?.trim() ?? "";
+  const fallback: LiveMarketContext = {
+    query: `${domain} ${niche}`.trim(),
+    scannedAt: new Date().toISOString(),
+    provider: "skipped",
+    snippets: [],
+  };
+
+  if (!domain) return fallback;
+
+  try {
+    return await withTimeout(
+      fetchLiveMarketContext({ query: domain, nicheLabel: niche }),
+      4000,
+      "Mentor market scan"
+    );
+  } catch {
+    return fallback;
+  }
+}
+
 /** Multi-query 24/7 scan: trends, competitors, and news for a startup domain. */
 export async function fetchRealtimeMarketIntelligence(input: {
   startupDomain: string;
@@ -406,9 +479,10 @@ export function buildMentorSystemPrompt(input: {
   founderName: string;
   marketContext?: LiveMarketContext;
 }): string {
-  const marketBlock = input.marketContext
-    ? `\n\n${formatMarketContextBlock(input.marketContext)}`
-    : "";
+  const marketBlock =
+    input.marketContext && input.marketContext.snippets.length > 0
+      ? `\n\n${formatMarketContextBlock(input.marketContext)}`
+      : "";
 
   return `You are the elite empathetic Lead Tech Co-Founder for AIscoutX mentoring ${input.founderName} on "${input.workspaceName}".
 

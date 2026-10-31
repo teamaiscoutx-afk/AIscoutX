@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 
 import {
   azureChatCompletion,
+  azureChatCompletionStream,
   buildMentorSystemPrompt,
-  fetchRealtimeMarketIntelligence,
+  fetchMentorMarketContextFast,
   type AzureCompletionMessage,
 } from "@/lib/azure-ai";
 import { resolveServerAzureOpenAI } from "@/lib/server/azure-config.server";
+import { createMentorChatSseStream } from "@/lib/server/mentor-chat-stream.server";
+import { withTimeout } from "@/lib/server/with-timeout";
 import { creditCostForAction } from "@/lib/billing/credit-costs";
 import { addBonusCredits, deductCreditsForAction } from "@/lib/billing/credit-engine.server";
 import { logServerError } from "@/lib/server/safe-action";
@@ -14,6 +17,7 @@ import { createServerSupabaseClient, isSupabaseConfigured } from "@/lib/supabase
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 type ChatBody = {
   message?: string;
@@ -23,10 +27,12 @@ type ChatBody = {
   workspaceName?: string;
   founderName?: string;
   nicheLabel?: string;
+  stream?: boolean;
   history?: { role: "user" | "assistant"; content: string }[];
 };
 
 const MAX_IMAGE_BASE64_CHARS = 6_000_000;
+const MENTOR_LLM_TIMEOUT_MS = 55_000;
 
 function buildUserTurn(input: {
   message: string;
@@ -47,10 +53,30 @@ function buildUserTurn(input: {
   return {
     role: "user",
     content: [
-      { type: "text", text: text || "Analyze this screenshot for my startup and give actionable mentor advice." },
+      {
+        type: "text",
+        text:
+          text ||
+          "Analyze this screenshot for my startup and give actionable mentor advice.",
+      },
       { type: "image_url", image_url: { url: dataUrl, detail: "auto" } },
     ],
   };
+}
+
+function wantsEventStream(request: Request, body: ChatBody): boolean {
+  const queryStream = new URL(request.url).searchParams.get("stream") === "1";
+  const accept = request.headers.get("accept") ?? "";
+  return body.stream === true || queryStream || accept.includes("text/event-stream");
+}
+
+function mentorCompletionSignal(): AbortSignal {
+  if (typeof AbortSignal.timeout === "function") {
+    return AbortSignal.timeout(MENTOR_LLM_TIMEOUT_MS);
+  }
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), MENTOR_LLM_TIMEOUT_MS);
+  return controller.signal;
 }
 
 export async function POST(request: Request) {
@@ -89,6 +115,7 @@ export async function POST(request: Request) {
   const message = body.message?.trim() ?? "";
   const imageBase64 = body.imageBase64?.trim();
   const imageMimeType = body.imageMimeType?.trim();
+  const useStream = wantsEventStream(request, body);
 
   if (!message && !imageBase64) {
     return NextResponse.json(
@@ -129,8 +156,10 @@ export async function POST(request: Request) {
         .slice(-12)
     : [];
 
+  const signal = mentorCompletionSignal();
+
   try {
-    const marketContext = await fetchRealtimeMarketIntelligence({
+    const marketContext = await fetchMentorMarketContextFast({
       startupDomain: workspaceName,
       nicheLabel,
     });
@@ -147,14 +176,59 @@ export async function POST(request: Request) {
       buildUserTurn({ message, imageBase64, imageMimeType }),
     ];
 
-    const reply = await azureChatCompletion({ messages, temperature: 0.65, maxTokens: 1400 });
+    const creditHeaders = {
+      "X-Credits-Remaining": String(deduction.snapshot.remaining),
+      "X-Credits-Allowance": String(deduction.snapshot.allowance),
+      "X-Market-Scan-Provider": marketContext.provider,
+      ...(deduction.warning ? { "X-Credits-Warning": deduction.warning } : {}),
+    };
 
-    const headers = new Headers();
-    headers.set("X-Credits-Remaining", String(deduction.snapshot.remaining));
-    headers.set("X-Credits-Allowance", String(deduction.snapshot.allowance));
-    headers.set("X-Market-Scan-Provider", marketContext.provider);
-    if (deduction.warning) {
-      headers.set("X-Credits-Warning", deduction.warning);
+    if (useStream) {
+      try {
+        const azureResponse = await azureChatCompletionStream({
+          messages,
+          temperature: 0.65,
+          maxTokens: 1200,
+          signal,
+        });
+
+        const sse = createMentorChatSseStream({
+          azureBody: azureResponse.body!,
+          meta: {
+            creditsRemaining: deduction.snapshot.remaining,
+            creditsAllowance: deduction.snapshot.allowance,
+            warning: deduction.warning,
+          },
+        });
+
+        return new Response(sse, {
+          headers: {
+            "Content-Type": "text/event-stream; charset=utf-8",
+            "Cache-Control": "no-cache, no-transform",
+            Connection: "keep-alive",
+            ...creditHeaders,
+          },
+        });
+      } catch (streamErr) {
+        logServerError("api.ai.chat.stream", streamErr);
+        // Non-streaming fallback when Azure streaming fails.
+      }
+    }
+
+    const reply = await withTimeout(
+      azureChatCompletion({
+        messages,
+        temperature: 0.65,
+        maxTokens: 1200,
+        signal,
+      }),
+      MENTOR_LLM_TIMEOUT_MS,
+      "Mentor completion"
+    );
+
+    const headers = new Headers(creditHeaders);
+    if (useStream) {
+      headers.set("X-Stream-Fallback", "json");
     }
 
     return NextResponse.json(
@@ -163,6 +237,7 @@ export async function POST(request: Request) {
         reply,
         credits: deduction.snapshot,
         warning: deduction.warning,
+        streamFallback: useStream,
         marketScan: {
           provider: marketContext.provider,
           scannedAt: marketContext.scannedAt,
