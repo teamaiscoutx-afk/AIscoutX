@@ -74,7 +74,11 @@ type PendingImageAttachment = {
   mimeType: string;
 };
 import { signOut } from "@/app/actions/auth";
-import type { PersistedMentorChat } from "@/app/actions/workspace-chats";
+import type { PersistedMentorChat } from "@/lib/mentor/workspace-chat-types";
+import {
+  fetchWorkspaceChatSnapshot,
+  persistWorkspaceChats,
+} from "@/lib/client/persist-workspace-chats";
 import { StartupRadarPanel } from "@/components/founder/startup-radar-panel";
 import { WorkspaceSkeleton } from "@/components/founder/workspace-skeleton";
 
@@ -231,7 +235,6 @@ export function StartupWorkspaceView({
     return initialPersistedChats.find((c) => !c.isDeleted)?.id ?? "";
   });
   const [chatsReady, setChatsReady] = useState(false);
-  const [chatSaveError, setChatSaveError] = useState<string | null>(null);
   const chatsRef = useRef<ChatSession[]>(initialPersistedChats);
   const activeChatRef = useRef(activeChatId);
   const writingRef = useRef(false);
@@ -317,38 +320,18 @@ export function StartupWorkspaceView({
   const fetchChats = useCallback(async () => {
     if (writingRef.current || mentorBusyRef.current) return;
     const seq = ++fetchSeq.current;
-    try {
-      const response = await fetch(
-        `/api/chats?workspaceId=${encodeURIComponent(workspace.id)}`,
-        { cache: "no-store", credentials: "same-origin" }
-      );
-      if (seq !== fetchSeq.current || writingRef.current || mentorBusyRef.current) return;
-      const snapshot = (await response.json()) as {
-        ok?: boolean;
-        chats?: PersistedMentorChat[];
-        activeChatId?: string;
-      };
-      if (!response.ok || !snapshot.ok || !Array.isArray(snapshot.chats)) {
-        if (seq === fetchSeq.current) {
-          setChatSaveError(
-            (snapshot as { error?: string }).error ?? "Could not refresh chat history."
-          );
-        }
-        return;
-      }
-      if (seq !== fetchSeq.current || writingRef.current || mentorBusyRef.current) return;
-      setChatSaveError(null);
+    const snapshot = await fetchWorkspaceChatSnapshot(workspace.id);
+    if (seq !== fetchSeq.current || writingRef.current || mentorBusyRef.current) {
+      if (seq === fetchSeq.current) setChatsReady(true);
+      return;
+    }
+    if (snapshot.ok) {
       applyServerChats({
         chats: snapshot.chats,
-        activeChatId: snapshot.activeChatId ?? "",
+        activeChatId: snapshot.activeChatId,
       });
-    } catch {
-      if (seq === fetchSeq.current) {
-        setChatSaveError("Could not refresh chat history.");
-      }
-    } finally {
-      if (seq === fetchSeq.current) setChatsReady(true);
     }
+    setChatsReady(true);
   }, [applyServerChats, workspace.id]);
 
   useEffect(() => {
@@ -405,31 +388,18 @@ export function StartupWorkspaceView({
   const commitChats = useCallback(async (next: ChatSession[], nextActiveId: string) => {
     writingRef.current = true;
     fetchSeq.current += 1;
+    chatsRef.current = next;
+    activeChatRef.current = nextActiveId;
+    setChats(next);
+    setActiveChatId(nextActiveId);
+
     try {
-      const response = await fetch("/api/chats", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          workspaceId: workspace.id,
-          chats: next,
-          activeChatId: nextActiveId,
-        }),
+      const saved = await persistWorkspaceChats({
+        workspaceId: workspace.id,
+        chats: next,
+        activeChatId: nextActiveId,
       });
-      const saved = (await response.json()) as { ok?: boolean; error?: string };
-      if (!response.ok || !saved.ok) {
-        setChatSaveError(saved.error ?? "Could not save chat to your workspace.");
-        return { ok: false as const, error: saved.error };
-      }
-      setChatSaveError(null);
-      chatsRef.current = next;
-      activeChatRef.current = nextActiveId;
-      setChats(next);
-      setActiveChatId(nextActiveId);
-      return { ok: true as const };
-    } catch {
-      setChatSaveError("Network error while saving chat history.");
-      return { ok: false as const, error: "Network error while saving chat history." };
+      return saved ? ({ ok: true as const }) : ({ ok: false as const });
     } finally {
       writingRef.current = false;
     }
@@ -989,11 +959,6 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
 
           <div className="space-y-1 border-t border-white/[0.06] pt-1">
             <span className="block px-2 text-[10px] font-bold uppercase tracking-wider text-zinc-500">Recent Chats</span>
-            {chatSaveError && (
-              <p className="px-2 text-[10px] leading-4 text-amber-400/90" title={chatSaveError}>
-                Save sync issue — retry by sending a message or refresh.
-              </p>
-            )}
             <motion.div
               className="max-h-[calc(100vh-470px)] space-y-1 overflow-y-auto"
               variants={staggerContainer}

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 
+import type { PersistedMentorChat } from "@/lib/mentor/workspace-chat-types";
 import {
-  loadWorkspaceChats,
-  saveWorkspaceChats,
-  type PersistedMentorChat,
-} from "@/app/actions/workspace-chats";
+  loadWorkspaceChatsSecure,
+  saveWorkspaceChatsSecure,
+} from "@/lib/server/workspace-chats.server";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,7 @@ function workspaceIdFrom(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-/** Session cookie identifies the user. The client never supplies user id. */
+/** @deprecated Prefer `/api/workspace/chats` — kept for backward compatibility. */
 export async function GET(request: Request) {
   const workspaceId = workspaceIdFrom(
     new URL(request.url).searchParams.get("workspaceId")
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: "Missing workspace." }, { status: 400 });
   }
 
-  const snapshot = await loadWorkspaceChats(workspaceId);
+  const snapshot = await loadWorkspaceChatsSecure(workspaceId);
   if (!snapshot.ok) {
     return NextResponse.json(
       {
@@ -37,6 +37,7 @@ export async function GET(request: Request) {
   return NextResponse.json(snapshot);
 }
 
+/** @deprecated Prefer `/api/workspace/chats` — kept for backward compatibility. */
 export async function POST(request: Request) {
   let body: {
     workspaceId?: unknown;
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
     activeChatId?: unknown;
   };
   try {
-    body = await request.json();
+    body = (await request.json()) as typeof body;
   } catch {
     return NextResponse.json({ ok: false, error: "Invalid JSON." }, { status: 400 });
   }
@@ -56,11 +57,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Missing workspace or chats." }, { status: 400 });
   }
 
-  const saved = await saveWorkspaceChats(workspaceId, chats, activeChatId);
+  const saved = await saveWorkspaceChatsSecure(workspaceId, chats, activeChatId);
   if (!saved.ok) {
     const unauthorized =
-      saved.error === "Sign in required." ||
-      saved.error?.includes("Workspace not found");
+      saved.error === "Sign in required." || saved.error?.includes("Workspace not found");
     return NextResponse.json(
       { ok: false, error: saved.error ?? "Failed to save chats." },
       { status: unauthorized ? 401 : 500 }
