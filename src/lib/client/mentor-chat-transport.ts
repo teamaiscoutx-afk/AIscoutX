@@ -6,6 +6,7 @@ export type MentorChatRequestBody = {
   workspaceName?: string;
   founderName?: string;
   nicheLabel?: string;
+  activeChatId?: string;
   history?: { role: "user" | "assistant"; content: string }[];
 };
 

@@ -13,6 +13,7 @@ import { withTimeout } from "@/lib/server/with-timeout";
 import { creditCostForAction } from "@/lib/billing/credit-costs";
 import { addBonusCredits, deductCreditsForAction } from "@/lib/billing/credit-engine.server";
 import { logServerError } from "@/lib/server/safe-action";
+import { loadMentorGrounding } from "@/lib/mentor/load-mentor-grounding.server";
 import { createServerSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
 
 export const runtime = "nodejs";
@@ -27,6 +28,7 @@ type ChatBody = {
   workspaceName?: string;
   founderName?: string;
   nicheLabel?: string;
+  activeChatId?: string;
   stream?: boolean;
   history?: { role: "user" | "assistant"; content: string }[];
 };
@@ -128,9 +130,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Image is too large." }, { status: 413 });
   }
 
-  const workspaceName = body.workspaceName?.trim() || "your startup";
+  const workspaceId = body.workspaceId?.trim();
+  const workspaceNameFallback = body.workspaceName?.trim() || "your startup";
   const founderName = body.founderName?.trim() || "Founder";
   const nicheLabel = body.nicheLabel?.trim();
+  const activeChatId = body.activeChatId?.trim();
 
   const deduction = await deductCreditsForAction(user.id, "chat");
   if (!deduction.ok) {
@@ -145,31 +149,47 @@ export async function POST(request: Request) {
     );
   }
 
-  const history = Array.isArray(body.history)
-    ? body.history
-        .filter(
-          (entry) =>
-            entry &&
-            (entry.role === "user" || entry.role === "assistant") &&
-            typeof entry.content === "string"
-        )
-        .slice(-12)
+  const clientHistory = Array.isArray(body.history)
+    ? body.history.filter(
+        (entry) =>
+          entry &&
+          (entry.role === "user" || entry.role === "assistant") &&
+          typeof entry.content === "string"
+      )
     : [];
 
   const signal = mentorCompletionSignal();
 
   try {
-    const marketContext = await fetchMentorMarketContextFast({
-      startupDomain: workspaceName,
-      nicheLabel,
-    });
+    const [marketContext, grounding] = await Promise.all([
+      fetchMentorMarketContextFast({
+        startupDomain: workspaceNameFallback,
+        nicheLabel,
+      }),
+      loadMentorGrounding({
+        workspaceId,
+        workspaceName: workspaceNameFallback,
+        activeChatId,
+        clientHistory,
+        latestUserMessage: message,
+      }),
+    ]);
+
+    const workspaceName = grounding.workspaceName;
 
     const messages: AzureCompletionMessage[] = [
       {
         role: "system",
-        content: buildMentorSystemPrompt({ workspaceName, founderName, marketContext }),
+        content: buildMentorSystemPrompt({
+          workspaceName,
+          founderName,
+          marketContext,
+          workspaceBlueprint: grounding.workspaceBlueprint,
+          workspaceMemory: grounding.workspaceMemory,
+          languageStyleHint: grounding.languageStyleHint,
+        }),
       },
-      ...history.map((entry) => ({
+      ...grounding.history.map((entry) => ({
         role: entry.role,
         content: entry.content,
       })),

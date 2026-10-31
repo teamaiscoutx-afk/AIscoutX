@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
-  Bot,
   Plus,
   MessageSquare,
   Paperclip,
@@ -67,6 +66,7 @@ import { dispatchOutOfCredits } from "@/lib/billing/freemium";
 import { useBrowserSpeechInput } from "@/hooks/use-browser-speech-input";
 import { prepareImageAttachment } from "@/lib/client/compress-image";
 import { requestMentorChatReply } from "@/lib/client/mentor-chat-transport";
+import { WorkspaceChat } from "@/components/founder/workspace-chat";
 
 type PendingImageAttachment = {
   previewUrl: string;
@@ -254,17 +254,12 @@ export function StartupWorkspaceView({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const composerRef = useRef<HTMLInputElement>(null);
-  const chatEndRef = useRef<HTMLDivElement>(null);
 
   const activeChats = chats
     .filter((c) => !c.isDeleted)
     .sort((a, b) => Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned)));
   const binChats = chats.filter((c) => c.isDeleted);
   const activeChat = chats.find((c) => c.id === activeChatId) || activeChats[0];
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activeChat?.messages, isMentorThinking]);
 
   useEffect(() => {
     const closeMenu = () => setChatMenu(null);
@@ -713,7 +708,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
       const historyForAi = nextChat.messages
         .slice(0, -1)
         .filter((m) => m.role === "user" || m.role === "assistant")
-        .slice(-10)
+        .slice(-30)
         .map((m) => ({ role: m.role, content: m.content }));
 
       const apiMessage =
@@ -734,6 +729,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
             workspaceName: startupName,
             founderName: viewerName,
             nicheLabel: workspace.nicheFocus ?? undefined,
+            activeChatId: chatId,
             history: historyForAi,
           },
           {
@@ -1141,7 +1137,7 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
       </motion.aside>
 
       {/* CHAT CANVAS */}
-      <div className="relative flex flex-1 flex-col overflow-hidden bg-[#09090B]">
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[#09090B]">
         <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
           <motion.div
             className="absolute left-1/2 top-[18%] h-[460px] w-[720px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(132,204,22,0.16)_0%,transparent_68%)] blur-3xl"
@@ -1228,11 +1224,9 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
           </div>
         </div>
 
-        <div className={`flex flex-1 flex-col overflow-y-auto p-4 md:p-8 ${canvas === "radar" ? "justify-start" : "justify-center"}`}>
-          <AnimatePresence mode="wait">
-          {canvas === "radar" ? (
+        {canvas === "radar" ? (
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain p-4 md:p-8">
             <StartupRadarPanel
-              key="radar"
               startupName={startupName}
               niche={workspace.nicheFocus}
               updates={radarUpdates}
@@ -1241,124 +1235,84 @@ VoiceCraft allows anyone to create professional studio voiceovers by simply past
               onDiscuss={discussUpdate}
               onClose={() => setCanvas("chat")}
             />
-          ) : !activeChat?.messages.length ? (
-            <motion.div
-              key="empty"
-              className="relative z-10 my-auto mx-auto max-w-2xl space-y-5 text-center"
-              variants={heroContainer}
-              initial={reduceMotion ? false : "hidden"}
-              animate="show"
-            >
+          </div>
+        ) : (
+          <WorkspaceChat
+            messages={activeChat?.messages ?? []}
+            viewerInitials={viewerInitials}
+            isMentorThinking={isMentorThinking}
+            reduceMotion={reduceMotion}
+            emptyState={
               <motion.div
-                className="relative mx-auto flex h-16 w-16 items-center justify-center"
-                variants={heroItem}
-                initial={reduceMotion ? false : { scale: 0.8, opacity: 0, y: 15, rotate: -10 }}
-                animate={{ scale: 1, opacity: 1, y: 0, rotate: 0 }}
-                transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-                style={GPU}
+                className="relative z-10 mx-auto max-w-2xl space-y-5 text-center"
+                variants={heroContainer}
+                initial={reduceMotion ? false : "hidden"}
+                animate="show"
               >
-                <motion.span
-                  aria-hidden
-                  className="pointer-events-none absolute inset-[-28%] rounded-[32px] shadow-[0_0_50px_rgba(132,204,22,0.25)]"
-                  animate={
-                    reduceMotion
-                      ? { opacity: 0.55 }
-                      : { opacity: [0.35, 0.85, 0.35], scale: [0.94, 1.1, 0.94] }
-                  }
-                  transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+                <motion.div
+                  className="relative mx-auto flex h-16 w-16 items-center justify-center"
+                  variants={heroItem}
+                  initial={reduceMotion ? false : { scale: 0.8, opacity: 0, y: 15, rotate: -10 }}
+                  animate={{ scale: 1, opacity: 1, y: 0, rotate: 0 }}
+                  transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
                   style={GPU}
-                />
-                <div className="relative z-10 flex h-16 w-16 items-center justify-center rounded-3xl border border-white/[0.08] bg-zinc-900/80 text-[#A3E635] shadow-[0_0_50px_rgba(132,204,22,0.25)] backdrop-blur-xl">
-                  <Sparkles className="h-8 w-8" strokeWidth={1.75} />
-                </div>
-              </motion.div>
-              <h1 className="text-2xl font-extrabold tracking-tight text-white md:text-3xl">
-                <StaggerWords text={`Hey ${viewerName.split(" ")[0] || "there"}! I am your`} reduceMotion={reduceMotion} />{" "}
-                <StaggerWords
-                  text="AI Mentor & Co-Founder."
-                  reduceMotion={reduceMotion}
-                  delay={0.42}
-                  className="bg-gradient-to-r from-[#A3E635] to-[#84CC16] bg-clip-text text-transparent"
-                />
-              </h1>
-              <motion.p
-                className="mx-auto max-w-lg text-[15px] leading-7 text-zinc-400"
-                variants={heroItem}
-                style={GPU}
-              >
-                Let&apos;s start now. Ask me about your product strategy, tech architecture, pricing, or outreach roadmap for{" "}
-                <strong className="font-semibold text-white">{startupName}</strong>.
-              </motion.p>
-              <motion.div
-                className="flex flex-wrap items-center justify-center gap-2 pt-1"
-                variants={heroItem}
-                style={GPU}
-              >
-                {QUICK_PROMPTS.map((chip) => (
-                  <button
-                    key={chip.label}
-                    type="button"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => insertPrompt(chip.prompt)}
-                    className="cursor-pointer rounded-full border border-white/[0.08] bg-white/[0.04] px-3.5 py-2 text-xs font-medium text-zinc-200 backdrop-blur-xl transition-all duration-200 hover:border-[#A3E635]/40 hover:bg-white/[0.08] hover:text-white hover:shadow-[0_0_24px_rgba(132,204,22,0.16)]"
-                  >
-                    {chip.label}
-                  </button>
-                ))}
-              </motion.div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="thread"
-              className="relative z-10 my-auto mx-auto w-full max-w-3xl space-y-5"
-              initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={reduceMotion ? undefined : { opacity: 0 }}
-              style={GPU}
-            >
-              {activeChat?.messages.map((msg, i) => (
-                <div
-                  key={i}
-                  className={`flex gap-3.5 ${
-                    msg.role === "user" ? "justify-end" : "justify-start"
-                  }`}
                 >
-                  {msg.role === "assistant" && (
-                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#A3E635]/25 bg-zinc-900 text-[#A3E635] shadow-[0_0_12px_rgba(163,230,53,0.15)]">
-                      <Bot className="h-4 w-4" />
-                    </div>
-                  )}
-                  <div
-                    className={`max-w-[85%] rounded-2xl px-5 py-3.5 text-xs leading-relaxed md:text-sm ${
-                      msg.role === "user"
-                        ? "border border-[#A3E635]/20 bg-zinc-800 text-white shadow-md"
-                        : "whitespace-pre-line border border-white/10 bg-zinc-900 text-zinc-200 shadow-sm"
-                    }`}
-                  >
-                    {msg.content}
+                  <motion.span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-[-28%] rounded-[32px] shadow-[0_0_50px_rgba(132,204,22,0.25)]"
+                    animate={
+                      reduceMotion
+                        ? { opacity: 0.55 }
+                        : { opacity: [0.35, 0.85, 0.35], scale: [0.94, 1.1, 0.94] }
+                    }
+                    transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+                    style={GPU}
+                  />
+                  <div className="relative z-10 flex h-16 w-16 items-center justify-center rounded-3xl border border-white/[0.08] bg-zinc-900/80 text-[#A3E635] shadow-[0_0_50px_rgba(132,204,22,0.25)] backdrop-blur-xl">
+                    <Sparkles className="h-8 w-8" strokeWidth={1.75} />
                   </div>
-                  {msg.role === "user" && (
-                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#A3E635]/30 bg-zinc-800 text-xs font-extrabold text-[#A3E635]">
-                      {viewerInitials}
-                    </div>
-                  )}
-                </div>
-              ))}
-              {isMentorThinking && (
-                <div className="flex gap-3.5 justify-start">
-                  <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#A3E635]/25 bg-zinc-900 text-[#A3E635]">
-                    <Bot className="h-4 w-4" />
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-zinc-900 px-5 py-3.5 text-sm text-zinc-400">
-                    Mentor is thinking…
-                  </div>
-                </div>
-              )}
-              <div ref={chatEndRef} />
-            </motion.div>
-          )}
-          </AnimatePresence>
-        </div>
+                </motion.div>
+                <h1 className="text-2xl font-extrabold tracking-tight text-white md:text-3xl">
+                  <StaggerWords
+                    text={`Hey ${viewerName.split(" ")[0] || "there"}! I am your`}
+                    reduceMotion={reduceMotion}
+                  />{" "}
+                  <StaggerWords
+                    text="AIscoutX Co-Founder & Mentor."
+                    reduceMotion={reduceMotion}
+                    delay={0.42}
+                    className="bg-gradient-to-r from-[#A3E635] to-[#84CC16] bg-clip-text text-transparent"
+                  />
+                </h1>
+                <motion.p
+                  className="mx-auto max-w-lg text-[15px] leading-7 text-zinc-400"
+                  variants={heroItem}
+                  style={GPU}
+                >
+                  Ask in English, Hinglish, or Hindi — I&apos;ll match your style. Strategy, MVP, pricing, or GTM for{" "}
+                  <strong className="font-semibold text-white">{startupName}</strong>.
+                </motion.p>
+                <motion.div
+                  className="flex flex-wrap items-center justify-center gap-2 pt-1"
+                  variants={heroItem}
+                  style={GPU}
+                >
+                  {QUICK_PROMPTS.map((chip) => (
+                    <button
+                      key={chip.label}
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => insertPrompt(chip.prompt)}
+                      className="cursor-pointer rounded-full border border-white/[0.08] bg-white/[0.04] px-3.5 py-2 text-xs font-medium text-zinc-200 backdrop-blur-xl transition-all duration-200 hover:border-[#A3E635]/40 hover:bg-white/[0.08] hover:text-white hover:shadow-[0_0_24px_rgba(132,204,22,0.16)]"
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                </motion.div>
+              </motion.div>
+            }
+          />
+        )}
 
         {/* INPUT BAR */}
         {canvas === "chat" && (
